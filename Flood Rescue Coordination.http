@@ -1,0 +1,6 @@
+@Flood_Rescue_Coordination_HostAddress = http://localhost:5188
+
+GET {{Flood_Rescue_Coordination_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
