@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Flood_Rescue_Coordination.API.Models;
 using BCrypt.Net;
 
-namespace Flood_Rescue_Coordination.API.Data;
+namespace Flood_Rescue_Coordination.API.Models;
 
 public class ApplicationDbContext : DbContext
 {
@@ -13,6 +12,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
+    public DbSet<RescueRequest> RescueRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,6 +63,34 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             
             entity.HasIndex(e => e.Token);
+        });
+
+        modelBuilder.Entity<RescueRequest>(entity =>
+        {
+            entity.ToTable("rescue_requests");
+            entity.HasKey(e => e.RequestId);
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.CitizenId).HasColumnName("citizen_id");
+            entity.Property(e => e.ContactName).HasColumnName("contact_name");
+            entity.Property(e => e.ContactPhone).HasColumnName("contact_phone");
+            entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(200);
+            entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(1000);
+            entity.Property(e => e.Latitude).HasColumnName("latitude").HasPrecision(10, 8);
+            entity.Property(e => e.Longitude).HasColumnName("longitude").HasPrecision(11, 8);
+            entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(300);
+            entity.Property(e => e.PriorityLevelId).HasColumnName("priority_level_id");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.NumberOfPeople).HasColumnName("number_of_people");
+            entity.Property(e => e.HasChildren).HasColumnName("has_children");
+            entity.Property(e => e.HasElderly).HasColumnName("has_elderly");
+            entity.Property(e => e.HasDisabled).HasColumnName("has_disabled");
+            entity.Property(e => e.SpecialNotes).HasColumnName("special_notes").HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(e => e.Citizen)
+                  .WithMany()
+                  .HasForeignKey(e => e.CitizenId);
         });
     }
 

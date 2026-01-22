@@ -1,5 +1,6 @@
 using System.Text;
-using Flood_Rescue_Coordination.API.Data;
+using System.Reflection;
+using Flood_Rescue_Coordination.API.Models;
 using Flood_Rescue_Coordination.API.Middleware;
 using Flood_Rescue_Coordination.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,28 +20,44 @@ builder.Configuration
 // Add services to the container.
 builder.Services.AddControllers();
 
-// Cấu hình Swagger với JWT
+// =============================================
+// CẤU HÌNH SWAGGER / OPENAPI
+// =============================================
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+builder.Services.AddSwaggerGen(options =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo 
-    { 
-        Title = "Flood Rescue Coordination API", 
-        Version = "v1" 
-    });
-    
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    // Swagger Document - API Info
+    options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Description = "JWT Authorization header using the Bearer scheme. \r\n\r\n" +
-                      "Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\n" +
-                      "Example: \"Bearer 12345abcdef\"",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Version = "v1",
+        Title = "Flood Rescue Coordination API",
+        Description = "API hệ thống điều phối cứu hộ lũ lụt - Quản lý yêu cầu cứu hộ, đội cứu hộ, phân phối hàng cứu trợ",
+        TermsOfService = new Uri("https://example.com/terms"),
+        Contact = new OpenApiContact
+        {
+            Name = "Support Team",
+            Email = "support@floodrescue.vn",
+            Url = new Uri("https://floodrescue.vn/support")
+        },
+        License = new OpenApiLicense
+        {
+            Name = "MIT License",
+            Url = new Uri("https://opensource.org/licenses/MIT")
+        }
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    // JWT Bearer Authentication
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Nhập JWT token vào đây.\n\nVí dụ: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
@@ -49,17 +66,28 @@ builder.Services.AddSwaggerGen(c =>
                 {
                     Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
-                },
-                Scheme = "oauth2",
-                Name = "Bearer",
-                In = ParameterLocation.Header,
+                }
             },
-            new List<string>()
+            Array.Empty<string>()
         }
     });
+
+    // Bật XML Comments cho API documentation
+    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+
+    // Sắp xếp các endpoints theo tag/controller
+    options.TagActionsBy(api => new[] { api.GroupName ?? api.ActionDescriptor.RouteValues["controller"] });
+    options.DocInclusionPredicate((name, api) => true);
 });
 
-// Cấu hình DbContext
+// =============================================
+// CẤU HÌNH DATABASE
+// =============================================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -68,13 +96,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
             maxRetryDelay: TimeSpan.FromSeconds(30),
             errorNumbersToAdd: null)));
 
-// Đăng ký Services
+// =============================================
+// ĐĂNG KÝ SERVICES
+// =============================================
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Cấu hình JWT Authentication
+// =============================================
+// CẤU HÌNH JWT AUTHENTICATION
+// =============================================
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"] 
+var secretKey = jwtSettings["SecretKey"]
     ?? throw new InvalidOperationException("JWT SecretKey is not configured in appsettings.json");
 
 builder.Services.AddAuthentication(options =>
@@ -109,7 +141,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Cấu hình Authorization với Role-based policies
+// =============================================
+// CẤU HÌNH AUTHORIZATION
+// =============================================
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("ADMIN"));
@@ -121,58 +155,39 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-// Tự động tạo các bảng còn thiếu
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    try
-    {
-        // Tạo bảng refresh_tokens nếu chưa tồn tại
-        await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'refresh_tokens')
-            BEGIN
-                CREATE TABLE refresh_tokens (
-                    id INT IDENTITY(1,1) PRIMARY KEY,
-                    user_id INT NOT NULL,
-                    token NVARCHAR(500) NOT NULL,
-                    expires_at DATETIME2 NOT NULL,
-                    created_at DATETIME2 DEFAULT GETDATE(),
-                    revoked_at DATETIME2 NULL,
-                    CONSTRAINT FK_RefreshTokens_Users FOREIGN KEY (user_id) REFERENCES users(user_id)
-                );
-                CREATE INDEX IX_RefreshTokens_Token ON refresh_tokens(token);
-                CREATE INDEX IX_RefreshTokens_UserId ON refresh_tokens(user_id);
-            END
-        ");
 
-        // Tạo bảng blacklisted_tokens nếu chưa tồn tại
-        await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'blacklisted_tokens')
-            BEGIN
-                CREATE TABLE blacklisted_tokens (
-                    id INT IDENTITY(1,1) PRIMARY KEY,
-                    token NVARCHAR(1000) NOT NULL,
-                    blacklisted_at DATETIME2 DEFAULT GETDATE(),
-                    expires_at DATETIME2 NOT NULL
-                );
-                CREATE INDEX IX_BlacklistedTokens_Token ON blacklisted_tokens(token);
-                CREATE INDEX IX_BlacklistedTokens_ExpiresAt ON blacklisted_tokens(expires_at);
-            END
-        ");
 
-        Console.WriteLine("Database tables verified/created successfully.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error creating tables: {ex.Message}");
-    }
-}
-
-// Configure the HTTP request pipeline.
+// =============================================
+// CONFIGURE HTTP REQUEST PIPELINE
+// =============================================
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    // Swagger JSON endpoint
+    app.UseSwagger(options =>
+    {
+        options.RouteTemplate = "api-docs/{documentName}/swagger.json";
+    });
+
+    // Swagger UI
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/api-docs/v1/swagger.json", "Flood Rescue Coordination API v1");
+        options.RoutePrefix = "swagger";
+
+        // Cấu hình UI
+        options.DocumentTitle = "Flood Rescue API Documentation";
+        options.DefaultModelsExpandDepth(2);
+        options.DefaultModelRendering(Swashbuckle.AspNetCore.SwaggerUI.ModelRendering.Model);
+        options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
+        options.EnableDeepLinking();
+        options.DisplayRequestDuration();
+        options.EnableFilter();
+        options.ShowExtensions();
+        options.EnableValidator();
+
+        // Persist authorization
+        options.EnablePersistAuthorization();
+    });
 }
 
 app.UseHttpsRedirection();

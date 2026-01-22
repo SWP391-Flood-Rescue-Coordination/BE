@@ -1,4 +1,4 @@
-using Flood_Rescue_Coordination.API.Data;
+using Flood_Rescue_Coordination.API.Models;
 using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
 using Microsoft.EntityFrameworkCore;
@@ -132,76 +132,7 @@ public class AuthService : IAuthService
         });
     }
 
-    public async Task<AuthResponse> RefreshTokenAsync(string refreshToken)
-    {
-        var storedToken = await _context.RefreshTokens
-            .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
 
-        if (storedToken == null)
-        {
-            return new AuthResponse
-            {
-                Success = false,
-                Message = "Refresh token không hợp lệ"
-            };
-        }
-
-        if (!storedToken.IsActive)
-        {
-            return new AuthResponse
-            {
-                Success = false,
-                Message = "Refresh token đã hết hạn hoặc đã bị thu hồi"
-            };
-        }
-
-        if (!storedToken.User.IsActive)
-        {
-            return new AuthResponse
-            {
-                Success = false,
-                Message = "Tài khoản đã bị vô hiệu hóa"
-            };
-        }
-
-        // Thu hồi refresh token cũ
-        storedToken.RevokedAt = DateTime.UtcNow;
-
-        // Tạo token mới
-        var newAccessToken = _jwtService.GenerateAccessToken(storedToken.User);
-        var newRefreshToken = _jwtService.GenerateRefreshToken();
-        var refreshTokenExpirationDays = int.Parse(_configuration["JwtSettings:RefreshTokenExpirationDays"]!);
-
-        var newRefreshTokenEntity = new RefreshToken
-        {
-            UserId = storedToken.UserId,
-            Token = newRefreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.RefreshTokens.Add(newRefreshTokenEntity);
-        await _context.SaveChangesAsync();
-
-        return new AuthResponse
-        {
-            Success = true,
-            Message = "Token đã được làm mới",
-            AccessToken = newAccessToken,
-            RefreshToken = newRefreshToken,
-            AccessTokenExpiration = DateTime.UtcNow.AddMinutes(
-                int.Parse(_configuration["JwtSettings:AccessTokenExpirationMinutes"]!)),
-            User = new UserInfo
-            {
-                UserId = storedToken.User.UserId,
-                Username = storedToken.User.Username,
-                FullName = storedToken.User.FullName,
-                Email = storedToken.User.Email,
-                Role = storedToken.User.Role
-            }
-        };
-    }
 
     public async Task<AuthResponse> LogoutAsync(string accessToken, string? refreshToken)
     {
