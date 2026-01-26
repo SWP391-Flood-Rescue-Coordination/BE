@@ -13,6 +13,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
     public DbSet<RescueRequest> RescueRequests { get; set; }
+    public DbSet<Vehicle> Vehicles { get; set; }
+    public DbSet<VehicleType> VehicleTypes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -91,6 +93,36 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.Citizen)
                   .WithMany()
                   .HasForeignKey(e => e.CitizenId);
+        });
+
+        modelBuilder.Entity<VehicleType>(entity =>
+        {
+            entity.ToTable("vehicle_types");
+            entity.HasKey(e => e.VehicleTypeId);
+            entity.Property(e => e.VehicleTypeId).HasColumnName("vehicle_type_id");
+            entity.Property(e => e.TypeName).HasColumnName("type_name").HasMaxLength(50);
+            entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<Vehicle>(entity =>
+        {
+            entity.ToTable("vehicles");
+            entity.HasKey(e => e.VehicleId);
+            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(e => e.VehicleCode).HasColumnName("vehicle_code").HasMaxLength(20);
+            entity.Property(e => e.VehicleName).HasColumnName("vehicle_name").HasMaxLength(100);
+            entity.Property(e => e.VehicleTypeId).HasColumnName("vehicle_type_id");
+            entity.Property(e => e.LicensePlate).HasColumnName("license_plate").HasMaxLength(20);
+            entity.Property(e => e.Capacity).HasColumnName("capacity");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.FuelLevel).HasColumnName("fuel_level").HasPrecision(5, 2);
+            entity.Property(e => e.CurrentLocation).HasColumnName("current_location").HasMaxLength(300);
+            entity.Property(e => e.LastMaintenance).HasColumnName("last_maintenance");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            entity.HasOne(e => e.VehicleType)
+                  .WithMany()
+                  .HasForeignKey(e => e.VehicleTypeId);
         });
     }
 
