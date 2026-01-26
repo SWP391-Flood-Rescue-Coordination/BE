@@ -1,13 +1,3 @@
-D:\SWP391\BE\bin\Debug\net9.0\appsettings.Development.json
-D:\SWP391\BE\bin\Debug\net9.0\appsettings.json
-D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.staticwebassets.endpoints.json
-D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.exe
-D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.deps.json
-D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.runtimeconfig.json
-D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.dll
-D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.pdb
-D:\SWP391\BE\bin\Debug\net9.0\Microsoft.AspNetCore.OpenApi.dll
-D:\SWP391\BE\bin\Debug\net9.0\Microsoft.OpenApi.dll
 D:\SWP391\BE\obj\Debug\net9.0\Flood Rescue Coordination.csproj.AssemblyReference.cache
 D:\SWP391\BE\obj\Debug\net9.0\rpswa.dswa.cache.json
 D:\SWP391\BE\obj\Debug\net9.0\Flood Rescue Coordination.GeneratedMSBuildEditorConfig.editorconfig
@@ -17,6 +7,27 @@ D:\SWP391\BE\obj\Debug\net9.0\Flood Rescue Coordination.csproj.CoreCompileInputs
 D:\SWP391\BE\obj\Debug\net9.0\Flood Rescue Coordination.MvcApplicationPartsAssemblyInfo.cs
 D:\SWP391\BE\obj\Debug\net9.0\Flood Rescue Coordination.MvcApplicationPartsAssemblyInfo.cache
 D:\SWP391\BE\obj\Debug\net9.0\Flood Rescue Coordination.sourcelink.json
+D:\SWP391\BE\bin\Debug\net9.0\appsettings.Development.json
+D:\SWP391\BE\bin\Debug\net9.0\appsettings.json
+D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.staticwebassets.endpoints.json
+D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.exe
+D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.deps.json
+D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.runtimeconfig.json
+D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.dll
+D:\SWP391\BE\bin\Debug\net9.0\Flood Rescue Coordination.pdb
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.AspNetCore.OpenApi.dll
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.IdentityModel.Abstractions.dll
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.IdentityModel.JsonWebTokens.dll
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.IdentityModel.Logging.dll
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.dll
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
+D:\SWP391\BE\bin\Debug\net9.0\Microsoft.OpenApi.dll
+D:\SWP391\BE\bin\Debug\net9.0\Swashbuckle.AspNetCore.Swagger.dll
+D:\SWP391\BE\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+D:\SWP391\BE\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerUI.dll
+D:\SWP391\BE\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
 D:\SWP391\BE\obj\Debug\net9.0\rjimswa.dswa.cache.json
 D:\SWP391\BE\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 D:\SWP391\BE\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
