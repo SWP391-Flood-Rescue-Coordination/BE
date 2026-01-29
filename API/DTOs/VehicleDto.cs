@@ -9,7 +9,6 @@ public class VehicleResponseDto
     public string? LicensePlate { get; set; }
     public int? Capacity { get; set; }
     public string Status { get; set; } = string.Empty;
-    public decimal? FuelLevel { get; set; }
     public string? CurrentLocation { get; set; }
     public DateTime? LastMaintenance { get; set; }
     public DateTime CreatedAt { get; set; }

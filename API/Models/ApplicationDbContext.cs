@@ -115,7 +115,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.LicensePlate).HasColumnName("license_plate").HasMaxLength(20);
             entity.Property(e => e.Capacity).HasColumnName("capacity");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
-            entity.Property(e => e.FuelLevel).HasColumnName("fuel_level").HasPrecision(5, 2);
             entity.Property(e => e.CurrentLocation).HasColumnName("current_location").HasMaxLength(300);
             entity.Property(e => e.LastMaintenance).HasColumnName("last_maintenance");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");

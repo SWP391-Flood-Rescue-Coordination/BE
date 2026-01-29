@@ -45,7 +45,6 @@ public class VehicleController : ControllerBase
                 LicensePlate = v.LicensePlate,
                 Capacity = v.Capacity,
                 Status = v.Status,
-                FuelLevel = v.FuelLevel,
                 CurrentLocation = v.CurrentLocation,
                 LastMaintenance = v.LastMaintenance,
                 CreatedAt = v.CreatedAt
@@ -73,7 +72,6 @@ public class VehicleController : ControllerBase
                 LicensePlate = v.LicensePlate,
                 Capacity = v.Capacity,
                 Status = v.Status,
-                FuelLevel = v.FuelLevel,
                 CurrentLocation = v.CurrentLocation,
                 LastMaintenance = v.LastMaintenance,
                 CreatedAt = v.CreatedAt

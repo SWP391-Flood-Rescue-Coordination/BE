@@ -120,23 +120,7 @@ CREATE INDEX idx_teams_status ON rescue_teams(status);
 CREATE INDEX idx_teams_leader ON rescue_teams(leader_id);
 GO
 
--- Bảng rescue_team_members: Thành viên đội cứu hộ
-CREATE TABLE rescue_team_members (
-    member_id INT IDENTITY(1,1) PRIMARY KEY,
-    team_id INT NOT NULL,
-    user_id INT NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('LEADER', 'MEMBER')),
-    specialization NVARCHAR(100),
-    joined_at DATETIME2 DEFAULT GETDATE(),
-    is_active BIT DEFAULT 1,
-    FOREIGN KEY (team_id) REFERENCES rescue_teams(team_id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
-);
 
-CREATE INDEX idx_team_members_team ON rescue_team_members(team_id);
-CREATE INDEX idx_team_members_user ON rescue_team_members(user_id);
-CREATE UNIQUE INDEX uk_team_user ON rescue_team_members(team_id, user_id);
-GO
 
 -- Bảng vehicle_types: Danh mục loại phương tiện
 CREATE TABLE vehicle_types (
@@ -155,7 +139,6 @@ CREATE TABLE vehicles (
     license_plate VARCHAR(20),
     capacity INT,
     status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE' CHECK (status IN ('AVAILABLE', 'IN_USE', 'MAINTENANCE', 'UNAVAILABLE')),
-    fuel_level DECIMAL(5,2),
     current_location NVARCHAR(300),
     last_maintenance DATE,
     created_at DATETIME2 DEFAULT GETDATE(),
@@ -167,27 +150,11 @@ CREATE INDEX idx_vehicles_status ON vehicles(status);
 CREATE INDEX idx_vehicles_type ON vehicles(vehicle_type_id);
 GO
 
--- Bảng vehicle_assignments: Phân bổ phương tiện cho đội
-CREATE TABLE vehicle_assignments (
-    vehicle_assignment_id INT IDENTITY(1,1) PRIMARY KEY,
-    vehicle_id INT NOT NULL,
-    team_id INT NOT NULL,
-    assigned_at DATETIME2 DEFAULT GETDATE(),
-    returned_at DATETIME2,
-    status VARCHAR(20) NOT NULL DEFAULT 'ASSIGNED' CHECK (status IN ('ASSIGNED', 'RETURNED')),
-    notes NVARCHAR(500),
-    FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
-    FOREIGN KEY (team_id) REFERENCES rescue_teams(team_id)
-);
 
-CREATE INDEX idx_vehicle_assignments_vehicle ON vehicle_assignments(vehicle_id);
-CREATE INDEX idx_vehicle_assignments_team ON vehicle_assignments(team_id);
-CREATE INDEX idx_vehicle_assignments_assigned ON vehicle_assignments(assigned_at);
-GO
 
--- Bảng rescue_assignments: Phân công nhiệm vụ cứu hộ
-CREATE TABLE rescue_assignments (
-    assignment_id INT IDENTITY(1,1) PRIMARY KEY,
+-- Bảng rescue_operations: Phân công nhiệm vụ cứu hộ
+CREATE TABLE rescue_operations (
+    operation_id INT IDENTITY(1,1) PRIMARY KEY,
     request_id INT NOT NULL,
     team_id INT NOT NULL,
     assigned_by INT NOT NULL,
@@ -203,29 +170,30 @@ CREATE TABLE rescue_assignments (
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
 );
 
-CREATE INDEX idx_assignments_request ON rescue_assignments(request_id);
-CREATE INDEX idx_assignments_team ON rescue_assignments(team_id);
-CREATE INDEX idx_assignments_assigned_by ON rescue_assignments(assigned_by);
-CREATE INDEX idx_assignments_status ON rescue_assignments(status);
-CREATE INDEX idx_assignments_assigned ON rescue_assignments(assigned_at);
+CREATE INDEX idx_operations_request ON rescue_operations(request_id);
+CREATE INDEX idx_operations_team ON rescue_operations(team_id);
+CREATE INDEX idx_operations_assigned_by ON rescue_operations(assigned_by);
+CREATE INDEX idx_operations_status ON rescue_operations(status);
+CREATE INDEX idx_operations_assigned ON rescue_operations(assigned_at);
 GO
 
 -- Bảng rescue_assignment_reports: Báo cáo kết quả cứu hộ
-CREATE TABLE rescue_assignment_reports (
+-- Bảng rescue_operation_reports: Báo cáo kết quả cứu hộ
+CREATE TABLE rescue_operation_reports (
     report_id INT IDENTITY(1,1) PRIMARY KEY,
-    assignment_id INT NOT NULL,
+    operation_id INT NOT NULL,
     people_rescued INT DEFAULT 0,
     situation_description NVARCHAR(1000),
     actions_taken NVARCHAR(1000),
     relief_items_distributed BIT DEFAULT 0,
     reported_by INT NOT NULL,
     reported_at DATETIME2 DEFAULT GETDATE(),
-    FOREIGN KEY (assignment_id) REFERENCES rescue_assignments(assignment_id),
+    FOREIGN KEY (operation_id) REFERENCES rescue_operations(operation_id),
     FOREIGN KEY (reported_by) REFERENCES users(user_id)
 );
 
-CREATE INDEX idx_reports_assignment ON rescue_assignment_reports(assignment_id);
-CREATE INDEX idx_reports_reported ON rescue_assignment_reports(reported_at);
+CREATE INDEX idx_reports_operation ON rescue_operation_reports(operation_id);
+CREATE INDEX idx_reports_reported ON rescue_operation_reports(reported_at);
 GO
 
 -- Bảng item_categories: Danh mục phân loại hàng cứu trợ
@@ -281,7 +249,7 @@ CREATE TABLE relief_distributions (
     distribution_id INT IDENTITY(1,1) PRIMARY KEY,
     request_id INT,
     distributed_by INT NOT NULL,
-    assignment_id INT,
+    operation_id INT,
     distribution_date DATETIME2 DEFAULT GETDATE(),
     recipient_name NVARCHAR(100),
     number_of_recipients INT DEFAULT 1,
@@ -290,12 +258,12 @@ CREATE TABLE relief_distributions (
     confirmed_at DATETIME2,
     FOREIGN KEY (request_id) REFERENCES rescue_requests(request_id),
     FOREIGN KEY (distributed_by) REFERENCES users(user_id),
-    FOREIGN KEY (assignment_id) REFERENCES rescue_assignments(assignment_id)
+    FOREIGN KEY (operation_id) REFERENCES rescue_operations(operation_id)
 );
 
 CREATE INDEX idx_distributions_request ON relief_distributions(request_id);
 CREATE INDEX idx_distributions_distributed ON relief_distributions(distributed_by);
-CREATE INDEX idx_distributions_assignment ON relief_distributions(assignment_id);
+CREATE INDEX idx_distributions_operation ON relief_distributions(operation_id);
 CREATE INDEX idx_distributions_date ON relief_distributions(distribution_date);
 GO
 
@@ -334,19 +302,7 @@ CREATE INDEX idx_notifications_type ON notifications(notification_type);
 CREATE INDEX idx_notifications_created ON notifications(created_at);
 GO
 
--- Bảng system_configs: Cấu hình hệ thống
-CREATE TABLE system_configs (
-    config_id INT IDENTITY(1,1) PRIMARY KEY,
-    config_key VARCHAR(100) UNIQUE NOT NULL,
-    config_value NVARCHAR(500),
-    description NVARCHAR(500),
-    updated_at DATETIME2 DEFAULT GETDATE(),
-    updated_by INT,
-    FOREIGN KEY (updated_by) REFERENCES users(user_id)
-);
 
-CREATE INDEX idx_configs_key ON system_configs(config_key);
-GO
 
 -- Bảng activity_logs: Nhật ký hoạt động
 CREATE TABLE activity_logs (
@@ -446,38 +402,19 @@ INSERT INTO rescue_teams (team_name, team_code, leader_id, status, current_capac
 GO
 
 -- Insert Rescue Team Members
-INSERT INTO rescue_team_members (team_id, user_id, role, specialization, is_active) VALUES
-(1, 5, 'LEADER', N'Chỉ huy cứu hộ đường thủy', 1),
-(1, 8, 'MEMBER', N'Lặn cứu hộ', 1),
-(1, 9, 'MEMBER', N'Y tế cấp cứu', 1),
-(1, 10, 'MEMBER', N'Vận hành thuyền cao tốc', 1),
-(1, 11, 'MEMBER', N'Thông tin liên lạc', 1),
-(2, 6, 'LEADER', N'Chỉ huy cứu hộ đường bộ', 1),
-(2, 12, 'MEMBER', N'Lái xe địa hình', 1),
-(2, 13, 'MEMBER', N'Y tế cấp cứu', 1),
-(2, 14, 'MEMBER', N'Kỹ thuật thiết bị', 1),
-(3, 7, 'LEADER', N'Chỉ huy cứu hộ tổng hợp', 1),
-(3, 15, 'MEMBER', N'Lặn chuyên sâu', 1),
-(3, 16, 'MEMBER', N'Hỗ trợ y tế', 1);
-GO
+
 
 -- Insert Vehicles
-INSERT INTO vehicles (vehicle_code, vehicle_name, vehicle_type_id, license_plate, capacity, status, fuel_level, current_location) VALUES
-('BOAT-001', N'Thuyền Cứu Hộ 01', 1, NULL, 15, 'AVAILABLE', 85.50, N'Bến Thủy Sài Gòn'),
-('BOAT-002', N'Xuồng Cao Tốc 02', 1, NULL, 8, 'IN_USE', 62.30, N'Khu vực Bình Thạnh'),
-('TRUCK-001', N'Xe Cứu Hộ 4x4', 2, '51A-12345', 6, 'AVAILABLE', 75.00, N'Trụ sở Quận 1'),
-('TRUCK-002', N'Xe Vận Chuyển Cứu Trợ', 2, '51B-67890', 10, 'IN_USE', 90.00, N'Khu vực Bình Tân'),
-('HELI-001', N'Trực Thăng Cứu Hộ', 3, NULL, 4, 'AVAILABLE', 55.00, N'Sân bay Tân Sơn Nhất'),
-('AMPH-001', N'Xe Lưỡng Cư 01', 4, '51C-11111', 8, 'MAINTENANCE', 0, N'Xưởng bảo dưỡng');
+INSERT INTO vehicles (vehicle_code, vehicle_name, vehicle_type_id, license_plate, capacity, status, current_location) VALUES
+('BOAT-001', N'Thuyền Cứu Hộ 01', 1, NULL, 15, 'AVAILABLE', N'Bến Thủy Sài Gòn'),
+('BOAT-002', N'Xuồng Cao Tốc 02', 1, NULL, 8, 'IN_USE', N'Khu vực Bình Thạnh'),
+('TRUCK-001', N'Xe Cứu Hộ 4x4', 2, '51A-12345', 6, 'AVAILABLE', N'Trụ sở Quận 1'),
+('TRUCK-002', N'Xe Vận Chuyển Cứu Trợ', 2, '51B-67890', 10, 'IN_USE', N'Khu vực Bình Tân'),
+('HELI-001', N'Trực Thăng Cứu Hộ', 3, NULL, 4, 'AVAILABLE', N'Sân bay Tân Sơn Nhất'),
+('AMPH-001', N'Xe Lưỡng Cư 01', 4, '51C-11111', 8, 'MAINTENANCE', N'Xưởng bảo dưỡng');
 GO
 
--- Insert Vehicle Assignments
-INSERT INTO vehicle_assignments (vehicle_id, team_id, assigned_at, returned_at, status, notes) VALUES
-(2, 2, DATEADD(HOUR, -3, GETDATE()), NULL, 'ASSIGNED', N'Nhiệm vụ cứu hộ tại Bình Thạnh'),
-(4, 2, DATEADD(HOUR, -3, GETDATE()), NULL, 'ASSIGNED', N'Vận chuyển hàng cứu trợ'),
-(1, 1, DATEADD(DAY, -2, GETDATE()), DATEADD(DAY, -1, GETDATE()), 'RETURNED', N'Hoàn thành nhiệm vụ'),
-(3, 1, DATEADD(DAY, -5, GETDATE()), DATEADD(DAY, -4, GETDATE()), 'RETURNED', N'Hoàn thành nhiệm vụ');
-GO
+
 
 -- Insert Rescue Requests
 INSERT INTO rescue_requests (citizen_id, title, description, latitude, longitude, address, priority_level_id, status, number_of_people, has_children, has_elderly, has_disabled, special_notes) VALUES
