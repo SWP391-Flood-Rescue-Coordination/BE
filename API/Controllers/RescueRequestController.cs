@@ -29,7 +29,7 @@ public class RescueRequestController : ControllerBase
     {
         int? userId = null;
         string contactName = dto.ContactName ?? "Ẩn danh";
-        string contactPhone = dto.ContactPhone ?? "";
+        string contactPhone = dto.ContactPhone ?? "  ";
 
         // Nếu người dùng đã đăng nhập, lấy thông tin từ token
         if (User.Identity?.IsAuthenticated == true)
