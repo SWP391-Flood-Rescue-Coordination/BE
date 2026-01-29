@@ -78,3 +78,17 @@ public class DashboardStatisticsDto
 
     public int TodayRequests { get; set; }
 }
+
+public class LatestRescueRequestDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public bool HasElderly { get; set; }
+    public bool HasChildren { get; set; }
+    public bool HasDisabled { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+

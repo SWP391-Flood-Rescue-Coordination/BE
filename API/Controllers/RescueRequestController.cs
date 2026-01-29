@@ -89,23 +89,58 @@ public class RescueRequestController : ControllerBase
             {
                 RequestId = r.RequestId,
                 CitizenId = r.CitizenId,
-                Title = r.Title,
-                Description = r.Description,
+                Title = r.Title ?? "",
+                Description = r.Description ?? "",
                 Latitude = r.Latitude,
                 Longitude = r.Longitude,
-                Address = r.Address,
-                Status = r.Status,
+                Address = r.Address ?? "",
+                Status = r.Status ?? "PENDING",
                 NumberOfPeople = r.NumberOfPeople,
                 HasChildren = r.HasChildren,
                 HasElderly = r.HasElderly,
                 HasDisabled = r.HasDisabled,
-                SpecialNotes = r.SpecialNotes,
+                SpecialNotes = r.SpecialNotes ?? "",
                 CreatedAt = r.CreatedAt
             })
             .ToListAsync();
 
         return Ok(new { Success = true, Data = requests });
     }
+
+    /// <summary>
+    /// Lấy yêu cầu cứu hộ mới nhất của citizen đang đăng nhập
+    /// </summary>
+    [HttpGet("my-latest-request")]
+    [Authorize(Roles = "CITIZEN")]
+    public async Task<IActionResult> GetMyLatestRequest()
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        
+        var latestRequest = await _context.RescueRequests
+            .Where(r => r.CitizenId == userId)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new LatestRescueRequestDto
+            {
+                Title = r.Title ?? "",
+                Description = r.Description ?? "",
+                Address = r.Address ?? "",
+                Status = r.Status ?? "PENDING",
+                HasElderly = r.HasElderly,
+                HasChildren = r.HasChildren,
+                HasDisabled = r.HasDisabled,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            })
+            .FirstOrDefaultAsync();
+
+        if (latestRequest == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+        }
+
+        return Ok(new { Success = true, Data = latestRequest });
+    }
+
 
     /// <summary>
     /// Coordinator/Admin/Manager - Lấy tất cả yêu cầu cứu hộ
@@ -129,19 +164,19 @@ public class RescueRequestController : ControllerBase
             {
                 RequestId = r.RequestId,
                 CitizenId = r.CitizenId,
-                CitizenName = r.Citizen != null ? r.Citizen.FullName : r.ContactName,
-                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
-                Title = r.Title,
-                Description = r.Description,
+                CitizenName = r.Citizen != null ? r.Citizen.FullName : r.ContactName ?? "",
+                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone ?? "",
+                Title = r.Title ?? "",
+                Description = r.Description ?? "",
                 Latitude = r.Latitude,
                 Longitude = r.Longitude,
-                Address = r.Address,
-                Status = r.Status,
+                Address = r.Address ?? "",
+                Status = r.Status ?? "PENDING",
                 NumberOfPeople = r.NumberOfPeople,
                 HasChildren = r.HasChildren,
                 HasElderly = r.HasElderly,
                 HasDisabled = r.HasDisabled,
-                SpecialNotes = r.SpecialNotes,
+                SpecialNotes = r.SpecialNotes ?? "",
                 CreatedAt = r.CreatedAt
             })
             .ToListAsync();
@@ -162,19 +197,19 @@ public class RescueRequestController : ControllerBase
             {
                 RequestId = r.RequestId,
                 CitizenId = r.CitizenId,
-                CitizenName = r.Citizen != null ? r.Citizen.FullName : r.ContactName,
-                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
-                Title = r.Title,
-                Description = r.Description,
+                CitizenName = r.Citizen != null ? r.Citizen.FullName : r.ContactName ?? "",
+                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone ?? "",
+                Title = r.Title ?? "",
+                Description = r.Description ?? "",
                 Latitude = r.Latitude,
                 Longitude = r.Longitude,
-                Address = r.Address,
-                Status = r.Status,
+                Address = r.Address ?? "",
+                Status = r.Status ?? "PENDING",
                 NumberOfPeople = r.NumberOfPeople,
                 HasChildren = r.HasChildren,
                 HasElderly = r.HasElderly,
                 HasDisabled = r.HasDisabled,
-                SpecialNotes = r.SpecialNotes,
+                SpecialNotes = r.SpecialNotes ?? "",
                 CreatedAt = r.CreatedAt
             })
             .FirstOrDefaultAsync();

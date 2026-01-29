@@ -1,31 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\Flood Rescue Coordination.csproj": {}
+    "D:\\study\\swp\\BE\\Flood Rescue Coordination.csproj": {}
   },
   "projects": {
-    "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\Flood Rescue Coordination.csproj": {
+    "D:\\study\\swp\\BE\\Flood Rescue Coordination.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\Flood Rescue Coordination.csproj",
+        "projectUniqueName": "D:\\study\\swp\\BE\\Flood Rescue Coordination.csproj",
         "projectName": "Flood Rescue Coordination",
-        "projectPath": "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\Flood Rescue Coordination.csproj",
-        "packagesPath": "C:\\Users\\ASUS\\.nuget\\packages\\",
-        "outputPath": "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\obj\\",
+        "projectPath": "D:\\study\\swp\\BE\\Flood Rescue Coordination.csproj",
+        "packagesPath": "C:\\Users\\jackn\\.nuget\\packages\\",
+        "outputPath": "D:\\study\\swp\\BE\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\ASUS\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\jackn\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -43,8 +37,7 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "10.0.100"
+        }
       },
       "frameworks": {
         "net8.0": {
@@ -96,7 +89,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.417/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

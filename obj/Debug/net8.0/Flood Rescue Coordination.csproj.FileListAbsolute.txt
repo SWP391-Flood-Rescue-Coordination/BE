@@ -151,3 +151,153 @@ E:\SWP391\Flood Rescue Coordination\Flood Rescue Coordination\bin\Debug\net8.0\F
 E:\SWP391\Flood Rescue Coordination\Flood Rescue Coordination\bin\Debug\net8.0\Flood Rescue Coordination.pdb
 E:\SWP391\Flood Rescue Coordination\Flood Rescue Coordination\obj\Debug\net8.0\Flood Rescue Coordination.genruntimeconfig.cache
 E:\SWP391\Flood Rescue Coordination\Flood Rescue Coordination\obj\Debug\net8.0\ref\Flood Rescue Coordination.dll
+D:\study\swp\BE\bin\Debug\net8.0\appsettings.Development.json
+D:\study\swp\BE\bin\Debug\net8.0\appsettings.json
+D:\study\swp\BE\bin\Debug\net8.0\HashGenerator\bin\Debug\net8.0\HashGenerator.deps.json
+D:\study\swp\BE\bin\Debug\net8.0\HashGenerator\bin\Debug\net8.0\HashGenerator.runtimeconfig.json
+D:\study\swp\BE\bin\Debug\net8.0\HashGenerator\obj\Debug\net8.0\HashGenerator.sourcelink.json
+D:\study\swp\BE\bin\Debug\net8.0\HashGenerator\obj\HashGenerator.csproj.nuget.dgspec.json
+D:\study\swp\BE\bin\Debug\net8.0\HashGenerator\obj\project.assets.json
+D:\study\swp\BE\bin\Debug\net8.0\Flood Rescue Coordination.exe
+D:\study\swp\BE\bin\Debug\net8.0\Flood Rescue Coordination.deps.json
+D:\study\swp\BE\bin\Debug\net8.0\Flood Rescue Coordination.runtimeconfig.json
+D:\study\swp\BE\bin\Debug\net8.0\Flood Rescue Coordination.dll
+D:\study\swp\BE\bin\Debug\net8.0\Flood Rescue Coordination.pdb
+D:\study\swp\BE\bin\Debug\net8.0\Azure.Core.dll
+D:\study\swp\BE\bin\Debug\net8.0\Azure.Identity.dll
+D:\study\swp\BE\bin\Debug\net8.0\BCrypt.Net-Next.dll
+D:\study\swp\BE\bin\Debug\net8.0\Humanizer.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Bcl.AsyncInterfaces.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Bcl.Memory.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.CodeAnalysis.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.CodeAnalysis.CSharp.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.CodeAnalysis.CSharp.Workspaces.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.CodeAnalysis.Workspaces.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Data.SqlClient.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Abstractions.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Design.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Relational.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.SqlServer.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Extensions.Caching.Memory.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Extensions.DependencyModel.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Extensions.Logging.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Extensions.Logging.Abstractions.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Extensions.Options.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Identity.Client.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Identity.Client.Extensions.Msal.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.OpenApi.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.SqlServer.Server.dll
+D:\study\swp\BE\bin\Debug\net8.0\Microsoft.Win32.SystemEvents.dll
+D:\study\swp\BE\bin\Debug\net8.0\Mono.TextTemplating.dll
+D:\study\swp\BE\bin\Debug\net8.0\Swashbuckle.AspNetCore.Swagger.dll
+D:\study\swp\BE\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+D:\study\swp\BE\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerUI.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.ClientModel.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.CodeDom.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Composition.AttributedModel.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Composition.Convention.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Composition.Hosting.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Composition.Runtime.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Composition.TypedParts.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Configuration.ConfigurationManager.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Drawing.Common.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Memory.Data.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Runtime.Caching.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Security.Cryptography.ProtectedData.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Security.Permissions.dll
+D:\study\swp\BE\bin\Debug\net8.0\System.Windows.Extensions.dll
+D:\study\swp\BE\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\fr\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\it\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ja\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ko\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\pl\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\pt-BR\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ru\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\fr\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\it\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ja\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ko\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\pl\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\pt-BR\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ru\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.CSharp.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\fr\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\it\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ja\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ko\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\pl\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\pt-BR\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ru\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\fr\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\it\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ja\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ko\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\pl\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\pt-BR\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\ru\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.resources.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\unix\lib\net6.0\Microsoft.Data.SqlClient.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\Microsoft.Data.SqlClient.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win-arm\native\Microsoft.Data.SqlClient.SNI.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win-arm64\native\Microsoft.Data.SqlClient.SNI.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\Microsoft.Win32.SystemEvents.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\unix\lib\net6.0\System.Drawing.Common.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Drawing.Common.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Runtime.Caching.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Security.Cryptography.ProtectedData.dll
+D:\study\swp\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Windows.Extensions.dll
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.csproj.AssemblyReference.cache
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.GeneratedMSBuildEditorConfig.editorconfig
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.csproj.CoreCompileInputs.cache
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.MvcApplicationPartsAssemblyInfo.cs
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.MvcApplicationPartsAssemblyInfo.cache
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.sourcelink.json
+D:\study\swp\BE\obj\Debug\net8.0\staticwebassets.build.json
+D:\study\swp\BE\obj\Debug\net8.0\staticwebassets.development.json
+D:\study\swp\BE\obj\Debug\net8.0\staticwebassets\msbuild.Flood Rescue Coordination.Microsoft.AspNetCore.StaticWebAssets.props
+D:\study\swp\BE\obj\Debug\net8.0\staticwebassets\msbuild.build.Flood Rescue Coordination.props
+D:\study\swp\BE\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.Flood Rescue Coordination.props
+D:\study\swp\BE\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.Flood Rescue Coordination.props
+D:\study\swp\BE\obj\Debug\net8.0\staticwebassets.pack.json
+D:\study\swp\BE\obj\Debug\net8.0\scopedcss\bundle\Flood Rescue Coordination.styles.css
+D:\study\swp\BE\obj\Debug\net8.0\Flood Re.34780821.Up2Date
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.dll
+D:\study\swp\BE\obj\Debug\net8.0\refint\Flood Rescue Coordination.dll
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.pdb
+D:\study\swp\BE\obj\Debug\net8.0\Flood Rescue Coordination.genruntimeconfig.cache
+D:\study\swp\BE\obj\Debug\net8.0\ref\Flood Rescue Coordination.dll
