@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Flood Rescue Coordination")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a1284bc3ed7a9a067934731fcf8d6356255787c9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2e0c515622de1d5f72482cc5414946182d2bbd9f")]
 [assembly: System.Reflection.AssemblyProductAttribute("Flood Rescue Coordination")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Flood Rescue Coordination")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
