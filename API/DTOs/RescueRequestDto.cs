@@ -5,10 +5,10 @@ public class CreateRescueRequestDto
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     
-    // Thông tin người gửi (bắt buộc nếu không đăng nhập)
-    public string? ContactName { get; set; } 
+    // Thông tin liên hệ cho khách vãng lai (không cần đăng nhập)
+    public string? ContactName { get; set; }
     public string? ContactPhone { get; set; }
-
+    
     public decimal Latitude { get; set; }
     public decimal Longitude { get; set; }
     public string? Address { get; set; }
@@ -36,7 +36,7 @@ public class UpdateRescueRequestDto
 public class RescueRequestResponseDto
 {
     public int RequestId { get; set; }
-    public int? CitizenId { get; set; }
+    public int? CitizenId { get; set; } // Nullable để hỗ trợ khách vãng lai
     public string CitizenName { get; set; } = string.Empty;
     public string CitizenPhone { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
@@ -44,6 +44,7 @@ public class RescueRequestResponseDto
     public decimal Latitude { get; set; }
     public decimal Longitude { get; set; }
     public string? Address { get; set; }
+    public int? PriorityLevelId { get; set; } // Thêm field này
     public string Status { get; set; } = string.Empty;
     public int NumberOfPeople { get; set; }
     public bool HasChildren { get; set; }
@@ -63,18 +64,8 @@ public class UpdatePriorityDto
     public int PriorityLevelId { get; set; }
 }
 
-public class DashboardStatisticsDto
+public class UpdateRequestFromCoordinatorDto
 {
-    public int TotalRequests { get; set; }
-    public int PendingRequests { get; set; } // Chờ xác nhận
-    public int InProgressRequests { get; set; } // Đang cứu hộ
-    public int CompletedRequests { get; set; } // Đã cứu hộ
-    public int CancelledRequests { get; set; } // Đã hủy
-    
-    // Thống kê theo độ ưu tiên (nếu có priority system sau này)
-    public int HighPriorityRequests { get; set; }
-    public int MediumPriorityRequests { get; set; }
-    public int LowPriorityRequests { get; set; }
-
-    public int TodayRequests { get; set; }
+    public string? Status { get; set; }
+    public int? PriorityLevelId { get; set; }
 }

@@ -155,7 +155,75 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// =============================================
+// TỰ ĐỘNG TẠO BẢNG CÒN THIẾU
+// =============================================
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
+    {
+        // Tạo bảng refresh_tokens nếu chưa tồn tại
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'refresh_tokens')
+            BEGIN
+                CREATE TABLE refresh_tokens (
+                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    token NVARCHAR(500) NOT NULL,
+                    expires_at DATETIME2 NOT NULL,
+                    created_at DATETIME2 DEFAULT GETDATE(),
+                    revoked_at DATETIME2 NULL,
+                    CONSTRAINT FK_RefreshTokens_Users FOREIGN KEY (user_id) REFERENCES users(user_id)
+                );
+                CREATE INDEX IX_RefreshTokens_Token ON refresh_tokens(token);
+                CREATE INDEX IX_RefreshTokens_UserId ON refresh_tokens(user_id);
+            END
+        ");
 
+        // Tạo bảng blacklisted_tokens nếu chưa tồn tại
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'blacklisted_tokens')
+            BEGIN
+                CREATE TABLE blacklisted_tokens (
+                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    token NVARCHAR(1000) NOT NULL,
+                    blacklisted_at DATETIME2 DEFAULT GETDATE(),
+                    expires_at DATETIME2 NOT NULL
+                );
+                CREATE INDEX IX_BlacklistedTokens_Token ON blacklisted_tokens(token);
+                CREATE INDEX IX_BlacklistedTokens_ExpiresAt ON blacklisted_tokens(expires_at);
+            END
+        ");
+
+        // Cập nhật bảng rescue_requests để hỗ trợ khách vãng lai
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'rescue_requests')
+            BEGIN
+                -- Thêm cột contact_name nếu chưa có
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'rescue_requests') AND name = 'contact_name')
+                BEGIN
+                    ALTER TABLE rescue_requests ADD contact_name NVARCHAR(100);
+                END
+
+                -- Thêm cột contact_phone nếu chưa có
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'rescue_requests') AND name = 'contact_phone')
+                BEGIN
+                    ALTER TABLE rescue_requests ADD contact_phone VARCHAR(20);
+                END
+
+                -- Làm cho citizen_id có thể NULL
+                ALTER TABLE rescue_requests ALTER COLUMN citizen_id INT NULL;
+            END
+        ");
+
+        Console.WriteLine("Database tables verified/created successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error creating tables: {ex.Message}");
+    }
+}
 
 // =============================================
 // CONFIGURE HTTP REQUEST PIPELINE
