@@ -1,6 +1,5 @@
 using Flood_Rescue_Coordination.API.Models;
 using Flood_Rescue_Coordination.API.DTOs;
-using Flood_Rescue_Coordination.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -47,7 +46,7 @@ public class RescueRequestController : ControllerBase
                 }
             }
         }
-        
+
         var request = new RescueRequest
         {
             CitizenId = userId,
@@ -81,7 +80,7 @@ public class RescueRequestController : ControllerBase
     public async Task<IActionResult> GetMyRequests()
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        
+
         var requests = await _context.RescueRequests
             .Where(r => r.CitizenId == userId)
             .OrderByDescending(r => r.CreatedAt)
@@ -115,7 +114,7 @@ public class RescueRequestController : ControllerBase
     public async Task<IActionResult> GetMyLatestRequest()
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        
+
         var latestRequest = await _context.RescueRequests
             .Where(r => r.CitizenId == userId)
             .OrderByDescending(r => r.CreatedAt)
@@ -230,7 +229,7 @@ public class RescueRequestController : ControllerBase
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDto dto)
     {
         var request = await _context.RescueRequests.FindAsync(id);
-        
+
         if (request == null)
         {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
@@ -238,7 +237,7 @@ public class RescueRequestController : ControllerBase
 
         request.Status = dto.Status;
         request.UpdatedAt = DateTime.UtcNow;
-        
+
         await _context.SaveChangesAsync();
 
         return Ok(new { Success = true, Message = "Cập nhật trạng thái thành công" });
@@ -252,7 +251,7 @@ public class RescueRequestController : ControllerBase
     public async Task<IActionResult> UpdatePriority(int id, [FromBody] UpdatePriorityDto dto)
     {
         var request = await _context.RescueRequests.FindAsync(id);
-        
+
         if (request == null)
         {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
@@ -260,7 +259,7 @@ public class RescueRequestController : ControllerBase
 
         request.PriorityLevelId = dto.PriorityLevelId;
         request.UpdatedAt = DateTime.UtcNow;
-        
+
         await _context.SaveChangesAsync();
 
         return Ok(new { Success = true, Message = "Cập nhật mức độ ưu tiên thành công" });
@@ -274,10 +273,10 @@ public class RescueRequestController : ControllerBase
     public async Task<IActionResult> ConfirmRescued(int id)
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        
+
         var request = await _context.RescueRequests
             .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == userId);
-        
+
         if (request == null)
         {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
@@ -285,7 +284,7 @@ public class RescueRequestController : ControllerBase
 
         request.Status = "COMPLETED";
         request.UpdatedAt = DateTime.UtcNow;
-        
+
         await _context.SaveChangesAsync();
 
         return Ok(new { Success = true, Message = "Xác nhận đã được cứu hộ thành công" });
@@ -299,7 +298,7 @@ public class RescueRequestController : ControllerBase
     public async Task<IActionResult> GetStatistics()
     {
         var totalRequests = await _context.RescueRequests.CountAsync();
-        
+
         // Thống kê theo trạng thái
         var pending = await _context.RescueRequests.CountAsync(r => r.Status == "PENDING");
         var inProgress = await _context.RescueRequests.CountAsync(r => r.Status == "IN_PROGRESS" || r.Status == "VERIFIED"); // Giả sử VERIFIED cũng đang xử lý

@@ -8,7 +8,7 @@ public class RescueRequest
     public int? CitizenId { get; set; } // Cho phép null (khách vãng lai)
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    
+
     // Thông tin liên hệ cho khách vãng lai
     public string ContactName { get; set; } = string.Empty;
     public string ContactPhone { get; set; } = string.Empty;
@@ -27,5 +27,5 @@ public class RescueRequest
     public DateTime? UpdatedAt { get; set; }
 
     // Navigation property
-    public virtual User Citizen { get; set; }
+    public virtual User? Citizen { get; set; }
 }

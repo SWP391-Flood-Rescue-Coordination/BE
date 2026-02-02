@@ -1,6 +1,5 @@
 using Flood_Rescue_Coordination.API.Models;
 using Flood_Rescue_Coordination.API.DTOs;
-using Flood_Rescue_Coordination.API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Flood_Rescue_Coordination.API.Services;
@@ -36,13 +35,13 @@ public class AuthService : IAuthService
         var passwordToVerify = request.Password;
         var storedHash = user.PasswordHash;
         var hashLength = storedHash?.Length ?? 0;
-        var isBcryptFormat = !string.IsNullOrEmpty(storedHash) && 
-                            (storedHash.StartsWith("$2a$") || 
-                             storedHash.StartsWith("$2b$") || 
+        var isBcryptFormat = !string.IsNullOrEmpty(storedHash) &&
+                            (storedHash.StartsWith("$2a$") ||
+                             storedHash.StartsWith("$2b$") ||
                              storedHash.StartsWith("$2y$"));
-        
+
         var verifyResult = BCrypt.Net.BCrypt.Verify(passwordToVerify, storedHash);
-        
+
         if (!verifyResult)
         {
             return new AuthResponse
@@ -138,7 +137,7 @@ public class AuthService : IAuthService
     {
         // Blacklist access token
         var tokenExpiration = _jwtService.GetTokenExpiration(accessToken);
-        
+
         var blacklistedToken = new BlacklistedToken
         {
             Token = accessToken,

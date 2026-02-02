@@ -2,7 +2,6 @@ D:\SWP391\BE\bin\Debug\net8.0\appsettings.Development.json
 D:\SWP391\BE\bin\Debug\net8.0\appsettings.json
 D:\SWP391\BE\bin\Debug\net8.0\HashGenerator\bin\Debug\net8.0\HashGenerator.deps.json
 D:\SWP391\BE\bin\Debug\net8.0\HashGenerator\bin\Debug\net8.0\HashGenerator.runtimeconfig.json
-D:\SWP391\BE\bin\Debug\net8.0\Flood Rescue Coordination.staticwebassets.endpoints.json
 D:\SWP391\BE\bin\Debug\net8.0\Flood Rescue Coordination.exe
 D:\SWP391\BE\bin\Debug\net8.0\Flood Rescue Coordination.deps.json
 D:\SWP391\BE\bin\Debug\net8.0\Flood Rescue Coordination.runtimeconfig.json
@@ -121,25 +120,29 @@ D:\SWP391\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Runtime.Caching.dll
 D:\SWP391\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Security.Cryptography.ProtectedData.dll
 D:\SWP391\BE\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Windows.Extensions.dll
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.csproj.AssemblyReference.cache
-D:\SWP391\BE\obj\Debug\net8.0\rpswa.dswa.cache.json
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.GeneratedMSBuildEditorConfig.editorconfig
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.csproj.CoreCompileInputs.cache
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.MvcApplicationPartsAssemblyInfo.cs
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.MvcApplicationPartsAssemblyInfo.cache
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.sourcelink.json
-D:\SWP391\BE\obj\Debug\net8.0\rjimswa.dswa.cache.json
-D:\SWP391\BE\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
-D:\SWP391\BE\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
 D:\SWP391\BE\obj\Debug\net8.0\scopedcss\bundle\Flood Rescue Coordination.styles.css
 D:\SWP391\BE\obj\Debug\net8.0\staticwebassets.build.json
-D:\SWP391\BE\obj\Debug\net8.0\staticwebassets.build.json.cache
 D:\SWP391\BE\obj\Debug\net8.0\staticwebassets.development.json
-D:\SWP391\BE\obj\Debug\net8.0\staticwebassets.build.endpoints.json
-D:\SWP391\BE\obj\Debug\net8.0\swae.build.ex.cache
-D:\SWP391\BE\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 D:\SWP391\BE\obj\Debug\net8.0\Flood Re.34780821.Up2Date
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.dll
 D:\SWP391\BE\obj\Debug\net8.0\refint\Flood Rescue Coordination.dll
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.pdb
 D:\SWP391\BE\obj\Debug\net8.0\Flood Rescue Coordination.genruntimeconfig.cache
 D:\SWP391\BE\obj\Debug\net8.0\ref\Flood Rescue Coordination.dll
+D:\SWP391\BE\bin\Debug\net8.0\Microsoft.Extensions.Caching.Memory.dll
+D:\SWP391\BE\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.dll
+D:\SWP391\BE\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\SWP391\BE\bin\Debug\net8.0\Microsoft.Extensions.Logging.dll
+D:\SWP391\BE\bin\Debug\net8.0\Microsoft.Extensions.Logging.Abstractions.dll
+D:\SWP391\BE\bin\Debug\net8.0\Microsoft.Extensions.Options.dll
+D:\SWP391\BE\bin\Debug\net8.0\System.Formats.Asn1.dll
+D:\SWP391\BE\obj\Debug\net8.0\staticwebassets\msbuild.Flood Rescue Coordination.Microsoft.AspNetCore.StaticWebAssets.props
+D:\SWP391\BE\obj\Debug\net8.0\staticwebassets\msbuild.build.Flood Rescue Coordination.props
+D:\SWP391\BE\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.Flood Rescue Coordination.props
+D:\SWP391\BE\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.Flood Rescue Coordination.props
+D:\SWP391\BE\obj\Debug\net8.0\staticwebassets.pack.json

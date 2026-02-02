@@ -191,7 +191,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 // Thêm middleware kiểm tra token blacklist
 app.UseMiddleware<TokenBlacklistMiddleware>();
