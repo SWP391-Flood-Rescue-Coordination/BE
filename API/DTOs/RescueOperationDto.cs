@@ -10,6 +10,9 @@ public class AssignRescueDto
 
     /// <summary>Danh sách vehicle ID, cách nhau bằng dấu phẩy. Ví dụ: "1,2,3". Để trống nếu không cần phương tiện.</summary>
     public string? VehicleIds { get; set; }
+
+    /// <summary>Thời gian ước tính hoàn thành (phút). Có thể để trống.</summary>
+    public int? EstimatedTime { get; set; }
 }
 
 public class AssignRescueResponseDto
@@ -20,6 +23,8 @@ public class AssignRescueResponseDto
     public List<int> AssignedVehicleIds { get; set; } = new();
     public DateTime AssignedAt { get; set; }
     public string Status { get; set; } = string.Empty;
+    public int? NumberOfAffectedPeople { get; set; }
+    public int? EstimatedTime { get; set; }
 }
 
 /// <summary>Thông tin một operation trả về cho rescue team member</summary>
@@ -40,6 +45,8 @@ public class TeamOperationDto
     public DateTime AssignedAt { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public int? NumberOfAffectedPeople { get; set; }
+    public int? EstimatedTime { get; set; }
 
     /// <summary>Danh sách vehicle_id được gán vào operation này</summary>
     public List<int> VehicleIds { get; set; } = new();

@@ -75,6 +75,7 @@ BEGIN
         address             NVARCHAR(300) NULL,
         priority_level_id   INT NULL,
         status              VARCHAR(20) NOT NULL,
+        number_of_affected_people INT NULL,
         created_at          DATETIME2(3) NOT NULL CONSTRAINT DF_rescue_requests_created_at DEFAULT SYSUTCDATETIME(),
         updated_at          DATETIME2(3) NULL,
         updated_by          INT NULL
@@ -162,7 +163,9 @@ BEGIN
         assigned_at   DATETIME2(3) NOT NULL CONSTRAINT DF_rescue_operations_assigned_at DEFAULT SYSUTCDATETIME(),
         started_at    DATETIME2(3) NULL,
         completed_at  DATETIME2(3) NULL,
-        status        VARCHAR(20) NOT NULL
+        status        VARCHAR(20) NOT NULL,
+        number_of_affected_people INT NULL,
+        estimated_time INT NULL
     );
 END
 GO

@@ -103,7 +103,8 @@ public class RescueOperationController : ControllerBase
                 TeamId     = dto.TeamId,
                 AssignedBy = coordinatorId,
                 AssignedAt = now,
-                Status     = "Assigned"
+                Status     = "Assigned",
+                EstimatedTime = dto.EstimatedTime
             };
             _context.RescueOperations.Add(operation);
             await _context.SaveChangesAsync(); // Cần SaveChanges để có OperationId
@@ -155,7 +156,9 @@ public class RescueOperationController : ControllerBase
                 TeamId             = dto.TeamId,
                 AssignedVehicleIds = vehicleIds,
                 AssignedAt         = now,
-                Status             = operation.Status
+                Status             = operation.Status,
+                NumberOfAffectedPeople = rescueRequest.NumberOfAffectedPeople,
+                EstimatedTime      = operation.EstimatedTime
             };
         });
 
@@ -218,6 +221,8 @@ public class RescueOperationController : ControllerBase
                 AssignedAt         = op.AssignedAt,
                 StartedAt          = op.StartedAt,
                 CompletedAt        = op.CompletedAt,
+                NumberOfAffectedPeople = op.NumberOfAffectedPeople,
+                EstimatedTime      = op.EstimatedTime,
                 VehicleIds         = _context.RescueOperationVehicles
                                         .Where(v => v.OperationId == op.OperationId)
                                         .Select(v => v.VehicleId)
@@ -272,6 +277,8 @@ public class RescueOperationController : ControllerBase
                 AssignedAt         = op.AssignedAt,
                 StartedAt          = op.StartedAt,
                 CompletedAt        = op.CompletedAt,
+                NumberOfAffectedPeople = op.NumberOfAffectedPeople,
+                EstimatedTime      = op.EstimatedTime,
                 VehicleIds         = _context.RescueOperationVehicles
                                         .Where(v => v.OperationId == op.OperationId)
                                         .Select(v => v.VehicleId)

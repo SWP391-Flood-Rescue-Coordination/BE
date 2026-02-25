@@ -14,6 +14,7 @@ public class RescueRequest
     public string? Address { get; set; }
     public int? PriorityLevelId { get; set; }
     public string Status { get; set; } = "Pending";
+    public int? NumberOfAffectedPeople { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public int? UpdatedBy { get; set; }

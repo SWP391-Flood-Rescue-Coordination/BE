@@ -8,6 +8,7 @@ public class CreateRescueRequestDto
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     public string? Address { get; set; }
+    public int? NumberOfAffectedPeople { get; set; }
 }
 
 public class UpdateRescueRequestDto
@@ -33,6 +34,7 @@ public class RescueRequestResponseDto
     public decimal? Longitude { get; set; }
     public string? Address { get; set; }
     public string Status { get; set; } = string.Empty;
+    public int? NumberOfAffectedPeople { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
