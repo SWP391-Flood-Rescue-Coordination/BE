@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RescueOperation> RescueOperations { get; set; }
     public DbSet<RescueOperationVehicle> RescueOperationVehicles { get; set; }
     public DbSet<RescueRequestStatusHistory> RescueRequestStatusHistories { get; set; }
+    public DbSet<RescueTeamMember> RescueTeamMembers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -139,6 +140,18 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<RescueTeamMember>(entity =>
+        {
+            entity.ToTable("rescue_team_members");
+            entity.HasKey(e => new { e.TeamId, e.UserId });
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.MemberRole).HasColumnName("member_role").HasMaxLength(20);
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.JoinedAt).HasColumnName("joined_at");
+            entity.Property(e => e.LeftAt).HasColumnName("left_at");
         });
     }
 

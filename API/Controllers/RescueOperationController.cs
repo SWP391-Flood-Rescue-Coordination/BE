@@ -166,4 +166,71 @@ public class RescueOperationController : ControllerBase
             Data    = responseData
         });
     }
+
+    /// <summary>
+    /// RESCUE_TEAM - Lấy danh sách các operation đã được giao cho một team,
+    /// sắp xếp theo thời gian phân công mới nhất trước.
+    /// Chỉ thành viên của team đó mới được gọi.
+    /// </summary>
+    [HttpGet("team/{teamId:int}")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> GetOperationsByTeam(int teamId)
+    {
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+        // Kiểm tra user có thuộc teamId này không
+        var isMember = await _context.RescueTeamMembers
+            .AnyAsync(m => m.TeamId == teamId && m.UserId == currentUserId && m.IsActive);
+
+        if (!isMember)
+            return Forbid(); // 403 - không phải thành viên của team này
+
+        // Lấy danh sách operations của team, join với rescue_requests và vehicles
+        var operations = await _context.RescueOperations
+            .Where(op => op.TeamId == teamId)
+            .OrderByDescending(op => op.AssignedAt)
+            .Select(op => new TeamOperationDto
+            {
+                OperationId        = op.OperationId,
+                RequestId          = op.RequestId,
+                TeamId             = op.TeamId,
+                RequestTitle       = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Title)
+                                        .FirstOrDefault(),
+                RequestAddress     = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Address)
+                                        .FirstOrDefault(),
+                RequestDescription = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Description)
+                                        .FirstOrDefault(),
+                Latitude           = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Latitude)
+                                        .FirstOrDefault(),
+                Longitude          = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Longitude)
+                                        .FirstOrDefault(),
+                OperationStatus    = op.Status,
+                AssignedAt         = op.AssignedAt,
+                StartedAt          = op.StartedAt,
+                CompletedAt        = op.CompletedAt,
+                VehicleIds         = _context.RescueOperationVehicles
+                                        .Where(v => v.OperationId == op.OperationId)
+                                        .Select(v => v.VehicleId)
+                                        .ToList()
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            Success = true,
+            TeamId  = teamId,
+            Total   = operations.Count,
+            Data    = operations
+        });
+    }
 }

@@ -21,3 +21,27 @@ public class AssignRescueResponseDto
     public DateTime AssignedAt { get; set; }
     public string Status { get; set; } = string.Empty;
 }
+
+/// <summary>Thông tin một operation trả về cho rescue team member</summary>
+public class TeamOperationDto
+{
+    public int OperationId { get; set; }
+    public int RequestId { get; set; }
+    public int TeamId { get; set; }
+
+    // Thông tin rescue request
+    public string? RequestTitle { get; set; }
+    public string? RequestAddress { get; set; }
+    public string? RequestDescription { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+
+    public string OperationStatus { get; set; } = string.Empty;
+    public DateTime AssignedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+
+    /// <summary>Danh sách vehicle_id được gán vào operation này</summary>
+    public List<int> VehicleIds { get; set; } = new();
+}
+
