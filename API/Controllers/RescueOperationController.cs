@@ -238,7 +238,7 @@ public class RescueOperationController : ControllerBase
     /// ADMIN / COORDINATOR / MANAGER - Tìm kiếm rescue operation theo operation_id.
     /// </summary>
     [HttpGet("{operationId:int}")]
-    [Authorize(Roles = "ADMIN,COORDINATOR,MANAGER")]
+    [Authorize(Roles = "ADMIN,COORDINATOR,MANAGER,RESCUE_TEAM")]
     public async Task<IActionResult> GetOperationById(int operationId)
     {
         var operation = await _context.RescueOperations
