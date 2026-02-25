@@ -4,7 +4,4 @@ public interface IAuthService
 {
     Task<AuthResponse> LoginAsync(LoginRequest request);
     Task<AuthResponse> RegisterAsync(RegisterRequest request);
-
-    Task<AuthResponse> LogoutAsync(string accessToken, string? refreshToken);
-    Task<bool> IsTokenBlacklistedAsync(string token);
 }

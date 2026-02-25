@@ -8,7 +8,7 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "MANAGER,ADMIN")] // Chỉ Manager và Admin mới xem được
+[Authorize(Roles = "MANAGER,ADMIN")]
 public class VehicleController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -21,7 +21,7 @@ public class VehicleController : ControllerBase
     /// <summary>
     /// Manager/Admin - Xem danh sách tất cả phương tiện
     /// </summary>
-    /// <param name="status">Lọc theo trạng thái (AVAILABLE, IN_USE, MAINTENANCE, UNAVAILABLE)</param>
+    /// <param name="status">Lọc theo trạng thái (Available, InUse, Maintenance, Disabled)</param>
     [HttpGet]
     public async Task<IActionResult> GetAllVehicles([FromQuery] string? status = null)
     {
@@ -47,7 +47,7 @@ public class VehicleController : ControllerBase
                 Status = v.Status,
                 CurrentLocation = v.CurrentLocation,
                 LastMaintenance = v.LastMaintenance,
-                CreatedAt = v.CreatedAt
+                UpdatedAt = v.UpdatedAt
             })
             .ToListAsync();
 
@@ -74,7 +74,7 @@ public class VehicleController : ControllerBase
                 Status = v.Status,
                 CurrentLocation = v.CurrentLocation,
                 LastMaintenance = v.LastMaintenance,
-                CreatedAt = v.CreatedAt
+                UpdatedAt = v.UpdatedAt
             })
             .FirstOrDefaultAsync();
 

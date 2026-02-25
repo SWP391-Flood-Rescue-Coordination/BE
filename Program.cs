@@ -1,7 +1,6 @@
 using System.Text;
 using System.Reflection;
 using Flood_Rescue_Coordination.API.Models;
-using Flood_Rescue_Coordination.API.Middleware;
 using Flood_Rescue_Coordination.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -153,6 +152,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Citizen", policy => policy.RequireRole("CITIZEN", "ADMIN"));
 });
 
+
 var app = builder.Build();
 
 
@@ -191,9 +191,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-// Thêm middleware kiểm tra token blacklist
-app.UseMiddleware<TokenBlacklistMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

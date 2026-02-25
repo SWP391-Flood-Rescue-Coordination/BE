@@ -48,31 +48,6 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
-
-
-    /// <summary>
-    /// Đăng xuất
-    /// </summary>
-    [Authorize]
-    [HttpPost("logout")]
-    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest? request)
-    {
-        var accessToken = Request.Headers["Authorization"]
-            .FirstOrDefault()?.Split(" ").Last();
-
-        if (string.IsNullOrEmpty(accessToken))
-        {
-            return BadRequest(new AuthResponse
-            {
-                Success = false,
-                Message = "Access token không được cung cấp"
-            });
-        }
-
-        var response = await _authService.LogoutAsync(accessToken, request?.RefreshToken);
-        return Ok(response);
-    }
-
     /// <summary>
     /// Lấy thông tin user hiện tại
     /// </summary>
@@ -99,6 +74,4 @@ public class AuthController : ControllerBase
             }
         });
     }
-
-
 }

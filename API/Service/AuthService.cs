@@ -1,6 +1,5 @@
 using Flood_Rescue_Coordination.API.Models;
 using Flood_Rescue_Coordination.API.DTOs;
-using Flood_Rescue_Coordination.API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Flood_Rescue_Coordination.API.Services;
@@ -32,7 +31,6 @@ public class AuthService : IAuthService
             };
         }
 
-        // Debug: Log password verification details
         var passwordToVerify = request.Password;
         var storedHash = user.PasswordHash;
         var hashLength = storedHash?.Length ?? 0;
@@ -53,35 +51,20 @@ public class AuthService : IAuthService
         }
 
         var accessToken = _jwtService.GenerateAccessToken(user);
-        var refreshToken = _jwtService.GenerateRefreshToken();
-        var refreshTokenExpirationDays = int.Parse(_configuration["JwtSettings:RefreshTokenExpirationDays"]!);
-
-        // Lưu refresh token vào database
-        var refreshTokenEntity = new RefreshToken
-        {
-            UserId = user.UserId,
-            Token = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.RefreshTokens.Add(refreshTokenEntity);
-        await _context.SaveChangesAsync();
+        var expirationMinutes = int.Parse(_configuration["JwtSettings:AccessTokenExpirationMinutes"]!);
 
         return new AuthResponse
         {
             Success = true,
             Message = "Đăng nhập thành công",
             AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            AccessTokenExpiration = DateTime.UtcNow.AddMinutes(
-                int.Parse(_configuration["JwtSettings:AccessTokenExpirationMinutes"]!)),
+            AccessTokenExpiration = DateTime.UtcNow.AddMinutes(expirationMinutes),
             User = new UserInfo
             {
                 UserId = user.UserId,
                 Username = user.Username,
-                FullName = user.FullName,
-                Email = user.Email,
+                FullName = user.FullName ?? "",
+                Email = user.Email ?? "",
                 Role = user.Role
             }
         };
@@ -116,7 +99,7 @@ public class AuthService : IAuthService
             FullName = request.FullName,
             Phone = request.Phone,
             Email = request.Email,
-            Role = "CITIZEN", // Mặc định role là CITIZEN
+            Role = "CITIZEN",
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -130,64 +113,5 @@ public class AuthService : IAuthService
             Username = request.Username,
             Password = request.Password
         });
-    }
-
-
-
-    public async Task<AuthResponse> LogoutAsync(string accessToken, string? refreshToken)
-    {
-        // Blacklist access token
-        var tokenExpiration = _jwtService.GetTokenExpiration(accessToken);
-        
-        var blacklistedToken = new BlacklistedToken
-        {
-            Token = accessToken,
-            BlacklistedAt = DateTime.UtcNow,
-            ExpiresAt = tokenExpiration
-        };
-
-        _context.BlacklistedTokens.Add(blacklistedToken);
-
-        // Thu hồi refresh token nếu có
-        if (!string.IsNullOrEmpty(refreshToken))
-        {
-            var storedRefreshToken = await _context.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
-
-            if (storedRefreshToken != null && storedRefreshToken.IsActive)
-            {
-                storedRefreshToken.RevokedAt = DateTime.UtcNow;
-            }
-        }
-
-        await _context.SaveChangesAsync();
-
-        // Dọn dẹp các blacklisted token đã hết hạn
-        await CleanupExpiredBlacklistedTokensAsync();
-
-        return new AuthResponse
-        {
-            Success = true,
-            Message = "Đăng xuất thành công"
-        };
-    }
-
-    public async Task<bool> IsTokenBlacklistedAsync(string token)
-    {
-        return await _context.BlacklistedTokens
-            .AnyAsync(bt => bt.Token == token && bt.ExpiresAt > DateTime.UtcNow);
-    }
-
-    private async Task CleanupExpiredBlacklistedTokensAsync()
-    {
-        var expiredTokens = await _context.BlacklistedTokens
-            .Where(bt => bt.ExpiresAt <= DateTime.UtcNow)
-            .ToListAsync();
-
-        if (expiredTokens.Any())
-        {
-            _context.BlacklistedTokens.RemoveRange(expiredTokens);
-            await _context.SaveChangesAsync();
-        }
     }
 }
