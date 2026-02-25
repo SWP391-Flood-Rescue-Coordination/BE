@@ -15,6 +15,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<RescueRequest> RescueRequests { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
     public DbSet<VehicleType> VehicleTypes { get; set; }
+    public DbSet<RescueTeam> RescueTeams { get; set; }
+    public DbSet<RescueTeamMember> RescueTeamMembers { get; set; }
+    public DbSet<RescueAssignment> RescueAssignments { get; set; }
+    public DbSet<RescueRequestStatusHistory> RescueRequestStatusHistories { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -93,6 +97,108 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.Citizen)
                   .WithMany()
                   .HasForeignKey(e => e.CitizenId);
+        });
+
+        modelBuilder.Entity<Vehicle>(entity =>
+        {
+            entity.ToTable("vehicles");
+            entity.HasKey(e => e.VehicleId);
+            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(e => e.VehicleCode).HasColumnName("vehicle_code").HasMaxLength(20);
+            entity.Property(e => e.VehicleName).HasColumnName("vehicle_name").HasMaxLength(100);
+            entity.Property(e => e.VehicleTypeId).HasColumnName("vehicle_type_id");
+            entity.Property(e => e.LicensePlate).HasColumnName("license_plate").HasMaxLength(20);
+            entity.Property(e => e.Capacity).HasColumnName("capacity");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.FuelLevel).HasColumnName("fuel_level").HasPrecision(5, 2);
+            entity.Property(e => e.CurrentLocation).HasColumnName("current_location").HasMaxLength(300);
+            entity.Property(e => e.LastMaintenance).HasColumnName("last_maintenance");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            entity.HasOne(e => e.VehicleType)
+                  .WithMany()
+                  .HasForeignKey(e => e.VehicleTypeId);
+        });
+
+        modelBuilder.Entity<VehicleType>(entity =>
+        {
+            entity.ToTable("vehicle_types");
+            entity.HasKey(e => e.VehicleTypeId);
+            entity.Property(e => e.VehicleTypeId).HasColumnName("vehicle_type_id");
+            entity.Property(e => e.TypeName).HasColumnName("type_name").HasMaxLength(50);
+            entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<RescueTeam>(entity =>
+        {
+            entity.ToTable("rescue_teams");
+            entity.HasKey(e => e.TeamId);
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.Property(e => e.TeamName).HasColumnName("team_name").HasMaxLength(100);
+            entity.Property(e => e.TeamCode).HasColumnName("team_code").HasMaxLength(20);
+            entity.Property(e => e.LeaderId).HasColumnName("leader_id");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.CurrentCapacity).HasColumnName("current_capacity");
+            entity.Property(e => e.MaxCapacity).HasColumnName("max_capacity");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<RescueTeamMember>(entity =>
+        {
+            entity.ToTable("rescue_team_members");
+            entity.HasKey(e => e.MemberId);
+            entity.Property(e => e.MemberId).HasColumnName("member_id");
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Role).HasColumnName("role").HasMaxLength(20);
+            entity.Property(e => e.Specialization).HasColumnName("specialization").HasMaxLength(100);
+            entity.Property(e => e.JoinedAt).HasColumnName("joined_at");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+
+            entity.HasOne(e => e.Team)
+                  .WithMany()
+                  .HasForeignKey(e => e.TeamId);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<RescueAssignment>(entity =>
+        {
+            entity.ToTable("rescue_assignments");
+            entity.HasKey(e => e.AssignmentId);
+            entity.Property(e => e.AssignmentId).HasColumnName("assignment_id");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.Property(e => e.AssignedBy).HasColumnName("assigned_by");
+            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(e => e.AssignedAt).HasColumnName("assigned_at");
+            entity.Property(e => e.StartedAt).HasColumnName("started_at");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
+
+            entity.HasOne(e => e.Request)
+                  .WithMany()
+                  .HasForeignKey(e => e.RequestId);
+            entity.HasOne(e => e.Team)
+                  .WithMany()
+                  .HasForeignKey(e => e.TeamId);
+            entity.HasOne(e => e.Vehicle)
+                  .WithMany()
+                  .HasForeignKey(e => e.VehicleId);
+        });
+
+        modelBuilder.Entity<RescueRequestStatusHistory>(entity =>
+        {
+            entity.ToTable("rescue_request_status_history");
+            entity.HasKey(e => e.StatusId);
+            entity.Property(e => e.StatusId).HasColumnName("status_id");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         });
     }
 

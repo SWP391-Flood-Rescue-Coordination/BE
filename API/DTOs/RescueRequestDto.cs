@@ -37,8 +37,8 @@ public class RescueRequestResponseDto
 {
     public int RequestId { get; set; }
     public int? CitizenId { get; set; } // Nullable để hỗ trợ khách vãng lai
-    public string CitizenName { get; set; } = string.Empty;
-    public string CitizenPhone { get; set; } = string.Empty;
+    public string? CitizenName { get; set; } = string.Empty;
+    public string? CitizenPhone { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal Latitude { get; set; }
