@@ -126,11 +126,18 @@ public class AuthService : IAuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return await LoginAsync(new LoginRequest
+        var loginResponse = await LoginAsync(new LoginRequest
         {
             Phone = normalizedPhone,
             Password = request.Password
         });
+
+        if (loginResponse.Success)
+        {
+            loginResponse.Message = "Đăng ký thành công";
+        }
+
+        return loginResponse;
     }
 
     private static string[] BuildPhoneCandidates(string normalizedPhone)
