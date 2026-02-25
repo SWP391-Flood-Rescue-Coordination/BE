@@ -37,6 +37,7 @@ public class RescueRequestController : ControllerBase
             Latitude = dto.Latitude,
             Longitude = dto.Longitude,
             Address = dto.Address,
+            NumberOfAffectedPeople = dto.NumberOfAffectedPeople,
             Status = "Pending",
             CreatedAt = DateTime.UtcNow
         };
@@ -70,6 +71,7 @@ public class RescueRequestController : ControllerBase
                 Longitude = r.Longitude,
                 Address = r.Address,
                 Status = r.Status ?? "Pending",
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
             })
@@ -140,6 +142,7 @@ public class RescueRequestController : ControllerBase
                 Longitude = r.Longitude,
                 Address = r.Address,
                 Status = r.Status ?? "Pending",
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
             })
@@ -170,6 +173,7 @@ public class RescueRequestController : ControllerBase
                 Longitude = r.Longitude,
                 Address = r.Address,
                 Status = r.Status ?? "Pending",
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
             })

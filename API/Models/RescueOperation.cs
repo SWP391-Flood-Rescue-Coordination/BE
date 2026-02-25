@@ -10,4 +10,6 @@ public class RescueOperation
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public string Status { get; set; } = "Assigned";
+    public int? NumberOfAffectedPeople { get; set; }
+    public int? EstimatedTime { get; set; }
 }
