@@ -233,4 +233,55 @@ public class RescueOperationController : ControllerBase
             Data    = operations
         });
     }
+
+    /// <summary>
+    /// ADMIN / COORDINATOR / MANAGER - Tìm kiếm rescue operation theo operation_id.
+    /// </summary>
+    [HttpGet("{operationId:int}")]
+    [Authorize(Roles = "ADMIN,COORDINATOR,MANAGER")]
+    public async Task<IActionResult> GetOperationById(int operationId)
+    {
+        var operation = await _context.RescueOperations
+            .Where(op => op.OperationId == operationId)
+            .Select(op => new TeamOperationDto
+            {
+                OperationId        = op.OperationId,
+                RequestId          = op.RequestId,
+                TeamId             = op.TeamId,
+                RequestTitle       = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Title)
+                                        .FirstOrDefault(),
+                RequestAddress     = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Address)
+                                        .FirstOrDefault(),
+                RequestDescription = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Description)
+                                        .FirstOrDefault(),
+                Latitude           = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Latitude)
+                                        .FirstOrDefault(),
+                Longitude          = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Longitude)
+                                        .FirstOrDefault(),
+                OperationStatus    = op.Status,
+                AssignedAt         = op.AssignedAt,
+                StartedAt          = op.StartedAt,
+                CompletedAt        = op.CompletedAt,
+                VehicleIds         = _context.RescueOperationVehicles
+                                        .Where(v => v.OperationId == op.OperationId)
+                                        .Select(v => v.VehicleId)
+                                        .ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        if (operation == null)
+            return NotFound(new { Success = false, Message = $"Không tìm thấy operation với ID = {operationId}" });
+
+        return Ok(new { Success = true, Data = operation });
+    }
 }
