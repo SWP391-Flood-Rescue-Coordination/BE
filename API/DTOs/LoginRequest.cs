@@ -8,6 +8,6 @@ public class LoginRequest
     public string? Phone { get; set; }
 
     [Required(ErrorMessage = "Password là bắt buộc")]
-    [StringLength(20, MinimumLength = 6, ErrorMessage = "Password phải từ 6 đến 100 ký tự")]
+    [StringLength(20, MinimumLength = 5, ErrorMessage = "Password phải từ 5 đến 100 ký tự")]
     public string Password { get; set; } = string.Empty;
 }
