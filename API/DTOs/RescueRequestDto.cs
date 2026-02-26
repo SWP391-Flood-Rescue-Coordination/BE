@@ -70,3 +70,9 @@ public class LatestRescueRequestDto
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
+
+public class UpdateRequestFromCoordinatorDto
+{
+    public string? Status { get; set; }
+    public int? PriorityLevelId { get; set; }
+}
