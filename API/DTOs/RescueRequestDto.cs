@@ -49,6 +49,12 @@ public class UpdatePriorityDto
     public int PriorityLevelId { get; set; }
 }
 
+public class SetPriorityAndVerifyDto
+{
+    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "PriorityLevelId là bắt buộc")]
+    public int PriorityLevelId { get; set; }
+}
+
 public class DashboardStatisticsDto
 {
     public int TotalRequests { get; set; }

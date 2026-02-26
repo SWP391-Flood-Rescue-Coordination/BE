@@ -213,6 +213,46 @@ public class RescueRequestController : ControllerBase
     }
 
     /// <summary>
+    /// Coordinator - Thiết lập priority level cho rescue request đang Pending và chuyển sang Verified
+    /// </summary>
+    [HttpPut("{id}/set-priority-and-verify")]
+    [Authorize(Roles = "COORDINATOR")]
+    public async Task<IActionResult> SetPriorityAndVerify(int id, [FromBody] SetPriorityAndVerifyDto dto)
+    {
+        var request = await _context.RescueRequests.FindAsync(id);
+
+        if (request == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+        }
+
+        if (request.Status != "Pending")
+        {
+            return BadRequest(new { Success = false, Message = $"Yêu cầu cứu hộ phải ở trạng thái Pending (hiện tại: {request.Status})" });
+        }
+
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+        request.PriorityLevelId = dto.PriorityLevelId;
+        request.Status = "Verified";
+        request.UpdatedAt = DateTime.UtcNow;
+        request.UpdatedBy = userId;
+
+        _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
+        {
+            RequestId = request.RequestId,
+            Status = "Verified",
+            Notes = $"Coordinator thiết lập mức độ ưu tiên {dto.PriorityLevelId} và xác minh yêu cầu",
+            UpdatedBy = userId,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Success = true, Message = "Thiết lập mức độ ưu tiên và xác minh yêu cầu thành công" });
+    }
+
+    /// <summary>
     /// Manager/Admin/Coordinator - Cập nhật mức độ ưu tiên của yêu cầu
     /// </summary>
     [HttpPut("{id}/priority")]
