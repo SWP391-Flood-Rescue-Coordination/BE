@@ -58,6 +58,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PriorityLevelId).HasColumnName("priority_level_id");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
             entity.Property(e => e.NumberOfAffectedPeople).HasColumnName("number_of_affected_people");
+            entity.Property(e => e.AccessCode).HasColumnName("access_code").HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");

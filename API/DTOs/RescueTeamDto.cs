@@ -10,17 +10,6 @@ public class UpdateMissionStatusDto
     /// Trạng thái mới của nhiệm vụ: "IN_PROGRESS" hoặc "COMPLETED"
     /// </summary>
     public string NewStatus { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Ghi chú thêm (không bắt buộc)
-    /// </summary>
-    public string? Notes { get; set; }
-
-    /// <summary>
-    /// Trạng thái hiện tại mà client đang thấy (dùng để kiểm tra concurrency).
-    /// Client phải gửi đúng trạng thái assignment đang có trong DB trước khi update.
-    /// </summary>
-    public string ExpectedCurrentStatus { get; set; } = string.Empty;
 }
 
 public class MissionStatusResponseDto

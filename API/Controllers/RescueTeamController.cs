@@ -85,18 +85,6 @@ public class RescueTeamController : ControllerBase
                 Message = $"Nhiệm vụ đang ở trạng thái '{operation.Status}', không thể chuyển sang '{dto.NewStatus}'."
             });
 
-        // ── 6. Concurrency check: so sánh expectedCurrentStatus với DB ────────
-        if (!string.IsNullOrEmpty(dto.ExpectedCurrentStatus)
-            && operation.Status != dto.ExpectedCurrentStatus)
-        {
-            return Conflict(new
-            {
-                Success = false,
-                Message = $"Xung đột trạng thái (Concurrency): Trạng thái hiện tại là '{operation.Status}', bạn đang kỳ vọng '{dto.ExpectedCurrentStatus}'.",
-                CurrentStatus = operation.Status
-            });
-        }
-
         var now = DateTime.UtcNow;
 
         // ── 7. Cập nhật rescue_operations ───────────────────────────────────
@@ -117,12 +105,11 @@ public class RescueTeamController : ControllerBase
         request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
-        // ── 9. Ghi lịch sử vào rescue_request_status_history ────────────────
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
             Status = dto.NewStatus,
-            Notes = $"Cập nhật bởi Rescue Team (UserId={userId}). {dto.Notes}".Trim(),
+            Notes = $"Đội cứu hộ cập nhật trạng thái nhiệm vụ sang {dto.NewStatus}",
             UpdatedBy = userId,
             UpdatedAt = now
         });
@@ -210,6 +197,11 @@ public class RescueTeamController : ControllerBase
                 RequestTitle = o.Request != null ? o.Request.Title : null,
                 RequestStatus = o.Request != null ? o.Request.Status : null,
                 RequestAddress = o.Request != null ? o.Request.Address : null,
+                RequestDescription = o.Request != null ? o.Request.Description : null,
+                RequestPhone = o.Request != null ? o.Request.Phone : null,
+                PriorityName = o.Request != null ? (o.Request.PriorityLevelId == 1 ? "CAO" :
+                                                    o.Request.PriorityLevelId == 2 ? "TRUNG BÌNH" :
+                                                    o.Request.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG") : null,
                 RequestLatitude = o.Request != null ? o.Request.Latitude : (decimal?)null,
                 RequestLongitude = o.Request != null ? o.Request.Longitude : (decimal?)null,
                 TeamName = o.Team != null ? o.Team.TeamName : null,
@@ -224,5 +216,62 @@ public class RescueTeamController : ControllerBase
             .ToListAsync();
 
         return Ok(new { Success = true, Total = operations.Count, Data = operations });
+    }
+
+    /// <summary>
+    /// Xem chi tiết một nhiệm vụ (operation) theo ID.
+    /// </summary>
+    [HttpGet("operations/{operationId:int}")]
+    public async Task<IActionResult> GetMissionDetails(int operationId)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out int userId))
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+
+        var operation = await _context.RescueOperations
+            .Include(o => o.Request)
+            .Include(o => o.Team)
+            .Where(o => o.OperationId == operationId)
+            .Select(o => new
+            {
+                o.OperationId,
+                o.RequestId,
+                RequestTitle = o.Request != null ? o.Request.Title : null,
+                RequestStatus = o.Request != null ? o.Request.Status : null,
+                RequestAddress = o.Request != null ? o.Request.Address : null,
+                RequestDescription = o.Request != null ? o.Request.Description : null,
+                RequestPhone = o.Request != null ? o.Request.Phone : null,
+                PriorityName = o.Request != null ? (o.Request.PriorityLevelId == 1 ? "CAO" :
+                                                    o.Request.PriorityLevelId == 2 ? "TRUNG BÌNH" :
+                                                    o.Request.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG") : null,
+                RequestLatitude = o.Request != null ? o.Request.Latitude : (decimal?)null,
+                RequestLongitude = o.Request != null ? o.Request.Longitude : (decimal?)null,
+                TeamName = o.Team != null ? o.Team.TeamName : null,
+                o.Status,
+                o.AssignedAt,
+                o.StartedAt,
+                o.CompletedAt,
+                Vehicles = _context.RescueOperationVehicles
+                            .Where(ov => ov.OperationId == o.OperationId)
+                            .Join(_context.Vehicles, ov => ov.VehicleId, v => v.VehicleId, (ov, v) => v.VehicleName)
+                            .ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        if (operation == null)
+            return NotFound(new { Success = false, Message = "Không tìm thấy nhiệm vụ." });
+
+        // Kiểm tra quyền xem: Phải thuộc team đang được gán nhiệm vụ
+        var isMember = await _context.RescueTeamMembers
+            .AnyAsync(m => m.TeamId == (int)_context.RescueOperations
+                                        .Where(ro => ro.OperationId == operationId)
+                                        .Select(ro => ro.TeamId).FirstOrDefault()
+                        && m.UserId == userId
+                        && m.IsActive);
+
+        if (!isMember)
+            return Forbid();
+
+        return Ok(new { Success = true, Data = operation });
     }
 }
