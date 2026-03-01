@@ -18,11 +18,17 @@ public class CoordinatorController : ControllerBase
         _context = context;
     }
 
-    [HttpGet("available-teams")]
-    public async Task<IActionResult> GetAvailableTeams()
+    [HttpGet("status-with-teams")]
+    public async Task<IActionResult> GetTeamsWithStatus([FromQuery] string? status = null)
     {
-        var teams = await _context.RescueTeams
-            .Where(t => t.Status == "AVAILABLE" || t.Status == "Available")
+        var query = _context.RescueTeams.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(t => t.Status == status);
+        }
+
+        var teams = await query
             .OrderBy(t => t.TeamName)
             .Select(t => new
             {
