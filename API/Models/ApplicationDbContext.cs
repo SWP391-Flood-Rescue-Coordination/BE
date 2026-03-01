@@ -10,15 +10,16 @@ public class ApplicationDbContext : DbContext
     }
 
     public DbSet<User> Users { get; set; }
-    public DbSet<RefreshToken> RefreshTokens { get; set; }
-    public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
     public DbSet<RescueRequest> RescueRequests { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
     public DbSet<VehicleType> VehicleTypes { get; set; }
     public DbSet<RescueTeam> RescueTeams { get; set; }
     public DbSet<RescueTeamMember> RescueTeamMembers { get; set; }
-    public DbSet<RescueAssignment> RescueAssignments { get; set; }
+    public DbSet<RescueOperation> RescueOperations { get; set; }
+    public DbSet<RescueOperationVehicle> RescueOperationVehicles { get; set; }
     public DbSet<RescueRequestStatusHistory> RescueRequestStatusHistories { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,38 +38,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Role).HasColumnName("role").HasMaxLength(20);
             entity.Property(e => e.IsActive).HasColumnName("is_active");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-            
-            entity.HasIndex(e => e.Username).IsUnique();
-            entity.HasIndex(e => e.Email).IsUnique();
-        });
-
-        modelBuilder.Entity<RefreshToken>(entity =>
-        {
-            entity.ToTable("refresh_tokens");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Token).HasColumnName("token").HasMaxLength(500);
-            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
-            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
-            
-            entity.HasOne(e => e.User)
-                .WithMany()
-                .HasForeignKey(e => e.UserId);
-        });
-
-        modelBuilder.Entity<BlacklistedToken>(entity =>
-        {
-            entity.ToTable("blacklisted_tokens");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Token).HasColumnName("token").HasMaxLength(1000);
-            entity.Property(e => e.BlacklistedAt).HasColumnName("blacklisted_at");
-            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
-            
-            entity.HasIndex(e => e.Token);
+            entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(300);
         });
 
         modelBuilder.Entity<RescueRequest>(entity =>
@@ -78,25 +48,37 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.CitizenId).HasColumnName("citizen_id");
             entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(200);
+            entity.Property(e => e.Phone).HasColumnName("phone").HasMaxLength(20);
             entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(1000);
-            entity.Property(e => e.Latitude).HasColumnName("latitude").HasPrecision(10, 8);
-            entity.Property(e => e.Longitude).HasColumnName("longitude").HasPrecision(11, 8);
+            entity.Property(e => e.Latitude).HasColumnName("latitude").HasPrecision(9, 6);
+            entity.Property(e => e.Longitude).HasColumnName("longitude").HasPrecision(9, 6);
             entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(300);
             entity.Property(e => e.ContactName).HasColumnName("contact_name").HasMaxLength(100);
             entity.Property(e => e.ContactPhone).HasColumnName("contact_phone").HasMaxLength(20);
             entity.Property(e => e.PriorityLevelId).HasColumnName("priority_level_id");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
-            entity.Property(e => e.NumberOfPeople).HasColumnName("number_of_people");
-            entity.Property(e => e.HasChildren).HasColumnName("has_children");
-            entity.Property(e => e.HasElderly).HasColumnName("has_elderly");
-            entity.Property(e => e.HasDisabled).HasColumnName("has_disabled");
-            entity.Property(e => e.SpecialNotes).HasColumnName("special_notes").HasMaxLength(500);
+            entity.Property(e => e.NumberOfAffectedPeople).HasColumnName("number_of_affected_people");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
 
             entity.HasOne(e => e.Citizen)
                   .WithMany()
                   .HasForeignKey(e => e.CitizenId);
+
+            entity.HasOne(e => e.UpdatedByUser)
+                  .WithMany()
+                  .HasForeignKey(e => e.UpdatedBy);
+        });
+
+        modelBuilder.Entity<VehicleType>(entity =>
+        {
+            entity.ToTable("vehicle_types");
+            entity.HasKey(e => e.VehicleTypeId);
+            entity.Property(e => e.VehicleTypeId).HasColumnName("vehicle_type_id");
+            entity.Property(e => e.TypeCode).HasColumnName("type_code").HasMaxLength(50);
+            entity.Property(e => e.TypeName).HasColumnName("type_name").HasMaxLength(50);
+            entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(255);
         });
 
         modelBuilder.Entity<Vehicle>(entity =>
@@ -110,23 +92,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.LicensePlate).HasColumnName("license_plate").HasMaxLength(20);
             entity.Property(e => e.Capacity).HasColumnName("capacity");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
-            entity.Property(e => e.FuelLevel).HasColumnName("fuel_level").HasPrecision(5, 2);
             entity.Property(e => e.CurrentLocation).HasColumnName("current_location").HasMaxLength(300);
             entity.Property(e => e.LastMaintenance).HasColumnName("last_maintenance");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
             entity.HasOne(e => e.VehicleType)
                   .WithMany()
                   .HasForeignKey(e => e.VehicleTypeId);
-        });
-
-        modelBuilder.Entity<VehicleType>(entity =>
-        {
-            entity.ToTable("vehicle_types");
-            entity.HasKey(e => e.VehicleTypeId);
-            entity.Property(e => e.VehicleTypeId).HasColumnName("vehicle_type_id");
-            entity.Property(e => e.TypeName).HasColumnName("type_name").HasMaxLength(50);
-            entity.Property(e => e.Description).HasColumnName("description").HasMaxLength(255);
         });
 
         modelBuilder.Entity<RescueTeam>(entity =>
@@ -135,24 +107,19 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.TeamId);
             entity.Property(e => e.TeamId).HasColumnName("team_id");
             entity.Property(e => e.TeamName).HasColumnName("team_name").HasMaxLength(100);
-            entity.Property(e => e.TeamCode).HasColumnName("team_code").HasMaxLength(20);
-            entity.Property(e => e.LeaderId).HasColumnName("leader_id");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
-            entity.Property(e => e.CurrentCapacity).HasColumnName("current_capacity");
-            entity.Property(e => e.MaxCapacity).HasColumnName("max_capacity");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
         });
 
         modelBuilder.Entity<RescueTeamMember>(entity =>
         {
             entity.ToTable("rescue_team_members");
-            entity.HasKey(e => e.MemberId);
-            entity.Property(e => e.MemberId).HasColumnName("member_id");
+            entity.HasKey(e => new { e.TeamId, e.UserId });
             entity.Property(e => e.TeamId).HasColumnName("team_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Role).HasColumnName("role").HasMaxLength(20);
-            entity.Property(e => e.Specialization).HasColumnName("specialization").HasMaxLength(100);
+            entity.Property(e => e.MemberRole).HasColumnName("member_role").HasMaxLength(20);
             entity.Property(e => e.JoinedAt).HasColumnName("joined_at");
+            entity.Property(e => e.LeftAt).HasColumnName("left_at");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
 
             entity.HasOne(e => e.Team)
@@ -163,20 +130,21 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(e => e.UserId);
         });
 
-        modelBuilder.Entity<RescueAssignment>(entity =>
+
+        modelBuilder.Entity<RescueOperation>(entity =>
         {
-            entity.ToTable("rescue_assignments");
-            entity.HasKey(e => e.AssignmentId);
-            entity.Property(e => e.AssignmentId).HasColumnName("assignment_id");
+            entity.ToTable("rescue_operations");
+            entity.HasKey(e => e.OperationId);
+            entity.Property(e => e.OperationId).HasColumnName("operation_id");
             entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.TeamId).HasColumnName("team_id");
             entity.Property(e => e.AssignedBy).HasColumnName("assigned_by");
-            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
             entity.Property(e => e.AssignedAt).HasColumnName("assigned_at");
             entity.Property(e => e.StartedAt).HasColumnName("started_at");
             entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
-            entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
+            entity.Property(e => e.NumberOfAffectedPeople).HasColumnName("number_of_affected_people");
+            entity.Property(e => e.EstimatedTime).HasColumnName("estimated_time");
 
             entity.HasOne(e => e.Request)
                   .WithMany()
@@ -184,9 +152,16 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.Team)
                   .WithMany()
                   .HasForeignKey(e => e.TeamId);
-            entity.HasOne(e => e.Vehicle)
-                  .WithMany()
-                  .HasForeignKey(e => e.VehicleId);
+        });
+
+        modelBuilder.Entity<RescueOperationVehicle>(entity =>
+        {
+            entity.ToTable("rescue_operation_vehicles");
+            entity.HasKey(e => new { e.OperationId, e.VehicleId });
+            entity.Property(e => e.OperationId).HasColumnName("operation_id");
+            entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(e => e.AssignedBy).HasColumnName("assigned_by");
+            entity.Property(e => e.AssignedAt).HasColumnName("assigned_at");
         });
 
         modelBuilder.Entity<RescueRequestStatusHistory>(entity =>
@@ -199,6 +174,34 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("refresh_tokens");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Token).HasColumnName("token").HasMaxLength(500);
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<BlacklistedToken>(entity =>
+        {
+            entity.ToTable("blacklisted_tokens");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Token).HasColumnName("token").HasMaxLength(1000);
+            entity.Property(e => e.BlacklistedAt).HasColumnName("blacklisted_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            
+            entity.HasIndex(e => e.Token);
         });
     }
 
@@ -214,9 +217,6 @@ public class ApplicationDbContext : DbContext
         return await base.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// Tự động hash password cho các user mới hoặc user có password chưa được hash
-    /// </summary>
     private void AutoHashPasswords()
     {
         var users = ChangeTracker.Entries<User>()
@@ -226,14 +226,11 @@ public class ApplicationDbContext : DbContext
 
         foreach (var user in users)
         {
-            // Kiểm tra nếu password_hash không phải là BCrypt hash format (bắt đầu với $2a$, $2b$, hoặc $2y$)
             if (!string.IsNullOrEmpty(user.PasswordHash) && 
                 !user.PasswordHash.StartsWith("$2a$") && 
                 !user.PasswordHash.StartsWith("$2b$") && 
                 !user.PasswordHash.StartsWith("$2y$"))
             {
-                // Nếu password_hash trông giống plain text password, hash nó
-                // Lưu ý: Chỉ hash nếu độ dài < 60 (BCrypt hash thường dài 60 ký tự)
                 if (user.PasswordHash.Length < 60)
                 {
                     user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);

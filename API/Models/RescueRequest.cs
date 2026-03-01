@@ -5,27 +5,33 @@ namespace Flood_Rescue_Coordination.API.Models;
 public class RescueRequest
 {
     public int RequestId { get; set; }
-    public int? CitizenId { get; set; } // Cho phép null (khách vãng lai)
+    
+    // Supporting both logged-in citizens and anonymous guests
+    // Program.cs handles ALTER COLUMN citizen_id INT NULL
+    public int? CitizenId { get; set; } 
+    
     public string? Title { get; set; } = string.Empty;
+    public string? Phone { get; set; } = string.Empty; // Normal contact phone
     public string? Description { get; set; } = string.Empty;
     
-    // Thông tin liên hệ cho khách vãng lai
+    // Guest contact info - Program.cs handles ALTER TABLE ADD these columns
     public string? ContactName { get; set; } = string.Empty;
     public string? ContactPhone { get; set; } = string.Empty;
 
-    public decimal Latitude { get; set; }
-    public decimal Longitude { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
     public string? Address { get; set; } = string.Empty;
     public int? PriorityLevelId { get; set; }
-    public string Status { get; set; } = "PENDING";
-    public int NumberOfPeople { get; set; }
-    public bool HasChildren { get; set; }
-    public bool HasElderly { get; set; }
-    public bool HasDisabled { get; set; }
-    public string? SpecialNotes { get; set; } = string.Empty;
+    public string Status { get; set; } = "Pending";
+    
+    // In SQL script
+    public int? NumberOfAffectedPeople { get; set; }
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    public int? UpdatedBy { get; set; }
 
-    // Navigation property
-    public virtual User Citizen { get; set; }
+    // Navigation properties
+    public virtual User? Citizen { get; set; }
+    public virtual User? UpdatedByUser { get; set; }
 }

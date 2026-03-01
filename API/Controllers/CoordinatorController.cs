@@ -55,11 +55,8 @@ public class CoordinatorController : ControllerBase
                 Address = r.Address,
                 PriorityLevelId = r.PriorityLevelId,
                 Status = r.Status,
-                NumberOfPeople = r.NumberOfPeople,
-                HasChildren = r.HasChildren,
-                HasElderly = r.HasElderly,
-                HasDisabled = r.HasDisabled,
-                SpecialNotes = r.SpecialNotes,
+                NumberOfPeople = r.NumberOfAffectedPeople,
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt
             })
             .ToListAsync();

@@ -2,13 +2,15 @@ namespace Flood_Rescue_Coordination.API.Models;
 
 public class RescueTeamMember
 {
-    public int MemberId { get; set; }
+    // The database has composite key on {team_id, user_id}
     public int TeamId { get; set; }
     public int UserId { get; set; }
-    public string Role { get; set; } = "MEMBER";
-    public string? Specialization { get; set; }
-    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+    
+    public string MemberRole { get; set; } = "Member"; // Leader | Member
+    
     public bool IsActive { get; set; } = true;
+    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? LeftAt { get; set; }
 
     // Navigation properties
     public virtual RescueTeam? Team { get; set; }

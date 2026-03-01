@@ -4,13 +4,12 @@ public class VehicleResponseDto
 {
     public int VehicleId { get; set; }
     public string VehicleCode { get; set; } = string.Empty;
-    public string VehicleName { get; set; } = string.Empty;
+    public string? VehicleName { get; set; }
     public string VehicleTypeName { get; set; } = string.Empty;
-    public string? LicensePlate { get; set; }
+    public string LicensePlate { get; set; } = string.Empty;
     public int? Capacity { get; set; }
     public string Status { get; set; } = string.Empty;
-    public decimal? FuelLevel { get; set; }
     public string? CurrentLocation { get; set; }
     public DateTime? LastMaintenance { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }

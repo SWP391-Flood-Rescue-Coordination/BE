@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\Flood Rescue Coordination.csproj": {}
+    "E:\\SWP391\\BE-Tuan\\Flood Rescue Coordination.csproj": {}
   },
   "projects": {
-    "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\Flood Rescue Coordination.csproj": {
+    "E:\\SWP391\\BE-Tuan\\Flood Rescue Coordination.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\Flood Rescue Coordination.csproj",
+        "projectUniqueName": "E:\\SWP391\\BE-Tuan\\Flood Rescue Coordination.csproj",
         "projectName": "Flood Rescue Coordination",
-        "projectPath": "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\Flood Rescue Coordination.csproj",
+        "projectPath": "E:\\SWP391\\BE-Tuan\\Flood Rescue Coordination.csproj",
         "packagesPath": "C:\\Users\\ASUS\\.nuget\\packages\\",
-        "outputPath": "E:\\SWP391\\Flood Rescue Coordination\\Flood Rescue Coordination\\obj\\",
+        "outputPath": "E:\\SWP391\\BE-Tuan\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\ASUS\\AppData\\Roaming\\NuGet\\NuGet.Config"

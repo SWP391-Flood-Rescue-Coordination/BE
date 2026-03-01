@@ -1,7 +1,7 @@
 using Flood_Rescue_Coordination.API.Models;
 using Flood_Rescue_Coordination.API.DTOs;
-using Flood_Rescue_Coordination.API.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace Flood_Rescue_Coordination.API.Services;
 
@@ -20,43 +20,45 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
+        if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
+        {
+            return new AuthResponse
+            {
+                Success = false,
+                Message = "Số điện thoại là bắt buộc và phải đúng định dạng"
+            };
+        }
+
+        var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
+
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
+            .FirstOrDefaultAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
 
         if (user == null)
         {
             return new AuthResponse
             {
                 Success = false,
-                Message = "Tên đăng nhập không tồn tại hoặc tài khoản đã bị vô hiệu hóa"
+                Message = "Số điện thoại không tồn tại hoặc tài khoản đã bị vô hiệu hóa"
             };
         }
 
-        // Debug: Log password verification details
-        var passwordToVerify = request.Password;
-        var storedHash = user.PasswordHash;
-        var hashLength = storedHash?.Length ?? 0;
-        var isBcryptFormat = !string.IsNullOrEmpty(storedHash) && 
-                            (storedHash.StartsWith("$2a$") || 
-                             storedHash.StartsWith("$2b$") || 
-                             storedHash.StartsWith("$2y$"));
-        
-        var verifyResult = BCrypt.Net.BCrypt.Verify(passwordToVerify, storedHash);
-        
-        if (!verifyResult)
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             return new AuthResponse
             {
                 Success = false,
-                Message = $"Mật khẩu không chính xác. Hash length: {hashLength}, Is BCrypt format: {isBcryptFormat}"
+                Message = "Mật khẩu không chính xác"
             };
         }
 
         var accessToken = _jwtService.GenerateAccessToken(user);
+        var expirationMinutes = int.Parse(_configuration["JwtSettings:AccessTokenExpirationMinutes"]!);
+        
+        // Generate Refresh Token
         var refreshToken = _jwtService.GenerateRefreshToken();
         var refreshTokenExpirationDays = int.Parse(_configuration["JwtSettings:RefreshTokenExpirationDays"]!);
 
-        // Lưu refresh token vào database
         var refreshTokenEntity = new RefreshToken
         {
             UserId = user.UserId,
@@ -74,14 +76,13 @@ public class AuthService : IAuthService
             Message = "Đăng nhập thành công",
             AccessToken = accessToken,
             RefreshToken = refreshToken,
-            AccessTokenExpiration = DateTime.UtcNow.AddMinutes(
-                int.Parse(_configuration["JwtSettings:AccessTokenExpirationMinutes"]!)),
+            AccessTokenExpiration = DateTime.UtcNow.AddMinutes(expirationMinutes),
             User = new UserInfo
             {
                 UserId = user.UserId,
                 Username = user.Username,
-                FullName = user.FullName,
-                Email = user.Email,
+                FullName = user.FullName ?? "",
+                Email = user.Email ?? "",
                 Role = user.Role
             }
         };
@@ -89,7 +90,6 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
-        // Kiểm tra username đã tồn tại
         if (await _context.Users.AnyAsync(u => u.Username == request.Username))
         {
             return new AuthResponse
@@ -99,7 +99,6 @@ public class AuthService : IAuthService
             };
         }
 
-        // Kiểm tra email đã tồn tại
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
         {
             return new AuthResponse
@@ -109,14 +108,33 @@ public class AuthService : IAuthService
             };
         }
 
+        if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
+        {
+            return new AuthResponse
+            {
+                Success = false,
+                Message = "Số điện thoại là bắt buộc và phải đúng định dạng"
+            };
+        }
+
+        var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
+        if (await _context.Users.AnyAsync(u => u.Phone != null && phoneCandidates.Contains(u.Phone)))
+        {
+            return new AuthResponse
+            {
+                Success = false,
+                Message = "Số điện thoại đã được sử dụng"
+            };
+        }
+
         var user = new User
         {
             Username = request.Username,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FullName = request.FullName,
-            Phone = request.Phone,
+            Phone = normalizedPhone,
             Email = request.Email,
-            Role = "CITIZEN", // Mặc định role là CITIZEN
+            Role = "CITIZEN",
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -124,12 +142,18 @@ public class AuthService : IAuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        // Tự động đăng nhập sau khi đăng ký
-        return await LoginAsync(new LoginRequest
+        var loginResponse = await LoginAsync(new LoginRequest
         {
-            Username = request.Username,
+            Phone = normalizedPhone,
             Password = request.Password
         });
+
+        if (loginResponse.Success)
+        {
+            loginResponse.Message = "Đăng ký thành công";
+        }
+
+        return loginResponse;
     }
 
     public async Task<AuthResponse> RefreshTokenAsync(string refreshToken)
@@ -156,7 +180,7 @@ public class AuthService : IAuthService
             };
         }
 
-        if (!storedToken.User.IsActive)
+        if (storedToken.User == null || !storedToken.User.IsActive)
         {
             return new AuthResponse
             {
@@ -196,8 +220,8 @@ public class AuthService : IAuthService
             {
                 UserId = storedToken.User.UserId,
                 Username = storedToken.User.Username,
-                FullName = storedToken.User.FullName,
-                Email = storedToken.User.Email,
+                FullName = storedToken.User.FullName ?? "",
+                Email = storedToken.User.Email ?? "",
                 Role = storedToken.User.Role
             }
         };
@@ -211,8 +235,8 @@ public class AuthService : IAuthService
         var blacklistedToken = new BlacklistedToken
         {
             Token = accessToken,
-            BlacklistedAt = DateTime.UtcNow,
-            ExpiresAt = tokenExpiration
+            ExpiresAt = tokenExpiration,
+            BlacklistedAt = DateTime.UtcNow
         };
 
         _context.BlacklistedTokens.Add(blacklistedToken);
@@ -220,19 +244,16 @@ public class AuthService : IAuthService
         // Thu hồi refresh token nếu có
         if (!string.IsNullOrEmpty(refreshToken))
         {
-            var storedRefreshToken = await _context.RefreshTokens
+            var storedToken = await _context.RefreshTokens
                 .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
-
-            if (storedRefreshToken != null && storedRefreshToken.IsActive)
+            
+            if (storedToken != null)
             {
-                storedRefreshToken.RevokedAt = DateTime.UtcNow;
+                storedToken.RevokedAt = DateTime.UtcNow;
             }
         }
 
         await _context.SaveChangesAsync();
-
-        // Dọn dẹp các blacklisted token đã hết hạn
-        await CleanupExpiredBlacklistedTokensAsync();
 
         return new AuthResponse
         {
@@ -241,22 +262,42 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<bool> IsTokenBlacklistedAsync(string token)
+    private static string[] BuildPhoneCandidates(string normalizedPhone)
     {
-        return await _context.BlacklistedTokens
-            .AnyAsync(bt => bt.Token == token && bt.ExpiresAt > DateTime.UtcNow);
+        return
+        [
+            normalizedPhone,
+            $"+84{normalizedPhone[1..]}",
+            $"84{normalizedPhone[1..]}"
+        ];
     }
 
-    private async Task CleanupExpiredBlacklistedTokensAsync()
+    private static bool TryNormalizeVietnamPhone(string? phone, out string normalizedPhone)
     {
-        var expiredTokens = await _context.BlacklistedTokens
-            .Where(bt => bt.ExpiresAt <= DateTime.UtcNow)
-            .ToListAsync();
-
-        if (expiredTokens.Any())
+        normalizedPhone = string.Empty;
+        if (string.IsNullOrWhiteSpace(phone))
         {
-            _context.BlacklistedTokens.RemoveRange(expiredTokens);
-            await _context.SaveChangesAsync();
+            return false;
         }
+
+        var sanitizedPhone = phone.Trim();
+        if (!Regex.IsMatch(sanitizedPhone, @"^\+?[0-9\s\-.()]+$"))
+        {
+            return false;
+        }
+
+        var digits = new string(sanitizedPhone.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("84") && digits.Length == 11)
+        {
+            digits = $"0{digits[2..]}";
+        }
+
+        if (digits.Length != 10 || !digits.StartsWith('0') || !digits.All(char.IsDigit))
+        {
+            return false;
+        }
+
+        normalizedPhone = digits;
+        return true;
     }
 }
