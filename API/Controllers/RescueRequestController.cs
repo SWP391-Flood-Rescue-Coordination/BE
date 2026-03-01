@@ -49,13 +49,14 @@ public class RescueRequestController : ControllerBase
             Address = dto.Address,
             NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? dto.NumberOfPeople,
             Status = "Pending",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AccessCode = userId == null ? Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper() : null
         };
 
         _context.RescueRequests.Add(request);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Tạo yêu cầu cứu hộ thành công", RequestId = request.RequestId });
+        return Ok(new { Success = true, Message = "Tạo yêu cầu cứu hộ thành công", RequestId = request.RequestId, AccessCode = request.AccessCode });
     }
 
     /// <summary>
@@ -209,6 +210,73 @@ public class RescueRequestController : ControllerBase
         }
 
         return Ok(new { Success = true, Data = request });
+    }
+
+    /// <summary>
+    /// Khách vãng lai xem trạng thái yêu cầu qua Access Code
+    /// </summary>
+    [HttpGet("guest/status")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetRequestByAccessCode([FromQuery] int requestId, [FromQuery] string accessCode)
+    {
+        var request = await _context.RescueRequests
+            .Where(r => r.RequestId == requestId && r.AccessCode == accessCode)
+            .Select(r => new RescueRequestResponseDto
+            {
+                RequestId = r.RequestId,
+                Title = r.Title,
+                Description = r.Description,
+                Status = r.Status ?? "Pending",
+                Address = r.Address,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt,
+                NumberOfPeople = r.NumberOfAffectedPeople
+            })
+            .FirstOrDefaultAsync();
+
+        if (request == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu hoặc mã truy cập không đúng" });
+        }
+
+        return Ok(new { Success = true, Data = request });
+    }
+
+    /// <summary>
+    /// Khách vãng lai chỉnh sửa yêu cầu qua Access Code
+    /// </summary>
+    [HttpPut("guest/update/{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateRequestByGuest(int id, [FromQuery] string accessCode, [FromBody] UpdateRescueRequestDto dto)
+    {
+        var request = await _context.RescueRequests
+            .FirstOrDefaultAsync(r => r.RequestId == id && r.AccessCode == accessCode);
+
+        if (request == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu hoặc mã truy cập không đúng" });
+        }
+
+        // Chỉ cho phép chỉnh sửa khi đang ở trạng thái Pending hoặc Verified (trước khi thực hiện cứu hộ)
+        // Tuy nhiên người dùng yêu cầu "chỉnh sửa lại cái request đó và request đó sẽ được lưu vào trong database, nếu chỉnh sửa thì cái request đó sẽ lưu thay đó request chưa chỉnh trước đó"
+        // Nên nếu request đã 'Completed' hay 'Cancelled' thì có lẽ không nên cho sửa.
+        if (request.Status != "Pending" && request.Status != "Verified")
+        {
+            return BadRequest(new { Success = false, Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}" });
+        }
+
+        request.Title = dto.Title ?? request.Title;
+        request.Description = dto.Description ?? request.Description;
+        request.Phone = dto.Phone ?? request.Phone;
+        request.Address = dto.Address ?? request.Address;
+        request.Latitude = dto.Latitude ?? request.Latitude;
+        request.Longitude = dto.Longitude ?? request.Longitude;
+        request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? request.NumberOfAffectedPeople;
+        request.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
     }
 
     /// <summary>

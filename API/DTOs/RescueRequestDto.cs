@@ -26,6 +26,7 @@ public class UpdateRescueRequestDto
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     public string? Address { get; set; }
+    public int? NumberOfAffectedPeople { get; set; }
 }
 
 public class RescueRequestResponseDto
@@ -42,6 +43,7 @@ public class RescueRequestResponseDto
     public string? Address { get; set; }
     public int? PriorityLevelId { get; set; } 
     public string Status { get; set; } = string.Empty;
+    public string? AccessCode { get; set; } = string.Empty;
     
     public int? NumberOfPeople { get; set; }
     public int? NumberOfAffectedPeople { get; set; }

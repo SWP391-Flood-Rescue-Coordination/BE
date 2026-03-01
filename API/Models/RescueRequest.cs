@@ -31,6 +31,8 @@ public class RescueRequest
     public DateTime? UpdatedAt { get; set; }
     public int? UpdatedBy { get; set; }
 
+    public string? AccessCode { get; set; } = string.Empty;
+
     // Navigation properties
     public virtual User? Citizen { get; set; }
     public virtual User? UpdatedByUser { get; set; }

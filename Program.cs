@@ -211,6 +211,12 @@ using (var scope = app.Services.CreateScope())
                 BEGIN
                     ALTER TABLE rescue_requests ADD contact_phone VARCHAR(20);
                 END
+                
+                -- Thêm cột access_code nếu chưa có
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'rescue_requests') AND name = 'access_code')
+                BEGIN
+                    ALTER TABLE rescue_requests ADD access_code NVARCHAR(50);
+                END
 
                 -- Làm cho citizen_id có thể NULL
                 ALTER TABLE rescue_requests ALTER COLUMN citizen_id INT NULL;
