@@ -18,6 +18,24 @@ public class CoordinatorController : ControllerBase
         _context = context;
     }
 
+    [HttpGet("available-teams")]
+    public async Task<IActionResult> GetAvailableTeams()
+    {
+        var teams = await _context.RescueTeams
+            .Where(t => t.Status == "AVAILABLE" || t.Status == "Available")
+            .OrderBy(t => t.TeamName)
+            .Select(t => new
+            {
+                t.TeamId,
+                t.TeamName,
+                t.Status,
+                t.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Count = teams.Count, Data = teams });
+    }
+
     /// <summary>
     /// Xem toàn bộ các yêu cầu cứu hộ (đã đăng nhập và vãng lai)
     /// Hỗ trợ lọc theo trạng thái và mức độ ưu tiên

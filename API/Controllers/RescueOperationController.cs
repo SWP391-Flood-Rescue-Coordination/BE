@@ -56,7 +56,7 @@ public class RescueOperationController : ControllerBase
         if (rescueTeam == null)
             return NotFound(new { Success = false, Message = $"Không tìm thấy rescue team với ID = {dto.TeamId}" });
 
-        if (rescueTeam.Status != "AVAILABLE")
+        if (!string.Equals(rescueTeam.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { Success = false, Message = $"Rescue team phải có status = AVAILABLE. Status hiện tại: {rescueTeam.Status}" });
 
         // --- Validate vehicles.status = Available (nếu có) ---
