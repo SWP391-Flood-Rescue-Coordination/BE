@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\buildMultiTargeting\Flood Rescue Coordination.props" />
-</Project>

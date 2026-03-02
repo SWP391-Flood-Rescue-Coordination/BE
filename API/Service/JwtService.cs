@@ -30,9 +30,9 @@ public class JwtService : IJwtService
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
             new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
             new Claim(ClaimTypes.Role, user.Role),
-            new Claim("fullName", user.FullName),
+            new Claim("fullName", user.FullName ?? ""),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };
@@ -50,37 +50,10 @@ public class JwtService : IJwtService
 
     public string GenerateRefreshToken()
     {
-        var randomNumber = new byte[64];
+        var randomNumber = new byte[32];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomNumber);
         return Convert.ToBase64String(randomNumber);
-    }
-
-    public ClaimsPrincipal? ValidateToken(string token)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var secretKey = _configuration["JwtSettings:SecretKey"]!;
-        var key = Encoding.UTF8.GetBytes(secretKey);
-
-        try
-        {
-            var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = true,
-                ValidIssuer = _configuration["JwtSettings:Issuer"],
-                ValidateAudience = true,
-                ValidAudience = _configuration["JwtSettings:Audience"],
-                ValidateLifetime = false // Không kiểm tra expiration khi refresh
-            }, out _);
-
-            return principal;
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     public DateTime GetTokenExpiration(string token)
@@ -88,5 +61,29 @@ public class JwtService : IJwtService
         var tokenHandler = new JwtSecurityTokenHandler();
         var jwtToken = tokenHandler.ReadJwtToken(token);
         return jwtToken.ValidTo;
+    }
+
+    public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+    {
+        var secretKey = _configuration["JwtSettings:SecretKey"]!;
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = false,
+            ValidateIssuer = false,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+            ValidateLifetime = false // Quan trọng: không validate lifetime để lấy principal từ token đã hết hạn
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
+
+        if (securityToken is not JwtSecurityToken jwtSecurityToken || 
+            !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+        {
+            return null;
+        }
+
+        return principal;
     }
 }

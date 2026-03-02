@@ -1,6 +1,5 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace Flood_Rescue_Coordination.API.DTOs;
+
 public class AuthResponse
 {
     public bool Success { get; set; }
