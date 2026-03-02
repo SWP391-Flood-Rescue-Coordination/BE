@@ -56,7 +56,7 @@ public class RescueOperationController : ControllerBase
         if (rescueTeam == null)
             return NotFound(new { Success = false, Message = $"Không tìm thấy rescue team với ID = {dto.TeamId}" });
 
-        if (rescueTeam.Status != "AVAILABLE")
+        if (!string.Equals(rescueTeam.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { Success = false, Message = $"Rescue team phải có status = AVAILABLE. Status hiện tại: {rescueTeam.Status}" });
 
         // --- Validate vehicles.status = Available (nếu có) ---
@@ -188,9 +188,9 @@ public class RescueOperationController : ControllerBase
         if (!isMember)
             return Forbid(); // 403 - không phải thành viên của team này
 
-        // Lấy danh sách operations của team, join với rescue_requests và vehicles
+        // Lấy danh sách operations của team (Chỉ lấy những cái đang thực hiện: Assigned hoặc In Progress)
         var operations = await _context.RescueOperations
-            .Where(op => op.TeamId == teamId)
+            .Where(op => op.TeamId == teamId && (op.Status == "Assigned" || op.Status == "In Progress"))
             .OrderByDescending(op => op.AssignedAt)
             .Select(op => new TeamOperationDto
             {
@@ -208,6 +208,16 @@ public class RescueOperationController : ControllerBase
                 RequestDescription = _context.RescueRequests
                                         .Where(r => r.RequestId == op.RequestId)
                                         .Select(r => r.Description)
+                                        .FirstOrDefault(),
+                RequestPhone       = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Phone)
+                                        .FirstOrDefault(),
+                PriorityName       = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => (r.PriorityLevelId == 1 ? "CAO" : 
+                                                     r.PriorityLevelId == 2 ? "TRUNG BÌNH" :
+                                                     r.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG"))
                                         .FirstOrDefault(),
                 Latitude           = _context.RescueRequests
                                         .Where(r => r.RequestId == op.RequestId)
@@ -265,6 +275,16 @@ public class RescueOperationController : ControllerBase
                                         .Where(r => r.RequestId == op.RequestId)
                                         .Select(r => r.Description)
                                         .FirstOrDefault(),
+                RequestPhone       = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => r.Phone)
+                                        .FirstOrDefault(),
+                PriorityName       = _context.RescueRequests
+                                        .Where(r => r.RequestId == op.RequestId)
+                                        .Select(r => (r.PriorityLevelId == 1 ? "CAO" : 
+                                                     r.PriorityLevelId == 2 ? "TRUNG BÌNH" :
+                                                     r.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG"))
+                                        .FirstOrDefault(),
                 Latitude           = _context.RescueRequests
                                         .Where(r => r.RequestId == op.RequestId)
                                         .Select(r => r.Latitude)
@@ -290,5 +310,140 @@ public class RescueOperationController : ControllerBase
             return NotFound(new { Success = false, Message = $"Không tìm thấy operation với ID = {operationId}" });
 
         return Ok(new { Success = true, Data = operation });
+    }
+
+    /// <summary>
+    /// RESCUE_TEAM - Cập nhật trạng thái của nhiệm vụ (In Progress hoặc Completed)
+    /// </summary>
+    [HttpPatch("{id}/status")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> UpdateOperationStatus(int id, [FromBody] UpdateOperationStatusDto dto)
+    {
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var now = DateTime.UtcNow;
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+        IActionResult? result = null;
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            // 1. Load operation, request, team
+            var operation = await _context.RescueOperations
+                .Include(op => op.Request)
+                .Include(op => op.Team)
+                .FirstOrDefaultAsync(op => op.OperationId == id);
+
+            if (operation == null)
+            {
+                result = NotFound(new { Success = false, Message = $"Không tìm thấy operation với ID {id}" });
+                return;
+            }
+
+            // 2. Kiểm tra user là thành viên active của team
+            var isMember = await _context.RescueTeamMembers
+                .AnyAsync(m => m.TeamId == operation.TeamId && m.UserId == currentUserId && m.IsActive);
+
+            if (!isMember)
+            {
+                result = Forbid(); // 403 - không phải thành viên của team này
+                return;
+            }
+
+            // 3. Quy trình chuyển đổi và Conditional Update (Database level concept via transaction check)
+            var currentOpStatus = operation.Status;
+
+            // Normalize input - chuyển đổi mapping từ prompt sang PascalCase dùng trong DB
+            string targetStatus = dto.NewStatus;
+            if (targetStatus.Equals("IN_PROGRESS", StringComparison.OrdinalIgnoreCase)) targetStatus = "In Progress";
+            if (targetStatus.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Completed";
+
+            if (targetStatus == "In Progress")
+            {
+                // Kiểm tra status hiện tại (Assigned)
+                if (currentOpStatus != "Assigned")
+                {
+                    result = Conflict(new { Success = false, Message = $"Không thể bắt đầu nhiệm vụ. Trạng thái hiện tại: {currentOpStatus}" });
+                    return;
+                }
+
+                operation.Status = "In Progress";
+                operation.StartedAt = now;
+                
+                if (operation.Request != null)
+                {
+                    operation.Request.Status = "In Progress";
+                    operation.Request.UpdatedAt = now;
+                    operation.Request.UpdatedBy = currentUserId;
+                }
+            }
+            else if (targetStatus == "Completed")
+            {
+                // Kiểm tra status hiện tại (In Progress)
+                if (currentOpStatus != "In Progress")
+                {
+                    result = Conflict(new { Success = false, Message = $"Không thể hoàn tất nhiệm vụ. Trạng thái hiện tại: {currentOpStatus}" });
+                    return;
+                }
+
+                operation.Status = "Completed";
+                operation.CompletedAt = now;
+
+                if (operation.Request != null)
+                {
+                    operation.Request.Status = "Completed";
+                    operation.Request.UpdatedAt = now;
+                    operation.Request.UpdatedBy = currentUserId;
+                }
+
+                // Cập nhật đội và phương tiện sang Available
+                if (operation.Team != null)
+                {
+                    operation.Team.Status = "AVAILABLE";
+                }
+
+                // Giải phóng phương tiện
+                var vehicleIds = await _context.RescueOperationVehicles
+                    .Where(rov => rov.OperationId == operation.OperationId)
+                    .Select(rov => rov.VehicleId)
+                    .ToListAsync();
+
+                if (vehicleIds.Any())
+                {
+                    var vehiclesToRelease = await _context.Vehicles
+                        .Where(v => vehicleIds.Contains(v.VehicleId))
+                        .ToListAsync();
+
+                    foreach (var v in vehiclesToRelease)
+                    {
+                        v.Status = "Available";
+                        v.UpdatedAt = now;
+                    }
+                }
+            }
+            else
+            {
+                result = BadRequest(new { Success = false, Message = "Trạng thái mới không hợp lệ. Chỉ chấp nhận IN_PROGRESS hoặc COMPLETED." });
+                return;
+            }
+
+            // 4. Lưu lịch sử cho Request
+            _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
+            {
+                RequestId = operation.RequestId,
+                Status = targetStatus,
+                Notes = $"Đội cứu hộ cập nhật trạng thái nhiệm vụ sang {targetStatus}",
+                UpdatedBy = currentUserId,
+                UpdatedAt = now
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            result = Ok(new { Success = true, Message = $"Cập nhật trạng thái sang {targetStatus} thành công" });
+        });
+
+        return result ?? StatusCode(500, new { Success = false, Message = "Lỗi hệ thống khi cập nhật trạng thái" });
     }
 }

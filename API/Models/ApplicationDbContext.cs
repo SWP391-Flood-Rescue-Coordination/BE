@@ -14,10 +14,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<Vehicle> Vehicles { get; set; }
     public DbSet<VehicleType> VehicleTypes { get; set; }
     public DbSet<RescueTeam> RescueTeams { get; set; }
+    public DbSet<RescueTeamMember> RescueTeamMembers { get; set; }
     public DbSet<RescueOperation> RescueOperations { get; set; }
     public DbSet<RescueOperationVehicle> RescueOperationVehicles { get; set; }
     public DbSet<RescueRequestStatusHistory> RescueRequestStatusHistories { get; set; }
-    public DbSet<RescueTeamMember> RescueTeamMembers { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,9 +53,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Latitude).HasColumnName("latitude").HasPrecision(9, 6);
             entity.Property(e => e.Longitude).HasColumnName("longitude").HasPrecision(9, 6);
             entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(300);
+            entity.Property(e => e.ContactName).HasColumnName("contact_name").HasMaxLength(100);
+            entity.Property(e => e.ContactPhone).HasColumnName("contact_phone").HasMaxLength(20);
             entity.Property(e => e.PriorityLevelId).HasColumnName("priority_level_id");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
             entity.Property(e => e.NumberOfAffectedPeople).HasColumnName("number_of_affected_people");
+            entity.Property(e => e.AccessCode).HasColumnName("access_code").HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
@@ -107,6 +112,26 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
         });
 
+        modelBuilder.Entity<RescueTeamMember>(entity =>
+        {
+            entity.ToTable("rescue_team_members");
+            entity.HasKey(e => new { e.TeamId, e.UserId });
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.MemberRole).HasColumnName("member_role").HasMaxLength(20);
+            entity.Property(e => e.JoinedAt).HasColumnName("joined_at");
+            entity.Property(e => e.LeftAt).HasColumnName("left_at");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+
+            entity.HasOne(e => e.Team)
+                  .WithMany()
+                  .HasForeignKey(e => e.TeamId);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId);
+        });
+
+
         modelBuilder.Entity<RescueOperation>(entity =>
         {
             entity.ToTable("rescue_operations");
@@ -121,6 +146,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
             entity.Property(e => e.NumberOfAffectedPeople).HasColumnName("number_of_affected_people");
             entity.Property(e => e.EstimatedTime).HasColumnName("estimated_time");
+
+            entity.HasOne(e => e.Request)
+                  .WithMany()
+                  .HasForeignKey(e => e.RequestId);
+            entity.HasOne(e => e.Team)
+                  .WithMany()
+                  .HasForeignKey(e => e.TeamId);
         });
 
         modelBuilder.Entity<RescueOperationVehicle>(entity =>
@@ -145,16 +177,32 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         });
 
-        modelBuilder.Entity<RescueTeamMember>(entity =>
+        modelBuilder.Entity<RefreshToken>(entity =>
         {
-            entity.ToTable("rescue_team_members");
-            entity.HasKey(e => new { e.TeamId, e.UserId });
-            entity.Property(e => e.TeamId).HasColumnName("team_id");
+            entity.ToTable("refresh_tokens");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.MemberRole).HasColumnName("member_role").HasMaxLength(20);
-            entity.Property(e => e.IsActive).HasColumnName("is_active");
-            entity.Property(e => e.JoinedAt).HasColumnName("joined_at");
-            entity.Property(e => e.LeftAt).HasColumnName("left_at");
+            entity.Property(e => e.Token).HasColumnName("token").HasMaxLength(500);
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<BlacklistedToken>(entity =>
+        {
+            entity.ToTable("blacklisted_tokens");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Token).HasColumnName("token").HasMaxLength(1000);
+            entity.Property(e => e.BlacklistedAt).HasColumnName("blacklisted_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            
+            entity.HasIndex(e => e.Token);
         });
     }
 

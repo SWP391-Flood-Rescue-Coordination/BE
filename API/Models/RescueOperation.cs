@@ -12,4 +12,8 @@ public class RescueOperation
     public string Status { get; set; } = "Assigned";
     public int? NumberOfAffectedPeople { get; set; }
     public int? EstimatedTime { get; set; }
+
+    // Navigation properties
+    public virtual RescueRequest? Request { get; set; }
+    public virtual RescueTeam? Team { get; set; }
 }

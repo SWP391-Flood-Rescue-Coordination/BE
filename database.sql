@@ -2,13 +2,7 @@ USE [master]
 GO
 /****** Object:  Database [DisasterRescueReliefDB]    Script Date: 2/26/2026 1:30:51 PM ******/
 CREATE DATABASE [DisasterRescueReliefDB]
- CONTAINMENT = NONE
- ON  PRIMARY 
-( NAME = N'DisasterRescueReliefDB', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL15.DATNGUYEN\MSSQL\DATA\DisasterRescueReliefDB.mdf' , SIZE = 8192KB , MAXSIZE = UNLIMITED, FILEGROWTH = 65536KB )
- LOG ON 
-( NAME = N'DisasterRescueReliefDB_log', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL15.DATNGUYEN\MSSQL\DATA\DisasterRescueReliefDB_log.ldf' , SIZE = 8192KB , MAXSIZE = 2048GB , FILEGROWTH = 65536KB )
- WITH CATALOG_COLLATION = DATABASE_DEFAULT
-GO
+ GO
 ALTER DATABASE [DisasterRescueReliefDB] SET COMPATIBILITY_LEVEL = 150
 GO
 IF (1 = FULLTEXTSERVICEPROPERTY('IsFullTextInstalled'))

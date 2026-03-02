@@ -38,6 +38,8 @@ public class TeamOperationDto
     public string? RequestTitle { get; set; }
     public string? RequestAddress { get; set; }
     public string? RequestDescription { get; set; }
+    public string? RequestPhone { get; set; }
+    public string? PriorityName { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
 
@@ -50,5 +52,11 @@ public class TeamOperationDto
 
     /// <summary>Danh sách vehicle_id được gán vào operation này</summary>
     public List<int> VehicleIds { get; set; } = new();
+}
+
+public class UpdateOperationStatusDto
+{
+    /// <summary>Trạng thái mới: IN_PROGRESS hoặc COMPLETED</summary>
+    public string NewStatus { get; set; } = string.Empty;
 }
 

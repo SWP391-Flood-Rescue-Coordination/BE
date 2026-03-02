@@ -49,6 +49,40 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Làm mới access token
+    /// </summary>
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken([FromBody] string refreshToken)
+    {
+        var response = await _authService.RefreshTokenAsync(refreshToken);
+        
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Đăng xuất
+    /// </summary>
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] string? refreshToken)
+    {
+        var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+        var response = await _authService.LogoutAsync(accessToken, refreshToken);
+        
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
     /// Lấy thông tin user hiện tại
     /// </summary>
     [Authorize]
