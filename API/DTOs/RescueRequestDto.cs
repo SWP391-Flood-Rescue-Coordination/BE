@@ -3,7 +3,6 @@ namespace Flood_Rescue_Coordination.API.DTOs;
 public class CreateRescueRequestDto
 {
     public string? Title { get; set; }
-    public string? Phone { get; set; }
     public string? Description { get; set; }
     
     // Support for guest contact info from Program.cs patches
@@ -15,18 +14,17 @@ public class CreateRescueRequestDto
     public string? Address { get; set; }
     
     public int? NumberOfPeople { get; set; }
-    public int? NumberOfAffectedPeople { get; set; }
 }
 
 public class UpdateRescueRequestDto
 {
     public string? Title { get; set; }
-    public string? Phone { get; set; }
+    public string? ContactPhone { get; set; }
     public string? Description { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     public string? Address { get; set; }
-    public int? NumberOfAffectedPeople { get; set; }
+    public int? NumberOfPeople { get; set; }
 }
 
 public class RescueRequestResponseDto

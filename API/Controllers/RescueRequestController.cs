@@ -30,24 +30,19 @@ public class RescueRequestController : ControllerBase
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         int? userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : null;
         
-        // If guest, ensure contact info is provided
-        if (userId == null && string.IsNullOrEmpty(dto.ContactPhone))
-        {
-            return BadRequest(new { Success = false, Message = "Số điện thoại là bắt buộc cho khách vãng lai" });
-        }
 
         var request = new RescueRequest
         {
             CitizenId = userId,
             ContactName = userId == null ? dto.ContactName : null,
-            ContactPhone = userId == null ? dto.ContactPhone : dto.Phone,
+            ContactPhone = dto.ContactPhone,
             Title = dto.Title,
-            Phone = dto.Phone ?? dto.ContactPhone,
+            Phone = dto.ContactPhone,
             Description = dto.Description,
             Latitude = dto.Latitude,
             Longitude = dto.Longitude,
             Address = dto.Address,
-            NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? dto.NumberOfPeople,
+            NumberOfAffectedPeople = dto.NumberOfPeople, // Using NumberOfPeople from DTO
             Status = "Pending",
             CreatedAt = DateTime.UtcNow,
             AccessCode = userId == null ? Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper() : null
@@ -102,16 +97,26 @@ public class RescueRequestController : ControllerBase
     /// Lấy yêu cầu cứu hộ mới nhất của citizen đang đăng nhập
     /// </summary>
     [HttpGet("my-latest-request")]
-    [Authorize(Roles = "CITIZEN")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetMyLatestRequest()
     {
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
         
-        var userId = int.Parse(userIdString);
-        
-        var latestRequest = await _context.RescueRequests
-            .Where(r => r.CitizenId == userId)
+        var query = _context.RescueRequests.AsQueryable();
+
+        if (!string.IsNullOrEmpty(userIdString))
+        {
+            // Nếu đã đăng nhập, lấy theo UserId
+            int userId = int.Parse(userIdString);
+            query = query.Where(r => r.CitizenId == userId);
+        }
+        else
+        {
+            // Nếu là khách vãng lai, lấy yêu cầu mới nhất chưa có CitizenId gắn vào
+            query = query.Where(r => r.CitizenId == null);
+        }
+
+        var latestRequest = await query
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new LatestRescueRequestDto
             {
@@ -126,7 +131,7 @@ public class RescueRequestController : ControllerBase
 
         if (latestRequest == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ nào" });
         }
 
         return Ok(new { Success = true, Data = latestRequest });
@@ -267,11 +272,11 @@ public class RescueRequestController : ControllerBase
 
         request.Title = dto.Title ?? request.Title;
         request.Description = dto.Description ?? request.Description;
-        request.Phone = dto.Phone ?? request.Phone;
+        request.Phone = dto.ContactPhone ?? request.Phone;
         request.Address = dto.Address ?? request.Address;
         request.Latitude = dto.Latitude ?? request.Latitude;
         request.Longitude = dto.Longitude ?? request.Longitude;
-        request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? request.NumberOfAffectedPeople;
+        request.NumberOfAffectedPeople = dto.NumberOfPeople ?? request.NumberOfAffectedPeople;
         request.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

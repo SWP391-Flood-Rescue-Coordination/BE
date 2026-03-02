@@ -220,6 +220,15 @@ using (var scope = app.Services.CreateScope())
 
                 -- Làm cho citizen_id có thể NULL
                 ALTER TABLE rescue_requests ALTER COLUMN citizen_id INT NULL;
+
+                -- Cập nhật index UX_rescue_requests_one_open_per_citizen để hỗ trợ nhiều khách vãng lai (citizen_id IS NULL)
+                IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'UX_rescue_requests_one_open_per_citizen' AND object_id = OBJECT_ID('rescue_requests'))
+                BEGIN
+                    DROP INDEX UX_rescue_requests_one_open_per_citizen ON rescue_requests;
+                END
+
+                CREATE UNIQUE NONCLUSTERED INDEX UX_rescue_requests_one_open_per_citizen ON rescue_requests(citizen_id)
+                WHERE ([status]<>'Completed' AND [status]<>'Cancelled' AND [status]<>'Duplicate' AND [citizen_id] IS NOT NULL);
             END
         ");
 
