@@ -119,7 +119,7 @@ public class RescueTeamController : ControllerBase
         {
             var team = operation.Team;
             if (team != null)
-                team.Status = "Available";
+                team.Status = "AVAILABLE";
 
             // Cập nhật tất cả vehicles trong operation này về Available
             var operationVehicles = await _context.RescueOperationVehicles

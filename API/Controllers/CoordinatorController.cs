@@ -18,6 +18,30 @@ public class CoordinatorController : ControllerBase
         _context = context;
     }
 
+    [HttpGet("status-with-teams")]
+    public async Task<IActionResult> GetTeamsWithStatus([FromQuery] string? status = null)
+    {
+        var query = _context.RescueTeams.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(t => t.Status == status);
+        }
+
+        var teams = await query
+            .OrderBy(t => t.TeamName)
+            .Select(t => new
+            {
+                t.TeamId,
+                t.TeamName,
+                t.Status,
+                t.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Count = teams.Count, Data = teams });
+    }
+
     /// <summary>
     /// Xem toàn bộ các yêu cầu cứu hộ (đã đăng nhập và vãng lai)
     /// Hỗ trợ lọc theo trạng thái và mức độ ưu tiên
