@@ -7,9 +7,12 @@ namespace Flood_Rescue_Coordination.API.DTOs;
 public class UpdateMissionStatusDto
 {
     /// <summary>
-    /// Trạng thái mới của nhiệm vụ: "IN_PROGRESS" hoặc "COMPLETED"
+    /// Trạng thái mới của nhiệm vụ: "IN_PROGRESS", "COMPLETED" hoặc "FAILED"
     /// </summary>
     public string NewStatus { get; set; } = string.Empty;
+
+    /// <summary>Lý do (Bắt buộc nếu trạng thái là FAILED)</summary>
+    public string? Reason { get; set; }
 }
 
 public class MissionStatusResponseDto

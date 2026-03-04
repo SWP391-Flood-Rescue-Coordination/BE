@@ -79,7 +79,6 @@ public class CoordinatorController : ControllerBase
                 Address = r.Address,
                 PriorityLevelId = r.PriorityLevelId,
                 Status = r.Status,
-                NumberOfPeople = r.NumberOfAffectedPeople,
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt
             })

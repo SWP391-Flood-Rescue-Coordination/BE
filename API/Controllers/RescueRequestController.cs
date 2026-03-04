@@ -44,14 +44,13 @@ public class RescueRequestController : ControllerBase
             Address = dto.Address,
             NumberOfAffectedPeople = dto.NumberOfPeople, // Using NumberOfPeople from DTO
             Status = "Pending",
-            CreatedAt = DateTime.UtcNow,
-            AccessCode = userId == null ? Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper() : null
+            CreatedAt = DateTime.UtcNow
         };
 
         _context.RescueRequests.Add(request);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Tạo yêu cầu cứu hộ thành công", RequestId = request.RequestId, AccessCode = request.AccessCode });
+        return Ok(new { Success = true, Message = "Tạo yêu cầu cứu hộ thành công", RequestId = request.RequestId });
     }
 
     /// <summary>
@@ -76,14 +75,12 @@ public class RescueRequestController : ControllerBase
                 CitizenName = r.Citizen != null ? r.Citizen.FullName : "",
                 CitizenPhone = r.Citizen != null ? r.Citizen.Phone : "",
                 Title = r.Title,
-                Phone = r.Phone,
                 Description = r.Description,
                 Latitude = r.Latitude,
                 Longitude = r.Longitude,
                 Address = r.Address,
                 PriorityLevelId = r.PriorityLevelId,
                 Status = r.Status ?? "Pending",
-                NumberOfPeople = r.NumberOfAffectedPeople,
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
@@ -124,6 +121,7 @@ public class RescueRequestController : ControllerBase
                 Description = r.Description,
                 Address = r.Address,
                 Status = r.Status ?? "Pending",
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
             })
@@ -162,14 +160,12 @@ public class RescueRequestController : ControllerBase
                 CitizenName = r.Citizen != null ? (r.Citizen.FullName ?? "") : (r.ContactName ?? ""),
                 CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
                 Title = r.Title,
-                Phone = r.Phone,
                 Description = r.Description,
                 Latitude = r.Latitude,
                 Longitude = r.Longitude,
                 Address = r.Address,
                 PriorityLevelId = r.PriorityLevelId,
                 Status = r.Status ?? "Pending",
-                NumberOfPeople = r.NumberOfAffectedPeople,
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
@@ -195,14 +191,12 @@ public class RescueRequestController : ControllerBase
                 CitizenName = r.Citizen != null ? r.Citizen.FullName : r.ContactName,
                 CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
                 Title = r.Title,
-                Phone = r.Phone,
                 Description = r.Description,
                 Latitude = r.Latitude,
                 Longitude = r.Longitude,
                 Address = r.Address,
                 PriorityLevelId = r.PriorityLevelId,
                 Status = r.Status ?? "Pending",
-                NumberOfPeople = r.NumberOfAffectedPeople,
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
@@ -218,48 +212,48 @@ public class RescueRequestController : ControllerBase
     }
 
     /// <summary>
-    /// Khách vãng lai xem trạng thái yêu cầu qua Access Code
+    /// Khách vãng lai xem trạng thái yêu cầu qua ID
     /// </summary>
     [HttpGet("guest/status")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetRequestByAccessCode([FromQuery] int requestId, [FromQuery] string accessCode)
+    public async Task<IActionResult> GetRequestByIdForGuest([FromQuery] int requestId)
     {
         var request = await _context.RescueRequests
-            .Where(r => r.RequestId == requestId && r.AccessCode == accessCode)
+            .Where(r => r.RequestId == requestId)
             .Select(r => new RescueRequestResponseDto
             {
                 RequestId = r.RequestId,
                 Title = r.Title,
                 Description = r.Description,
                 Status = r.Status ?? "Pending",
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 Address = r.Address,
                 CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt,
-                NumberOfPeople = r.NumberOfAffectedPeople
+                UpdatedAt = r.UpdatedAt
             })
             .FirstOrDefaultAsync();
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu hoặc mã truy cập không đúng" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         return Ok(new { Success = true, Data = request });
     }
 
     /// <summary>
-    /// Khách vãng lai chỉnh sửa yêu cầu qua Access Code
+    /// Khách vãng lai chỉnh sửa yêu cầu qua ID
     /// </summary>
     [HttpPut("guest/update/{id}")]
     [AllowAnonymous]
-    public async Task<IActionResult> UpdateRequestByGuest(int id, [FromQuery] string accessCode, [FromBody] UpdateRescueRequestDto dto)
+    public async Task<IActionResult> UpdateRequestByGuest(int id, [FromBody] UpdateRescueRequestDto dto)
     {
         var request = await _context.RescueRequests
-            .FirstOrDefaultAsync(r => r.RequestId == id && r.AccessCode == accessCode);
+            .FirstOrDefaultAsync(r => r.RequestId == id);
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu hoặc mã truy cập không đúng" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         // Chỉ cho phép chỉnh sửa khi đang ở trạng thái Pending hoặc Verified (trước khi thực hiện cứu hộ)
