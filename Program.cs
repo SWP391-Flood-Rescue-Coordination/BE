@@ -212,21 +212,17 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE rescue_requests ADD contact_phone VARCHAR(20);
                 END
                 
-                -- Thêm cột access_code nếu chưa có
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'rescue_requests') AND name = 'access_code')
-                BEGIN
-                    ALTER TABLE rescue_requests ADD access_code NVARCHAR(50);
-                END
 
-                -- Làm cho citizen_id có thể NULL
-                ALTER TABLE rescue_requests ALTER COLUMN citizen_id INT NULL;
-
-                -- Cập nhật index UX_rescue_requests_one_open_per_citizen để hỗ trợ nhiều khách vãng lai (citizen_id IS NULL)
+                -- 1. Xóa index cũ trước nếu có (để có thể alter cột)
                 IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'UX_rescue_requests_one_open_per_citizen' AND object_id = OBJECT_ID('rescue_requests'))
                 BEGIN
                     DROP INDEX UX_rescue_requests_one_open_per_citizen ON rescue_requests;
                 END
 
+                -- 2. Làm cho citizen_id có thể NULL
+                ALTER TABLE rescue_requests ALTER COLUMN citizen_id INT NULL;
+
+                -- 3. Tạo lại index mới hỗ trợ khách vãng lai (citizen_id IS NULL)
                 CREATE UNIQUE NONCLUSTERED INDEX UX_rescue_requests_one_open_per_citizen ON rescue_requests(citizen_id)
                 WHERE ([status]<>'Completed' AND [status]<>'Cancelled' AND [status]<>'Duplicate' AND [citizen_id] IS NOT NULL);
             END

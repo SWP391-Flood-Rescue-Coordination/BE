@@ -34,16 +34,12 @@ public class RescueRequestResponseDto
     public string? CitizenName { get; set; } = string.Empty;
     public string? CitizenPhone { get; set; } = string.Empty;
     public string? Title { get; set; } = string.Empty;
-    public string? Phone { get; set; }
     public string? Description { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     public string? Address { get; set; }
     public int? PriorityLevelId { get; set; } 
     public string Status { get; set; } = string.Empty;
-    public string? AccessCode { get; set; } = string.Empty;
-    
-    public int? NumberOfPeople { get; set; }
     public int? NumberOfAffectedPeople { get; set; }
     
     public DateTime CreatedAt { get; set; }
@@ -90,6 +86,7 @@ public class LatestRescueRequestDto
     public string? Description { get; set; }
     public string? Address { get; set; }
     public string Status { get; set; } = string.Empty;
+    public int? NumberOfAffectedPeople { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

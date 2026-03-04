@@ -358,6 +358,7 @@ public class RescueOperationController : ControllerBase
             string targetStatus = dto.NewStatus;
             if (targetStatus.Equals("IN_PROGRESS", StringComparison.OrdinalIgnoreCase)) targetStatus = "In Progress";
             if (targetStatus.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Completed";
+            if (targetStatus.Equals("FAILED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Failed";
 
             if (targetStatus == "In Progress")
             {
@@ -422,9 +423,61 @@ public class RescueOperationController : ControllerBase
                     }
                 }
             }
+            else if (targetStatus == "Failed")
+            {
+                // Bắt buộc phải có lý do
+                if (string.IsNullOrWhiteSpace(dto.Reason))
+                {
+                    result = BadRequest(new { Success = false, Message = "Bắt buộc phải nhập lý do" });
+                    return;
+                }
+
+                // Kiểm tra status hiện tại (Chỉ cho phép fail khi đang Assigned hoặc In Progress)
+                if (currentOpStatus != "Assigned" && currentOpStatus != "In Progress")
+                {
+                    result = Conflict(new { Success = false, Message = $"Không thể cập nhật thất bại. Trạng thái hiện tại: {currentOpStatus}" });
+                    return;
+                }
+
+                operation.Status = "Failed";
+                operation.CompletedAt = now; 
+
+                if (operation.Request != null)
+                {
+                    // Khi thất bại, đưa Request về lại trạng thái Verified để có thể phân công đội khác
+                    operation.Request.Status = "Verified";
+                    operation.Request.UpdatedAt = now;
+                    operation.Request.UpdatedBy = currentUserId;
+                }
+
+                // Cập nhật đội và phương tiện sang Available
+                if (operation.Team != null)
+                {
+                    operation.Team.Status = "AVAILABLE";
+                }
+
+                // Giải phóng phương tiện
+                var vehicleIds = await _context.RescueOperationVehicles
+                    .Where(rov => rov.OperationId == operation.OperationId)
+                    .Select(rov => rov.VehicleId)
+                    .ToListAsync();
+
+                if (vehicleIds.Any())
+                {
+                    var vehiclesToRelease = await _context.Vehicles
+                        .Where(v => vehicleIds.Contains(v.VehicleId))
+                        .ToListAsync();
+
+                    foreach (var v in vehiclesToRelease)
+                    {
+                        v.Status = "Available";
+                        v.UpdatedAt = now;
+                    }
+                }
+            }
             else
             {
-                result = BadRequest(new { Success = false, Message = "Trạng thái mới không hợp lệ. Chỉ chấp nhận IN_PROGRESS hoặc COMPLETED." });
+                result = BadRequest(new { Success = false, Message = "Trạng thái mới không hợp lệ. Chỉ chấp nhận IN_PROGRESS, COMPLETED hoặc FAILED." });
                 return;
             }
 
@@ -433,7 +486,9 @@ public class RescueOperationController : ControllerBase
             {
                 RequestId = operation.RequestId,
                 Status = targetStatus,
-                Notes = $"Đội cứu hộ cập nhật trạng thái nhiệm vụ sang {targetStatus}",
+                Notes = targetStatus == "Failed" 
+                        ? $"Nhiệm vụ thất bại. Lý do: {dto.Reason}" 
+                        : $"Đội cứu hộ cập nhật trạng thái nhiệm vụ sang {targetStatus}",
                 UpdatedBy = currentUserId,
                 UpdatedAt = now
             });
