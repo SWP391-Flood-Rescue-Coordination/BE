@@ -1,4 +1,4 @@
-using Flood_Rescue_Coordination.API.DTOs;
+                using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -415,30 +415,32 @@ public class RescueRequestController : ControllerBase
     [Authorize(Roles = "MANAGER,ADMIN,COORDINATOR")]
     public async Task<IActionResult> GetStatistics()
     {
-        var totalRequests = await _context.RescueRequests.CountAsync();
-        
-        var pending = await _context.RescueRequests.CountAsync(r => r.Status == "Pending");
-        var verified = await _context.RescueRequests.CountAsync(r => r.Status == "Verified");
-        var inProgress = await _context.RescueRequests.CountAsync(r => r.Status == "In Progress");
-        var completed = await _context.RescueRequests.CountAsync(r => r.Status == "Completed");
-        var cancelled = await _context.RescueRequests.CountAsync(r => r.Status == "Cancelled");
-        var duplicate = await _context.RescueRequests.CountAsync(r => r.Status == "Duplicate");
+        var totalRequests      = await _context.RescueRequests.CountAsync();
+        var pending            = await _context.RescueRequests.CountAsync(r => r.Status == "Pending");
+        var verified           = await _context.RescueRequests.CountAsync(r => r.Status == "Verified");
+        var inProgress         = await _context.RescueRequests.CountAsync(r => r.Status == "In Progress");
+        var completed          = await _context.RescueRequests.CountAsync(r => r.Status == "Completed");
+        var citizenConfirmed   = await _context.RescueRequests.CountAsync(r => r.Status == "CitizenConfirmed");
+        var cancelled          = await _context.RescueRequests.CountAsync(r => r.Status == "Cancelled");
+        var duplicate          = await _context.RescueRequests.CountAsync(r => r.Status == "Duplicate");
+        var today              = DateTime.UtcNow.Date;
+        var todayRequests      = await _context.RescueRequests.CountAsync(r => r.CreatedAt >= today);
 
-        var today = DateTime.UtcNow.Date;
-        var todayRequests = await _context.RescueRequests.CountAsync(r => r.CreatedAt >= today);
-
-        var stats = new DashboardStatisticsDto
+        return Ok(new
         {
-            TotalRequests = totalRequests,
-            PendingRequests = pending,
-            VerifiedRequests = verified,
-            InProgressRequests = inProgress,
-            CompletedRequests = completed,
-            CancelledRequests = cancelled,
-            DuplicateRequests = duplicate,
-            TodayRequests = todayRequests
-        };
-
-        return Ok(new { Success = true, Data = stats });
+            Success = true,
+            Data = new DashboardStatisticsDto
+            {
+                TotalRequests           = totalRequests,
+                PendingRequests         = pending,
+                VerifiedRequests        = verified,
+                InProgressRequests      = inProgress,
+                CompletedRequests       = completed,
+                CitizenConfirmedRequests = citizenConfirmed,
+                CancelledRequests       = cancelled,
+                DuplicateRequests       = duplicate,
+                TodayRequests           = todayRequests
+            }
+        });
     }
 }

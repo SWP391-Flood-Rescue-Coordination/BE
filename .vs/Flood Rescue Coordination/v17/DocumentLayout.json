@@ -3,16 +3,152 @@
   "WorkspaceRootPath": "D:\\SWP391\\BE\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\flood rescue coordination.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:flood rescue coordination.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\controllers\\rescuerequestcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\controllers\\rescuerequestcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\dtos\\rescuerequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\dtos\\rescuerequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\weatherforecast.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:weatherforecast.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\dtos\\rescueteamdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\dtos\\rescueteamdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\migrations\\applicationdbcontextmodelsnapshot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:migrations\\applicationdbcontextmodelsnapshot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\migrations\\20260122045859_updaterescuerequestschema.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:migrations\\20260122045859_updaterescuerequestschema.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\service\\jwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\service\\jwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\service\\ijwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\service\\ijwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\service\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\service\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\service\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\service\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\vehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\vehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\vehicletype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\vehicletype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\rescueteammember.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\rescueteammember.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\rescueteam.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\rescueteam.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\rescuerequeststatushistory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\rescuerequeststatushistory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\rescuerequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\rescuerequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\rescueoperationvehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\rescueoperationvehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\rescueoperation.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\rescueoperation.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\rescueassignment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\rescueassignment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\refreshtoken.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\refreshtoken.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\blacklistedtoken.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\blacklistedtoken.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\models\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\models\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\dtos\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\dtos\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\dtos\\userinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\dtos\\userinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\dtos\\rescueoperationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\dtos\\rescueoperationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\dtos\\registerrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\dtos\\registerrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\dtos\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\dtos\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\dtos\\authresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\dtos\\authresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\controllers\\weatherforecastcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\controllers\\weatherforecastcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\controllers\\vehiclecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\controllers\\vehiclecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\controllers\\rescueteamcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\controllers\\rescueteamcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\controllers\\rescueoperationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\controllers\\rescueoperationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\controllers\\coordinatorcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\controllers\\coordinatorcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
@@ -21,24 +157,12 @@
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Program Files\\dotnet\\sdk\\10.0.102\\Sdks\\Microsoft.NET.Sdk.StaticWebAssets\\targets\\Microsoft.NET.Sdk.StaticWebAssets.targets||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\api\\controllers\\weatherforecastcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:api\\controllers\\weatherforecastcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\weatherforecast.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:weatherforecast.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\database.sql||{CC5D8DF0-88F4-4BB2-9DBB-B48CEE65C30A}",
       "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:database.sql||{CC5D8DF0-88F4-4BB2-9DBB-B48CEE65C30A}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\flood rescue coordination.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}",
       "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:flood rescue coordination.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|d:\\swp391\\be\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{5492CE7D-205A-B23B-4796-948B327528A0}|Flood Rescue Coordination.csproj|solutionrelative:appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -51,20 +175,6 @@
           "SelectedChildIndex": 6,
           "Children": [
             {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "Program.cs",
-              "DocumentMoniker": "D:\\SWP391\\BE\\Program.cs",
-              "RelativeDocumentMoniker": "Program.cs",
-              "ToolTip": "D:\\SWP391\\BE\\Program.cs",
-              "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAKIAAAAwAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-19T05:43:43.831Z",
-              "IsPinned": true,
-              "EditorCaption": ""
-            },
-            {
               "$type": "Bookmark",
               "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
             },
@@ -73,60 +183,86 @@
               "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             },
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "Microsoft.Common.CurrentVersion.targets",
-              "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
-              "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
-              "ViewState": "AgIAADYWAAAAAAAAAAAewEsWAAAEAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
-              "WhenOpened": "2026-02-02T06:16:39.129Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "Microsoft.NET.Sdk.StaticWebAssets.targets",
-              "DocumentMoniker": "C:\\Program Files\\dotnet\\sdk\\10.0.102\\Sdks\\Microsoft.NET.Sdk.StaticWebAssets\\targets\\Microsoft.NET.Sdk.StaticWebAssets.targets",
-              "ToolTip": "C:\\Program Files\\dotnet\\sdk\\10.0.102\\Sdks\\Microsoft.NET.Sdk.StaticWebAssets\\targets\\Microsoft.NET.Sdk.StaticWebAssets.targets",
-              "ViewState": "AgIAAH0BAAAAAAAAAAAwwKsCAAAEAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
-              "WhenOpened": "2026-02-02T06:10:22.6Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "Flood Rescue Coordination.csproj",
-              "DocumentMoniker": "D:\\SWP391\\BE\\Flood Rescue Coordination.csproj",
-              "RelativeDocumentMoniker": "Flood Rescue Coordination.csproj",
-              "ToolTip": "D:\\SWP391\\BE\\Flood Rescue Coordination.csproj",
-              "RelativeToolTip": "Flood Rescue Coordination.csproj",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAiwBgAAAAKAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2026-02-02T05:50:48.823Z",
-              "EditorCaption": ""
-            },
-            {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "launchSettings.json",
-              "DocumentMoniker": "D:\\SWP391\\BE\\Properties\\launchSettings.json",
-              "RelativeDocumentMoniker": "Properties\\launchSettings.json",
-              "ToolTip": "D:\\SWP391\\BE\\Properties\\launchSettings.json",
-              "RelativeToolTip": "Properties\\launchSettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAfAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-01-19T05:43:39.137Z",
+              "Title": "RescueRequestController.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Controllers\\RescueRequestController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\RescueRequestController.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Controllers\\RescueRequestController.cs",
+              "RelativeToolTip": "API\\Controllers\\RescueRequestController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:13:59.49Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "RescueRequestDto.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\DTOs\\RescueRequestDto.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\RescueRequestDto.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\DTOs\\RescueRequestDto.cs",
+              "RelativeToolTip": "API\\DTOs\\RescueRequestDto.cs",
+              "ViewState": "AgIAAFcAAAAAAAAAAAAYwAAAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:08.553Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 6,
+              "Title": "20260122045859_UpdateRescueRequestSchema.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\Migrations\\20260122045859_UpdateRescueRequestSchema.cs",
+              "RelativeDocumentMoniker": "Migrations\\20260122045859_UpdateRescueRequestSchema.cs",
+              "ToolTip": "D:\\SWP391\\BE\\Migrations\\20260122045859_UpdateRescueRequestSchema.cs",
+              "RelativeToolTip": "Migrations\\20260122045859_UpdateRescueRequestSchema.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:38.372Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ApplicationDbContextModelSnapshot.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\Migrations\\ApplicationDbContextModelSnapshot.cs",
+              "RelativeDocumentMoniker": "Migrations\\ApplicationDbContextModelSnapshot.cs",
+              "ToolTip": "D:\\SWP391\\BE\\Migrations\\ApplicationDbContextModelSnapshot.cs",
+              "RelativeToolTip": "Migrations\\ApplicationDbContextModelSnapshot.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:39.007Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.Development.json",
+              "DocumentMoniker": "D:\\SWP391\\BE\\appsettings.Development.json",
+              "RelativeDocumentMoniker": "appsettings.Development.json",
+              "ToolTip": "D:\\SWP391\\BE\\appsettings.Development.json",
+              "RelativeToolTip": "appsettings.Development.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-02-02T05:48:16.565Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "RescueTeamDto.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\DTOs\\RescueTeamDto.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\RescueTeamDto.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\DTOs\\RescueTeamDto.cs",
+              "RelativeToolTip": "API\\DTOs\\RescueTeamDto.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAAwBUAAABAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:09.609Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "WeatherForecast.cs",
               "DocumentMoniker": "D:\\SWP391\\BE\\WeatherForecast.cs",
               "RelativeDocumentMoniker": "WeatherForecast.cs",
@@ -134,11 +270,421 @@
               "RelativeToolTip": "WeatherForecast.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-02T05:48:25.7Z"
+              "WhenOpened": "2026-02-02T05:48:25.7Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 7,
+              "Title": "JwtService.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Service\\JwtService.cs",
+              "RelativeDocumentMoniker": "API\\Service\\JwtService.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Service\\JwtService.cs",
+              "RelativeToolTip": "API\\Service\\JwtService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:30.093Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "IJwtService.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Service\\IJwtService.cs",
+              "RelativeDocumentMoniker": "API\\Service\\IJwtService.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Service\\IJwtService.cs",
+              "RelativeToolTip": "API\\Service\\IJwtService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:29.171Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "IAuthService.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Service\\IAuthService.cs",
+              "RelativeDocumentMoniker": "API\\Service\\IAuthService.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Service\\IAuthService.cs",
+              "RelativeToolTip": "API\\Service\\IAuthService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:28.259Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "AuthService.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Service\\AuthService.cs",
+              "RelativeDocumentMoniker": "API\\Service\\AuthService.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Service\\AuthService.cs",
+              "RelativeToolTip": "API\\Service\\AuthService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:27.284Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "Vehicle.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\Vehicle.cs",
+              "RelativeDocumentMoniker": "API\\Models\\Vehicle.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\Vehicle.cs",
+              "RelativeToolTip": "API\\Models\\Vehicle.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:25.547Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "VehicleType.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\VehicleType.cs",
+              "RelativeDocumentMoniker": "API\\Models\\VehicleType.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\VehicleType.cs",
+              "RelativeToolTip": "API\\Models\\VehicleType.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:24.873Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "User.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\User.cs",
+              "RelativeDocumentMoniker": "API\\Models\\User.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\User.cs",
+              "RelativeToolTip": "API\\Models\\User.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:24.183Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "RescueTeamMember.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\RescueTeamMember.cs",
+              "RelativeDocumentMoniker": "API\\Models\\RescueTeamMember.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\RescueTeamMember.cs",
+              "RelativeToolTip": "API\\Models\\RescueTeamMember.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:23.523Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "RescueTeam.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\RescueTeam.cs",
+              "RelativeDocumentMoniker": "API\\Models\\RescueTeam.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\RescueTeam.cs",
+              "RelativeToolTip": "API\\Models\\RescueTeam.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:22.811Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "RescueRequestStatusHistory.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\RescueRequestStatusHistory.cs",
+              "RelativeDocumentMoniker": "API\\Models\\RescueRequestStatusHistory.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\RescueRequestStatusHistory.cs",
+              "RelativeToolTip": "API\\Models\\RescueRequestStatusHistory.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:22.172Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "RescueRequest.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\RescueRequest.cs",
+              "RelativeDocumentMoniker": "API\\Models\\RescueRequest.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\RescueRequest.cs",
+              "RelativeToolTip": "API\\Models\\RescueRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:21.49Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "RescueOperationVehicle.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\RescueOperationVehicle.cs",
+              "RelativeDocumentMoniker": "API\\Models\\RescueOperationVehicle.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\RescueOperationVehicle.cs",
+              "RelativeToolTip": "API\\Models\\RescueOperationVehicle.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:20.796Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "RescueOperation.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\RescueOperation.cs",
+              "RelativeDocumentMoniker": "API\\Models\\RescueOperation.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\RescueOperation.cs",
+              "RelativeToolTip": "API\\Models\\RescueOperation.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:17.614Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "RescueAssignment.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\RescueAssignment.cs",
+              "RelativeDocumentMoniker": "API\\Models\\RescueAssignment.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\RescueAssignment.cs",
+              "RelativeToolTip": "API\\Models\\RescueAssignment.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:18.355Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "RefreshToken.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\RefreshToken.cs",
+              "RelativeDocumentMoniker": "API\\Models\\RefreshToken.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\RefreshToken.cs",
+              "RelativeToolTip": "API\\Models\\RefreshToken.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:16.577Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "BlacklistedToken.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\BlacklistedToken.cs",
+              "RelativeDocumentMoniker": "API\\Models\\BlacklistedToken.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\BlacklistedToken.cs",
+              "RelativeToolTip": "API\\Models\\BlacklistedToken.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:15.555Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "ApplicationDbContext.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Models\\ApplicationDbContext.cs",
+              "RelativeDocumentMoniker": "API\\Models\\ApplicationDbContext.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Models\\ApplicationDbContext.cs",
+              "RelativeToolTip": "API\\Models\\ApplicationDbContext.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:14.427Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "VehicleDto.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\DTOs\\VehicleDto.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\VehicleDto.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\DTOs\\VehicleDto.cs",
+              "RelativeToolTip": "API\\DTOs\\VehicleDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:11.786Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "UserInfo.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\DTOs\\UserInfo.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\UserInfo.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\DTOs\\UserInfo.cs",
+              "RelativeToolTip": "API\\DTOs\\UserInfo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:10.683Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "RescueOperationDto.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\DTOs\\RescueOperationDto.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\RescueOperationDto.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\DTOs\\RescueOperationDto.cs",
+              "RelativeToolTip": "API\\DTOs\\RescueOperationDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:07.562Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "RegisterRequest.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\DTOs\\RegisterRequest.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\RegisterRequest.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\DTOs\\RegisterRequest.cs",
+              "RelativeToolTip": "API\\DTOs\\RegisterRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:06.483Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "LoginRequest.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\DTOs\\LoginRequest.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\LoginRequest.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\DTOs\\LoginRequest.cs",
+              "RelativeToolTip": "API\\DTOs\\LoginRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:05.412Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "AuthResponse.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\DTOs\\AuthResponse.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\AuthResponse.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\DTOs\\AuthResponse.cs",
+              "RelativeToolTip": "API\\DTOs\\AuthResponse.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:04.473Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "VehicleController.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Controllers\\VehicleController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\VehicleController.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Controllers\\VehicleController.cs",
+              "RelativeToolTip": "API\\Controllers\\VehicleController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:02.043Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 32,
+              "Title": "RescueTeamController.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Controllers\\RescueTeamController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\RescueTeamController.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Controllers\\RescueTeamController.cs",
+              "RelativeToolTip": "API\\Controllers\\RescueTeamController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:14:00.752Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "RescueOperationController.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Controllers\\RescueOperationController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\RescueOperationController.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Controllers\\RescueOperationController.cs",
+              "RelativeToolTip": "API\\Controllers\\RescueOperationController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:13:57.89Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "WeatherForecastController.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Controllers\\WeatherForecastController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\WeatherForecastController.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Controllers\\WeatherForecastController.cs",
+              "RelativeToolTip": "API\\Controllers\\WeatherForecastController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-02T05:48:11.973Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 34,
+              "Title": "CoordinatorController.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Controllers\\CoordinatorController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\CoordinatorController.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Controllers\\CoordinatorController.cs",
+              "RelativeToolTip": "API\\Controllers\\CoordinatorController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:13:56.166Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 35,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Controllers\\AuthController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\AuthController.cs",
+              "ToolTip": "D:\\SWP391\\BE\\API\\Controllers\\AuthController.cs",
+              "RelativeToolTip": "API\\Controllers\\AuthController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-04T12:13:54.113Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 37,
+              "Title": "Microsoft.Common.CurrentVersion.targets",
+              "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
+              "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
+              "ViewState": "AgIAADYWAAAAAAAAAAAewEsWAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
+              "WhenOpened": "2026-02-02T06:16:39.129Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 38,
+              "Title": "Microsoft.NET.Sdk.StaticWebAssets.targets",
+              "DocumentMoniker": "C:\\Program Files\\dotnet\\sdk\\10.0.102\\Sdks\\Microsoft.NET.Sdk.StaticWebAssets\\targets\\Microsoft.NET.Sdk.StaticWebAssets.targets",
+              "ToolTip": "C:\\Program Files\\dotnet\\sdk\\10.0.102\\Sdks\\Microsoft.NET.Sdk.StaticWebAssets\\targets\\Microsoft.NET.Sdk.StaticWebAssets.targets",
+              "ViewState": "AgIAAH0BAAAAAAAAAAAwwKsCAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
+              "WhenOpened": "2026-02-02T06:10:22.6Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 36,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "D:\\SWP391\\BE\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "Properties\\launchSettings.json",
+              "ToolTip": "D:\\SWP391\\BE\\Properties\\launchSettings.json",
+              "RelativeToolTip": "Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-01-19T05:43:39.137Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 39,
               "Title": "database.sql",
               "DocumentMoniker": "D:\\SWP391\\BE\\database.sql",
               "RelativeDocumentMoniker": "database.sql",
@@ -149,19 +695,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "WeatherForecastController.cs",
-              "DocumentMoniker": "D:\\SWP391\\BE\\API\\Controllers\\WeatherForecastController.cs",
-              "RelativeDocumentMoniker": "API\\Controllers\\WeatherForecastController.cs",
-              "ToolTip": "D:\\SWP391\\BE\\API\\Controllers\\WeatherForecastController.cs",
-              "RelativeToolTip": "API\\Controllers\\WeatherForecastController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-02T05:48:11.973Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 40,
               "Title": "Flood Rescue Coordination.http",
               "DocumentMoniker": "D:\\SWP391\\BE\\Flood Rescue Coordination.http",
               "RelativeDocumentMoniker": "Flood Rescue Coordination.http",
@@ -170,18 +704,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003502|",
               "WhenOpened": "2026-02-02T05:48:23.173Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "appsettings.Development.json",
-              "DocumentMoniker": "D:\\SWP391\\BE\\appsettings.Development.json",
-              "RelativeDocumentMoniker": "appsettings.Development.json",
-              "ToolTip": "D:\\SWP391\\BE\\appsettings.Development.json",
-              "RelativeToolTip": "appsettings.Development.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-02-02T05:48:16.565Z"
             }
           ]
         }

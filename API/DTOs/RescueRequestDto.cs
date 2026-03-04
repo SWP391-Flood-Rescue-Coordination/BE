@@ -1,4 +1,4 @@
-namespace Flood_Rescue_Coordination.API.DTOs;
+        namespace Flood_Rescue_Coordination.API.DTOs;
 
 public class CreateRescueRequestDto
 {
@@ -75,6 +75,7 @@ public class DashboardStatisticsDto
     public int VerifiedRequests { get; set; }
     public int InProgressRequests { get; set; }
     public int CompletedRequests { get; set; }
+    public int CitizenConfirmedRequests { get; set; }
     public int CancelledRequests { get; set; }
     public int DuplicateRequests { get; set; }
     public int TodayRequests { get; set; }

@@ -24,8 +24,8 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "request",
-        "Type": "Flood_Rescue_Coordination.API.DTOs.RefreshTokenRequest",
+        "Name": "refreshToken",
+        "Type": "System.String",
         "IsRequired": false
       }
     ],
@@ -43,6 +43,22 @@
   },
   {
     "ContainingType": "Flood_Rescue_Coordination.API.Controllers.AuthController",
+    "Method": "RefreshToken",
+    "RelativePath": "api/Auth/refresh-token",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "refreshToken",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.AuthController",
     "Method": "Register",
     "RelativePath": "api/Auth/register",
     "HttpMethod": "POST",
@@ -52,6 +68,180 @@
       {
         "Name": "request",
         "Type": "Flood_Rescue_Coordination.API.DTOs.RegisterRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.CoordinatorController",
+    "Method": "GetAllRequests",
+    "RelativePath": "api/Coordinator/all-requests",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "priorityId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.CoordinatorController",
+    "Method": "GetTeamsWithStatus",
+    "RelativePath": "api/Coordinator/status-with-teams",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.CoordinatorController",
+    "Method": "UpdateRequest",
+    "RelativePath": "api/Coordinator/update-request/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "Flood_Rescue_Coordination.API.DTOs.UpdateRequestFromCoordinatorDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueTeamController",
+    "Method": "GetMyOperations",
+    "RelativePath": "api/rescue-team/my-operations",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueTeamController",
+    "Method": "GetMissionDetails",
+    "RelativePath": "api/rescue-team/operations/{operationId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "operationId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueTeamController",
+    "Method": "UpdateMissionStatus",
+    "RelativePath": "api/rescue-team/operations/{operationId}/status",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "operationId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "Flood_Rescue_Coordination.API.DTOs.UpdateMissionStatusDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueOperationController",
+    "Method": "UpdateOperationStatus",
+    "RelativePath": "api/RescueOperation/{id}/status",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "Flood_Rescue_Coordination.API.DTOs.UpdateOperationStatusDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueOperationController",
+    "Method": "GetOperationById",
+    "RelativePath": "api/RescueOperation/{operationId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "operationId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueOperationController",
+    "Method": "AssignRescue",
+    "RelativePath": "api/RescueOperation/assign",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "Flood_Rescue_Coordination.API.DTOs.AssignRescueDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueOperationController",
+    "Method": "GetOperationsByTeam",
+    "RelativePath": "api/RescueOperation/team/{teamId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "teamId",
+        "Type": "System.Int32",
         "IsRequired": true
       }
     ],
@@ -144,6 +334,27 @@
   },
   {
     "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueRequestController",
+    "Method": "SetPriorityAndVerify",
+    "RelativePath": "api/RescueRequest/{id}/set-priority-and-verify",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "Flood_Rescue_Coordination.API.DTOs.SetPriorityAndVerifyDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueRequestController",
     "Method": "UpdateStatus",
     "RelativePath": "api/RescueRequest/{id}/status",
     "HttpMethod": "PUT",
@@ -158,6 +369,43 @@
       {
         "Name": "dto",
         "Type": "Flood_Rescue_Coordination.API.DTOs.UpdateStatusDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueRequestController",
+    "Method": "GetRequestByIdForGuest",
+    "RelativePath": "api/RescueRequest/guest/status",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "requestId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueRequestController",
+    "Method": "UpdateRequestByGuest",
+    "RelativePath": "api/RescueRequest/guest/update/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "Flood_Rescue_Coordination.API.DTOs.UpdateRescueRequestDto",
         "IsRequired": true
       }
     ],
