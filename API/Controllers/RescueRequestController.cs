@@ -358,8 +358,8 @@ public class RescueRequestController : ControllerBase
 
     /// <summary>
     /// CITIZEN (đã đăng nhập) - Xác nhận đã được cứu hộ.
-    /// Chỉ gọi được khi status = "Completed".
-    /// Sau khi xác nhận, status chuyển thành "CitizenConfirmed".
+    /// Chỉ gọi được khi status = "Confirmed".
+    /// Sau khi xác nhận, status request chuyển thành "Completed" và rescue operation cùng RequestId cũng chuyển thành "Completed".
     /// </summary>
     [HttpPut("{id}/confirm-rescued")]
     [Authorize(Roles = "CITIZEN")]
@@ -379,44 +379,58 @@ public class RescueRequestController : ControllerBase
                 Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền xác nhận yêu cầu này."
             });
 
-        if (request.Status != "Completed")
+        if (request.Status != "Confirmed")
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chỉ có thể xác nhận khi đội cứu hộ đã hoàn tất nhiệm vụ. Trạng thái hiện tại: '{request.Status}'."
+                Message = $"Chỉ có thể xác nhận khi yêu cầu đang ở trạng thái 'Confirmed'. Trạng thái hiện tại: '{request.Status}'."
             });
 
         var now = DateTime.UtcNow;
 
-        request.Status    = "CitizenConfirmed";
+        // Cập nhật trạng thái request
+        request.Status    = "Completed";
         request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
-            Status    = "CitizenConfirmed",
-            Notes     = "Công dân (đã đăng nhập) xác nhận đã được cứu hộ thành công.",
+            Status    = "Completed",
+            Notes     = "Công dân xác nhận đã được cứu hộ thành công.",
             UpdatedBy = userId,
             UpdatedAt = now
         });
+
+        // Cập nhật trạng thái các rescue operation cùng RequestId
+        var operations = await _context.RescueOperations
+            .Where(o => o.RequestId == id)
+            .ToListAsync();
+
+        foreach (var operation in operations)
+        {
+            operation.Status      = "Completed";
+            operation.CompletedAt = now;
+        }
 
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
-            Success     = true,
-            Message     = "Cảm ơn bạn đã xác nhận! Yêu cầu cứu hộ đã được đóng lại.",
-            RequestId   = request.RequestId,
-            Status      = request.Status,
-            ConfirmedAt = now
+            Success            = true,
+            Message            = "Cảm ơn bạn đã xác nhận! Yêu cầu cứu hộ đã được đóng lại.",
+            RequestId          = request.RequestId,
+            Status             = request.Status,
+            OperationsUpdated  = operations.Count,
+            CompletedAt        = now
         });
     }
 
     /// <summary>
     /// GUEST (không cần đăng nhập) - Xác nhận đã được cứu hộ bằng RequestId + Phone.
     /// Phone phải khớp với ContactPhone hoặc Phone đã lưu khi tạo yêu cầu.
-    /// Chỉ gọi được khi status = "Completed".
+    /// Chỉ gọi được khi status = "Confirmed".
+    /// Sau khi xác nhận, status request chuyển thành "Completed" và rescue operation cùng RequestId cũng chuyển thành "Completed".
     /// </summary>
     [HttpPut("guest/{id}/confirm-rescued")]
     [AllowAnonymous]
@@ -448,37 +462,50 @@ public class RescueRequestController : ControllerBase
                 Message = "Số điện thoại không khớp với yêu cầu cứu hộ này."
             });
 
-        if (request.Status != "Completed")
+        if (request.Status != "Confirmed")
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chỉ có thể xác nhận khi đội cứu hộ đã hoàn tất nhiệm vụ. Trạng thái hiện tại: '{request.Status}'."
+                Message = $"Chỉ có thể xác nhận khi yêu cầu đang ở trạng thái 'Confirmed'. Trạng thái hiện tại: '{request.Status}'."
             });
 
         var now = DateTime.UtcNow;
 
-        request.Status    = "CitizenConfirmed";
+        // Cập nhật trạng thái request
+        request.Status    = "Completed";
         request.UpdatedAt = now;
-        request.UpdatedBy = 0;
+        request.UpdatedBy = null; // Guest không có userId
 
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
-            Status    = "CitizenConfirmed",
+            Status    = "Completed",
             Notes     = $"Khách vãng lai (SĐT: {inputPhone}) xác nhận đã được cứu hộ thành công.",
-            UpdatedBy = 0,
+            UpdatedBy = request.CitizenId ?? 1, // fallback: dùng citizen nếu có, không thì admin id=1
             UpdatedAt = now
         });
+
+        // Cập nhật trạng thái các rescue operation cùng RequestId
+        var operations = await _context.RescueOperations
+            .Where(o => o.RequestId == id)
+            .ToListAsync();
+
+        foreach (var operation in operations)
+        {
+            operation.Status      = "Completed";
+            operation.CompletedAt = now;
+        }
 
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
-            Success     = true,
-            Message     = "Cảm ơn bạn đã xác nhận! Yêu cầu cứu hộ đã được đóng lại.",
-            RequestId   = request.RequestId,
-            Status      = request.Status,
-            ConfirmedAt = now
+            Success           = true,
+            Message           = "Cảm ơn bạn đã xác nhận! Yêu cầu cứu hộ đã được đóng lại.",
+            RequestId         = request.RequestId,
+            Status            = request.Status,
+            OperationsUpdated = operations.Count,
+            CompletedAt       = now
         });
     }
 

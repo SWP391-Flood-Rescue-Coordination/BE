@@ -7,6 +7,7 @@ public class ReliefItemDto
     public string ItemName { get; set; } = string.Empty;
     public int CategoryId { get; set; }
     public string Unit { get; set; } = string.Empty;
+    public int Quantity { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 }
