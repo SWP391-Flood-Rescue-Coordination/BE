@@ -376,6 +376,27 @@
   },
   {
     "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueRequestController",
+    "Method": "GuestConfirmRescued",
+    "RelativePath": "api/RescueRequest/guest/{id}/confirm-rescued",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "Flood_Rescue_Coordination.API.DTOs.GuestConfirmRescuedDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Flood_Rescue_Coordination.API.Controllers.RescueRequestController",
     "Method": "GetRequestByIdForGuest",
     "RelativePath": "api/RescueRequest/guest/status",
     "HttpMethod": "GET",
