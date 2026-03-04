@@ -45,9 +45,10 @@ public class RescueTeamController : ControllerBase
 
         // ── 2. Validate newStatus ─────────────────────────────────────────────
         string targetStatus = dto.NewStatus;
+        if (targetStatus.Equals("CONFIRMED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Confirmed";
         if (targetStatus.Equals("FAILED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Failed";
 
-        var allowedStatuses = new[] { "In Progress", "Completed", "Failed" };
+        var allowedStatuses = new[] { "Confirmed", "Failed" };
         if (!allowedStatuses.Contains(targetStatus))
             return BadRequest(new
             {
@@ -82,11 +83,9 @@ public class RescueTeamController : ControllerBase
             return Forbid(); // 403
 
         // ── 5. Kiểm tra rescue_operation.status hợp lệ ────────────────────────
-        var allowedFrom = targetStatus == "In Progress"
+        var allowedFrom = targetStatus == "Confirmed"
             ? new[] { "Assigned" }
-            : (targetStatus == "Failed" 
-                ? new[] { "Assigned", "In Progress" } 
-                : new[] { "In Progress" }); // Completed requires In Progress
+            : new[] { "Assigned", "Confirmed" };
 
         if (!allowedFrom.Contains(operation.Status))
             return BadRequest(new
@@ -99,15 +98,13 @@ public class RescueTeamController : ControllerBase
 
         // ── 7. Cập nhật rescue_operations ───────────────────────────────────
         operation.Status = targetStatus;
-        if (targetStatus == "In Progress")
+        if (operation.StartedAt == null)
         {
             operation.StartedAt = now;
         }
-        else // Completed hoặc Failed
+        if (targetStatus == "Confirmed" || targetStatus == "Failed")
         {
             operation.CompletedAt = now;
-            if (operation.StartedAt == null)
-                operation.StartedAt = now;
         }
 
         // ── 8. Cập nhật rescue_requests.status ───────────────────────────────
@@ -134,7 +131,7 @@ public class RescueTeamController : ControllerBase
         });
 
         // ── 10. Nếu Completed hoặc Failed: trả team và vehicle về AVAILABLE/Available ────
-        if (targetStatus == "Completed" || targetStatus == "Failed")
+        if (targetStatus == "Confirmed" || targetStatus == "Failed")
         {
             var team = operation.Team;
             if (team != null)
@@ -179,9 +176,9 @@ public class RescueTeamController : ControllerBase
             CompletedAt = operation.CompletedAt,
             Message = targetStatus switch
             {
-                "Completed" => "Hoàn thành nhiệm vụ thành công.",
+                "Confirmed" => "Đã xác nhận cứu hộ thành công, chờ người dân xác nhận hoàn tất.",
                 "Failed" => "Cập nhật nhiệm vụ thất bại thành công.",
-                _ => "Bắt đầu thực hiện nhiệm vụ thành công."
+                _ => "Cập nhật trạng thái nhiệm vụ thành công."
             }
         });
     }
