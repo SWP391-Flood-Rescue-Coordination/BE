@@ -52,4 +52,21 @@ public class ReliefItemController : ControllerBase
             Items = items
         });
     }
+
+    /// <summary>
+    /// Đếm số lượng vật phẩm có quantity nhỏ hơn hoặc bằng n.
+    /// </summary>
+    /// <param name="n">Ngưỡng số lượng tối đa (mặc định = 6)</param>
+    [HttpGet("low-stock/count")]
+    [Authorize(Roles = "ADMIN,MANAGER,COORDINATOR")]
+    public async Task<IActionResult> CountLowStockItems([FromQuery] int n = 6)
+    {
+        if (n < 0)
+            return BadRequest(new { Success = false, Message = "n phải là số không âm." });
+
+        var count = await _context.ReliefItems
+            .CountAsync(i => i.Quantity <= n);
+
+        return Ok(count);
+    }
 }
