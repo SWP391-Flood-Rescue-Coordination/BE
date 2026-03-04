@@ -56,7 +56,10 @@ public class TeamOperationDto
 
 public class UpdateOperationStatusDto
 {
-    /// <summary>Trạng thái mới: IN_PROGRESS hoặc COMPLETED</summary>
+    /// <summary>Trạng thái mới: IN_PROGRESS, COMPLETED hoặc FAILED</summary>
     public string NewStatus { get; set; } = string.Empty;
+
+    /// <summary>Lý do (Bắt buộc nếu trạng thái là FAILED)</summary>
+    public string? Reason { get; set; }
 }
 
