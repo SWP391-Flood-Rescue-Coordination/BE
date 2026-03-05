@@ -150,7 +150,7 @@ public class RescueTeamController : ControllerBase
                     .ToListAsync();
                 foreach (var v in vehicles)
                 {
-                    v.Status = "Available";
+                    v.Status = "AVAILABLE";
                     v.UpdatedAt = now;
                 }
             }

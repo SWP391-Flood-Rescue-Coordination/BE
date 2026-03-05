@@ -74,12 +74,14 @@ public class RescueOperationController : ControllerBase
                 return NotFound(new { Success = false, Message = $"Không tìm thấy vehicle với ID: {string.Join(", ", missingIds)}" });
 
             // Kiểm tra status
-            var unavailable = vehicles.Where(v => v.Status != "Available").ToList();
+            var unavailable = vehicles
+                .Where(v => !string.Equals(v.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
+                .ToList();
             if (unavailable.Any())
                 return BadRequest(new
                 {
                     Success = false,
-                    Message = $"Các phương tiện sau không có status = Available: {string.Join(", ", unavailable.Select(v => $"ID={v.VehicleId} ({v.Status})"))}",
+                    Message = $"Các phương tiện sau không có status = AVAILABLE: {string.Join(", ", unavailable.Select(v => $"ID={v.VehicleId} ({v.Status})"))}",
                 });
         }
 
@@ -418,7 +420,7 @@ public class RescueOperationController : ControllerBase
 
                     foreach (var v in vehiclesToRelease)
                     {
-                        v.Status = "Available";
+                        v.Status = "AVAILABLE";
                         v.UpdatedAt = now;
                     }
                 }
@@ -470,7 +472,7 @@ public class RescueOperationController : ControllerBase
 
                     foreach (var v in vehiclesToRelease)
                     {
-                        v.Status = "Available";
+                        v.Status = "AVAILABLE";
                         v.UpdatedAt = now;
                     }
                 }

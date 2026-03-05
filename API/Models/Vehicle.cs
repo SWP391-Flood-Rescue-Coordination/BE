@@ -10,7 +10,7 @@ public class Vehicle
     public int VehicleTypeId { get; set; }
     public string LicensePlate { get; set; } = string.Empty;
     public int? Capacity { get; set; }
-    public string Status { get; set; } = "Available";
+    public string Status { get; set; } = "AVAILABLE";
     public string? CurrentLocation { get; set; }
     public DateTime? LastMaintenance { get; set; }
     public DateTime? UpdatedAt { get; set; }
