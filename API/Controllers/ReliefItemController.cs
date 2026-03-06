@@ -39,6 +39,7 @@ public class ReliefItemController : ControllerBase
                 CategoryId = i.CategoryId,
                 Unit      = i.Unit,
                 Quantity  = i.Quantity,
+                MinQuantity = i.MinQuantity,
                 IsActive  = i.IsActive,
                 CreatedAt = i.CreatedAt
             })
@@ -68,5 +69,45 @@ public class ReliefItemController : ControllerBase
             .CountAsync(i => i.Quantity <= n);
 
         return Ok(count);
+    }
+
+    /// <summary>
+    /// Admin/Manager - Cập nhật thông tin vật phẩm cứu trợ.
+    /// Chỉ cập nhật các trường được cung cấp trong request body.
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = "ADMIN,MANAGER")]
+    public async Task<IActionResult> UpdateReliefItem(int id, [FromBody] UpdateReliefItemDto dto)
+    {
+        var item = await _context.ReliefItems.FindAsync(id);
+
+        if (item == null)
+            return NotFound(new { Success = false, Message = $"Không tìm thấy vật phẩm với ID = {id}." });
+
+        if (dto.ItemName    != null) item.ItemName    = dto.ItemName;
+        if (dto.CategoryId  != null) item.CategoryId  = dto.CategoryId.Value;
+        if (dto.Unit        != null) item.Unit        = dto.Unit;
+        if (dto.MinQuantity != null) item.MinQuantity = dto.MinQuantity.Value;
+        if (dto.IsActive    != null) item.IsActive    = dto.IsActive.Value;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Cập nhật vật phẩm thành công.",
+            Data = new ReliefItemDto
+            {
+                ItemId      = item.ItemId,
+                ItemCode    = item.ItemCode,
+                ItemName    = item.ItemName,
+                CategoryId  = item.CategoryId,
+                Unit        = item.Unit,
+                Quantity    = item.Quantity,
+                MinQuantity = item.MinQuantity,
+                IsActive    = item.IsActive,
+                CreatedAt   = item.CreatedAt
+            }
+        });
     }
 }

@@ -228,6 +228,17 @@ using (var scope = app.Services.CreateScope())
             END
         ");
 
+        // Thêm cột min_quantity vào relief_items nếu chưa có
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'relief_items')
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'relief_items') AND name = 'min_quantity')
+                BEGIN
+                    ALTER TABLE relief_items ADD min_quantity INT NOT NULL DEFAULT 0;
+                END
+            END
+        ");
+
         Console.WriteLine("Database tables verified/created successfully.");
     }
     catch (Exception ex)

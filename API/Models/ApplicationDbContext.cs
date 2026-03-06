@@ -215,6 +215,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.Unit).HasColumnName("unit").HasMaxLength(20);
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.MinQuantity).HasColumnName("min_quantity");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
         });
