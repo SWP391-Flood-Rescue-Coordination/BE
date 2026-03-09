@@ -32,10 +32,11 @@ Dành cho màn hình quản lý chi tiết phương tiện, cho phép Manager xe
 - **Mô tả:** Tạo lệnh xuất kho dựa trên tồn kho và điều phối phương tiện.
 - **Tài liệu chi tiết:** [README_RELIEF_EXPORT_API.md](file:///e:/SWP391/BE-Tuan/README_RELIEF_EXPORT_API.md)
 
+### 2.2. Xem danh sách vật tư và lịch sử kho
+- **Endpoint:** `GET /api/manager/supplies` và `GET /api/manager/supplies/history`
+- **Tài liệu chi tiết:** [README_RELIEF_EXPORT_API.md](file:///e:/SWP391/BE-Tuan/README_RELIEF_EXPORT_API.md)
+
 ## 3. Xử lý lỗi
 - **401 Unauthorized:** Token không hợp lệ hoặc hết hạn.
 - **403 Forbidden:** Người dùng không có vai trò `MANAGER`.
 - **404 Not Found:** Không tìm thấy phương tiện với ID tương ứng.
-
----
-*Lưu ý: Chức năng Dashboard và Vật tư hiện tại không nằm trong phạm vi triển khai này.*
