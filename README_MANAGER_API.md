@@ -24,7 +24,15 @@ Dành cho màn hình quản lý chi tiết phương tiện, cho phép Manager xe
 ```
 - **Mô tả:** Cho phép Manager thay đổi nhanh trạng thái của một phương tiện.
 
-## 2. Xử lý lỗi
+## 2. Quản lý Kho & Điều phối Cứu trợ (Relief & Inventory)
+
+### 2.1. Tạo phiếu xuất kho điều phối vật tư
+- **Endpoint:** `POST /api/manager/relief-export`
+- **Quyền truy cập:** `MANAGER`
+- **Mô tả:** Tạo lệnh xuất kho dựa trên tồn kho và điều phối phương tiện.
+- **Tài liệu chi tiết:** [README_RELIEF_EXPORT_API.md](file:///e:/SWP391/BE-Tuan/README_RELIEF_EXPORT_API.md)
+
+## 3. Xử lý lỗi
 - **401 Unauthorized:** Token không hợp lệ hoặc hết hạn.
 - **403 Forbidden:** Người dùng không có vai trò `MANAGER`.
 - **404 Not Found:** Không tìm thấy phương tiện với ID tương ứng.

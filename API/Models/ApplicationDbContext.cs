@@ -21,6 +21,17 @@ public class ApplicationDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
 
+    // Relief Inventory & Export
+    public DbSet<ReliefItem> ReliefItems { get; set; }
+    public DbSet<Warehouse> Warehouses { get; set; }
+    public DbSet<Region> Regions { get; set; }
+    public DbSet<Inventory> Inventories { get; set; }
+    public DbSet<ManagerScope> ManagerScopes { get; set; }
+    public DbSet<ReliefExportOrder> ReliefExportOrders { get; set; }
+    public DbSet<ReliefExportItem> ReliefExportItems { get; set; }
+    public DbSet<ReliefExportVehicle> ReliefExportVehicles { get; set; }
+    public DbSet<StockHistory> StockHistories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -203,6 +214,16 @@ public class ApplicationDbContext : DbContext
             
             entity.HasIndex(e => e.Token);
         });
+
+        modelBuilder.Entity<Warehouse>(entity => entity.ToTable("warehouses"));
+        modelBuilder.Entity<Region>(entity => entity.ToTable("regions"));
+        modelBuilder.Entity<Inventory>(entity => entity.ToTable("inventories"));
+        modelBuilder.Entity<ManagerScope>(entity => entity.ToTable("manager_scopes"));
+        modelBuilder.Entity<ReliefExportOrder>(entity => entity.ToTable("relief_export_orders"));
+        modelBuilder.Entity<ReliefExportItem>(entity => entity.ToTable("relief_export_items"));
+        modelBuilder.Entity<ReliefExportVehicle>(entity => entity.ToTable("relief_export_vehicles"));
+        modelBuilder.Entity<ReliefItem>(entity => entity.ToTable("relief_items"));
+        modelBuilder.Entity<StockHistory>(entity => entity.ToTable("stock_history"));
     }
 
     public override int SaveChanges()

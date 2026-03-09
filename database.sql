@@ -853,3 +853,37 @@ USE [master]
 GO
 ALTER DATABASE [DisasterRescueReliefDB] SET  READ_WRITE 
 GO
+GO
+
+CREATE TABLE [dbo].[stock_history] (
+    [id]       INT            IDENTITY(1,1) NOT NULL,
+    [type]     VARCHAR(3)     NOT NULL,        -- 'IN' hoặc 'OUT'
+    [date]     DATETIME2(3)   NOT NULL,
+    [body]     NVARCHAR(500)  NOT NULL,        -- danh sách item-số lượng, vd: '1-200,5-100'
+    [from_to]  NVARCHAR(200)  NULL,            -- nguồn nhập / nơi xuất
+    [note]     NVARCHAR(500)  NULL,
+    CONSTRAINT [PK_stock_history] PRIMARY KEY CLUSTERED ([id] ASC),
+    CONSTRAINT [CK_stock_history_type] CHECK ([type] IN ('IN', 'OUT'))
+)
+GO
+SET IDENTITY_INSERT stock_history ON;
+
+INSERT INTO stock_history (id, type, date, body, from_to, note) VALUES
+-- Phiếu NHẬP (IN)
+(1, 'IN',  DATEADD(DAY, -10, GETDATE()), '1-5000,2-10000',          N'Nhà cung cấp Minh Phát',     N'Nhập lương thực đợt 1 đầu mùa lũ'),
+(2, 'IN',  DATEADD(DAY, -9,  GETDATE()), '5-15000,6-1000',          N'Nhà cung cấp Aqua Việt',     N'Nhập nước uống dự trữ'),
+(3, 'IN',  DATEADD(DAY, -8,  GETDATE()), '3-3000,4-2000',           N'Nhà cung cấp Minh Phát',     N'Nhập thịt hộp và sữa'),
+(4, 'IN',  DATEADD(DAY, -7,  GETDATE()), '7-500,8-300,9-400,10-2000', N'Kho Y Tế Quận 7',          N'Nhập vật tư y tế đợt 1'),
+(5, 'IN',  DATEADD(DAY, -6,  GETDATE()), '11-3000,12-1500,13-2000', N'Nhà cung cấp Dệt May ABC',   N'Nhập quần áo và đồ dùng'),
+(6, 'IN',  DATEADD(DAY, -5,  GETDATE()), '14-200,15-800',           N'Tổ chức Cứu Trợ Quốc Tế',   N'Nhận lều và bạt viện trợ'),
+
+-- Phiếu XUẤT (OUT)
+(7, 'OUT', DATEADD(DAY, -4,  GETDATE()), '1-200,5-100,3-50',        N'Yêu cầu cứu hộ #1 - Q7',    N'Xuất cứu trợ khẩn cấp cho 5 người'),
+(8, 'OUT', DATEADD(DAY, -3,  GETDATE()), '2-300,5-200,1-150,12-20', N'Yêu cầu cứu hộ #2 - Q9',    N'Xuất hàng cho khu vực bị cô lập'),
+(9, 'OUT', DATEADD(DAY, -2,  GETDATE()), '7-50,8-30,9-40,10-100',   N'Yêu cầu cứu hộ #3 - Thủ Đức', N'Xuất vật tư y tế cho người bị thương'),
+(10,'OUT', DATEADD(DAY, -1,  GETDATE()), '11-100,14-10,15-30',      N'Điểm sơ tán tập trung Q1',   N'Hỗ trợ khu sơ tán tập trung'),
+(11,'IN',  GETDATE(),                    '1-2000,2-3000,5-5000',     N'Ủy ban nhân dân TP.HCM',     N'Nhận hàng bổ sung từ UBND thành phố'),
+(12,'OUT', GETDATE(),                    '4-100,9-50,10-200',        N'Trại cứu trợ Quận 8',        N'Xuất sữa và thuốc cho trại cứu trợ');
+
+SET IDENTITY_INSERT stock_history OFF;
+GO
