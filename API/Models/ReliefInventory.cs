@@ -31,6 +31,12 @@ public class ReliefItem
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
 
+    [Column("quantity")]
+    public int Quantity { get; set; }
+
+    [Column("min_quantity")]
+    public int MinQuantity { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

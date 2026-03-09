@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Flood_Rescue_Coordination.API.Controllers;
 
@@ -205,5 +206,49 @@ public class ManagerController : ControllerBase
             await transaction.RollbackAsync();
             return StatusCode(500, new { Success = false, Message = "Lỗi trong quá trình xử lý: " + ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Xem danh sách vật tư cứu trợ và tồn kho tổng quát (Chỉ Manager)
+    /// </summary>
+    [HttpGet("supplies")]
+    public async Task<IActionResult> GetSupplies()
+    {
+        var supplies = await _context.ReliefItems
+            .Where(i => i.IsActive)
+            .Select(i => new SupplyItemResponseDto
+            {
+                ItemId = i.ItemId,
+                ItemCode = i.ItemCode,
+                ItemName = i.ItemName,
+                Unit = i.Unit,
+                TotalQuantity = i.Quantity,
+                MinQuantity = i.MinQuantity
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Data = supplies });
+    }
+
+    /// <summary>
+    /// Xem lịch sử nhập/xuất kho (Chỉ Manager) - Xem nội dung tại cột Body và Note
+    /// </summary>
+    [HttpGet("supplies/history")]
+    public async Task<IActionResult> GetStockHistory()
+    {
+        var history = await _context.StockHistories
+            .OrderByDescending(h => h.Date)
+            .Select(h => new StockHistoryResponseDto
+            {
+                Id = h.Id,
+                Type = h.Type,
+                Date = h.Date,
+                Body = h.Body,
+                FromTo = h.FromTo,
+                Note = h.Note
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Data = history });
     }
 }
