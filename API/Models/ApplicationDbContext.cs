@@ -21,6 +21,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
     public DbSet<ReliefItem> ReliefItems { get; set; }
+    public DbSet<StockHistory> StockHistories { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -218,6 +219,18 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.MinQuantity).HasColumnName("min_quantity");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<StockHistory>(entity =>
+        {
+            entity.ToTable("stock_history");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Type).HasColumnName("type").HasMaxLength(3);
+            entity.Property(e => e.Date).HasColumnName("date");
+            entity.Property(e => e.Body).HasColumnName("body");
+            entity.Property(e => e.FromTo).HasColumnName("from_to").HasMaxLength(255);
+            entity.Property(e => e.Note).HasColumnName("note").HasMaxLength(500);
         });
     }
 
