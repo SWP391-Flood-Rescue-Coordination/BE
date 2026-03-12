@@ -9,19 +9,19 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "ADMIN")]
-public class AdminController : ControllerBase
+public class UserInfoController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
-    public AdminController(ApplicationDbContext context)
+    public UserInfoController(ApplicationDbContext context)
     {
         _context = context;
     }
 
     /// <summary>
-    /// Lấy danh sách người dùng hoặc tìm kiếm theo ID
+    /// Admin - Lấy danh sách người dùng hoặc tìm kiếm theo ID
     /// </summary>
-    [HttpGet("users")]
+    [HttpGet]
     public async Task<IActionResult> GetAllUsers([FromQuery] int? userId = null)
     {
         var query = _context.Users.AsQueryable();
@@ -33,13 +33,13 @@ public class AdminController : ControllerBase
 
         var users = await query
             .OrderByDescending(u => u.CreatedAt)
-            .Select(u => new UserAdminDto
+            .Select(u => new UserInfo
             {
                 UserId = u.UserId,
                 Username = u.Username,
-                FullName = u.FullName,
-                Phone = u.Phone,
-                Email = u.Email,
+                FullName = u.FullName ?? string.Empty,
+                Email = u.Email ?? string.Empty,
+                Phone = u.Phone ?? string.Empty,
                 Role = u.Role,
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
@@ -50,7 +50,7 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách các role hiện có trong hệ thống
+    /// Admin - Lấy danh sách các role hiện có trong hệ thống
     /// </summary>
     [HttpGet("roles")]
     public IActionResult GetAvailableRoles()
@@ -60,9 +60,9 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Cập nhật role cho người dùng
+    /// Admin - Cập nhật role cho người dùng
     /// </summary>
-    [HttpPut("users/{id}/role")]
+    [HttpPut("{id}/role")]
     public async Task<IActionResult> UpdateUserRole(int id, [FromBody] UpdateUserRoleRequest request)
     {
         var user = await _context.Users.FindAsync(id);
@@ -84,9 +84,9 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Kích hoạt hoặc vô hiệu hóa tài khoản người dùng
+    /// Admin - Kích hoạt hoặc vô hiệu hóa tài khoản người dùng
     /// </summary>
-    [HttpPut("users/{id}/status")]
+    [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateUserStatus(int id, [FromBody] UpdateUserStatusRequest request)
     {
         var user = await _context.Users.FindAsync(id);
@@ -95,8 +95,7 @@ public class AdminController : ControllerBase
             return NotFound(new { Success = false, Message = "Không tìm thấy người dùng" });
         }
 
-        // Không cho phép admin tự vô hiệu hóa chính mình (để tránh mất quyền truy cập hệ thống)
-        // Lưu ý: Cần lấy UserId của người đang đăng nhập từ Token
+        // Không cho phép admin tự vô hiệu hóa chính mình
         var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (int.TryParse(currentUserIdClaim, out int currentUserId) && currentUserId == id && !request.IsActive)
         {

@@ -104,7 +104,9 @@ public class AuthController : ControllerBase
                 Username = username ?? string.Empty,
                 FullName = fullName ?? string.Empty,
                 Email = email ?? string.Empty,
-                Role = role ?? string.Empty
+                Phone = User.FindFirst(System.Security.Claims.ClaimTypes.MobilePhone)?.Value ?? User.FindFirst("phone")?.Value ?? string.Empty,
+                Role = role ?? string.Empty,
+                IsActive = true // Based on token validity
             }
         });
     }

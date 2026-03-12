@@ -140,7 +140,7 @@ public class RescueRequestController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
-    public async Task<IActionResult> GetAllRequests([FromQuery] string? status = null)
+    public async Task<IActionResult> GetAllRequests([FromQuery] string? status = null, [FromQuery] int? priorityId = null)
     {
         var query = _context.RescueRequests
             .Include(r => r.Citizen)
@@ -149,6 +149,11 @@ public class RescueRequestController : ControllerBase
         if (!string.IsNullOrEmpty(status))
         {
             query = query.Where(r => r.Status == status);
+        }
+
+        if (priorityId.HasValue)
+        {
+            query = query.Where(r => r.PriorityLevelId == priorityId.Value);
         }
 
         var requests = await query

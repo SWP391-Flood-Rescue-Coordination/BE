@@ -85,4 +85,30 @@ public class VehicleController : ControllerBase
 
         return Ok(new { Success = true, Data = vehicle });
     }
+
+    /// <summary>
+    /// Manager/Admin - Cập nhật nhanh trạng thái của phương tiện
+    /// </summary>
+    [HttpPatch("{id}/status")]
+    [Authorize(Roles = "MANAGER,ADMIN")]
+    public async Task<IActionResult> UpdateVehicleStatus(int id, [FromBody] UpdateVehicleStatusDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Status))
+        {
+            return BadRequest(new { Success = false, Message = "Trạng thái không được để trống" });
+        }
+
+        var vehicle = await _context.Vehicles.FindAsync(id);
+        if (vehicle == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy phương tiện" });
+        }
+
+        vehicle.Status = dto.Status;
+        vehicle.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Success = true, Message = "Cập nhật trạng thái thành công" });
+    }
 }
