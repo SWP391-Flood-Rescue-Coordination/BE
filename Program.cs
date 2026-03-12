@@ -228,92 +228,18 @@ using (var scope = app.Services.CreateScope())
             END
         ");
 
-            // --- TỰ ĐỘNG TẠO BẢNG CỨU TRỢ / XUẤT KHO ---
-            await context.Database.ExecuteSqlRawAsync(@"
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'regions')
+        // Thêm cột min_quantity vào relief_items nếu chưa có
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'relief_items')
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'relief_items') AND name = 'min_quantity')
                 BEGIN
-                    CREATE TABLE regions (
-                        region_id INT IDENTITY(1,1) PRIMARY KEY,
-                        region_name NVARCHAR(100) NOT NULL,
-                        region_type NVARCHAR(20) DEFAULT 'Province'
-                    );
+                    ALTER TABLE relief_items ADD min_quantity INT NOT NULL DEFAULT 0;
                 END
+            END
+        ");
 
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'manager_scopes')
-                BEGIN
-                    CREATE TABLE manager_scopes (
-                        scope_id INT IDENTITY(1,1) PRIMARY KEY,
-                        user_id INT NOT NULL,
-                        region_id INT NOT NULL,
-                        CONSTRAINT FK_Scope_User FOREIGN KEY (user_id) REFERENCES users(user_id),
-                        CONSTRAINT FK_Scope_Region FOREIGN KEY (region_id) REFERENCES regions(region_id)
-                    );
-                END
-
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'warehouses')
-                BEGIN
-                    CREATE TABLE warehouses (
-                        warehouse_id INT IDENTITY(1,1) PRIMARY KEY,
-                        warehouse_name NVARCHAR(100) NOT NULL,
-                        location NVARCHAR(300),
-                        region_id INT NULL
-                    );
-                END
-
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'inventories')
-                BEGIN
-                    CREATE TABLE inventories (
-                        inventory_id INT IDENTITY(1,1) PRIMARY KEY,
-                        warehouse_id INT NOT NULL,
-                        item_id INT NOT NULL,
-                        quantity INT NOT NULL DEFAULT 0,
-                        CONSTRAINT FK_Inv_Warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id),
-                        CONSTRAINT FK_Inv_Item FOREIGN KEY (item_id) REFERENCES relief_items(item_id)
-                    );
-                END
-
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'relief_export_orders')
-                BEGIN
-                    CREATE TABLE relief_export_orders (
-                        export_id INT IDENTITY(1,1) PRIMARY KEY,
-                        manager_id INT NOT NULL,
-                        warehouse_id INT NOT NULL,
-                        destination_region_id INT NOT NULL,
-                        export_date DATETIME2 DEFAULT GETDATE(),
-                        status NVARCHAR(20) DEFAULT 'PENDING',
-                        notes NVARCHAR(500),
-                        CONSTRAINT FK_Export_Manager FOREIGN KEY (manager_id) REFERENCES users(user_id),
-                        CONSTRAINT FK_Export_Warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id),
-                        CONSTRAINT FK_Export_Region FOREIGN KEY (destination_region_id) REFERENCES regions(region_id)
-                    );
-                END
-
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'relief_export_items')
-                BEGIN
-                    CREATE TABLE relief_export_items (
-                        export_item_id INT IDENTITY(1,1) PRIMARY KEY,
-                        export_id INT NOT NULL,
-                        item_id INT NOT NULL,
-                        quantity INT NOT NULL,
-                        CONSTRAINT FK_ExportItem_Order FOREIGN KEY (export_id) REFERENCES relief_export_orders(export_id),
-                        CONSTRAINT FK_ExportItem_Item FOREIGN KEY (item_id) REFERENCES relief_items(item_id)
-                    );
-                END
-
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'relief_export_vehicles')
-                BEGIN
-                    CREATE TABLE relief_export_vehicles (
-                        export_vehicle_id INT IDENTITY(1,1) PRIMARY KEY,
-                        export_id INT NOT NULL,
-                        vehicle_id INT NOT NULL,
-                        CONSTRAINT FK_ExportVeh_Order FOREIGN KEY (export_id) REFERENCES relief_export_orders(export_id),
-                        CONSTRAINT FK_ExportVeh_Vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id)
-                    );
-                END
-            ");
-            // ------------------------------------------
-
-            Console.WriteLine("Database tables verified/created successfully.");
+        Console.WriteLine("Database tables verified/created successfully.");
     }
     catch (Exception ex)
     {

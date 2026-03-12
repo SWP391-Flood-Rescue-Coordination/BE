@@ -8,6 +8,16 @@ public class ReliefItemDto
     public int CategoryId { get; set; }
     public string Unit { get; set; } = string.Empty;
     public int Quantity { get; set; }
+    public int MinQuantity { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+public class UpdateReliefItemDto
+{
+    public string? ItemName { get; set; }
+    public int? CategoryId { get; set; }
+    public string? Unit { get; set; }
+    public int? MinQuantity { get; set; }
+    public bool? IsActive { get; set; }
 }

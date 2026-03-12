@@ -130,30 +130,13 @@ public class RescueTeamController : ControllerBase
             UpdatedAt = now
         });
 
-        // ── 10. Nếu Completed hoặc Failed: trả team và vehicle về AVAILABLE/Available ────
+        // ── 10. Nếu Confirmed hoặc Failed: trả team về AVAILABLE
+        //        Vehicle sẽ được trả về AVAILABLE khi User xác nhận Completed.
         if (targetStatus == "Confirmed" || targetStatus == "Failed")
         {
             var team = operation.Team;
             if (team != null)
                 team.Status = "AVAILABLE";
-
-            // Cập nhật tất cả vehicles trong operation này về Available
-            var operationVehicles = await _context.RescueOperationVehicles
-                .Where(ov => ov.OperationId == operationId)
-                .Select(ov => ov.VehicleId)
-                .ToListAsync();
-
-            if (operationVehicles.Any())
-            {
-                var vehicles = await _context.Vehicles
-                    .Where(v => operationVehicles.Contains(v.VehicleId))
-                    .ToListAsync();
-                foreach (var v in vehicles)
-                {
-                    v.Status = "AVAILABLE";
-                    v.UpdatedAt = now;
-                }
-            }
         }
 
         try
@@ -292,5 +275,31 @@ public class RescueTeamController : ControllerBase
             return Forbid();
 
         return Ok(new { Success = true, Data = operation });
+    }
+
+    /// <summary>
+    /// Coordinator/Admin - Xem danh sách đội cứu hộ (lọc theo trạng thái)
+    /// </summary>
+    [HttpGet("status")]
+    [Authorize(Roles = "COORDINATOR,ADMIN")]
+    public async Task<IActionResult> GetTeamsWithStatus([FromQuery] string? status = null)
+    {
+        var query = _context.RescueTeams.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(t => t.Status == status);
+
+        var teams = await query
+            .OrderBy(t => t.TeamName)
+            .Select(t => new
+            {
+                t.TeamId,
+                t.TeamName,
+                t.Status,
+                t.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Count = teams.Count, Data = teams });
     }
 }

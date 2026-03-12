@@ -8,6 +8,7 @@ public class ReliefItem
     public int CategoryId { get; set; }
     public string Unit { get; set; } = string.Empty;
     public int Quantity { get; set; }
+    public int MinQuantity { get; set; } = 0;
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 }

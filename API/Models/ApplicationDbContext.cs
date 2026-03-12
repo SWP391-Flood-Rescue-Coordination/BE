@@ -21,16 +21,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
     public DbSet<ReliefItem> ReliefItems { get; set; }
-
-    // Relief Inventory & Export
-    public DbSet<ReliefItem> ReliefItems { get; set; }
-    public DbSet<Warehouse> Warehouses { get; set; }
-    public DbSet<Region> Regions { get; set; }
-    public DbSet<Inventory> Inventories { get; set; }
-    public DbSet<ManagerScope> ManagerScopes { get; set; }
-    public DbSet<ReliefExportOrder> ReliefExportOrders { get; set; }
-    public DbSet<ReliefExportItem> ReliefExportItems { get; set; }
-    public DbSet<ReliefExportVehicle> ReliefExportVehicles { get; set; }
     public DbSet<StockHistory> StockHistories { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -216,7 +206,6 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Token);
         });
 
-
         modelBuilder.Entity<ReliefItem>(entity =>
         {
             entity.ToTable("relief_items");
@@ -227,20 +216,22 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.Unit).HasColumnName("unit").HasMaxLength(20);
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.MinQuantity).HasColumnName("min_quantity");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
         });
 
-        modelBuilder.Entity<Warehouse>(entity => entity.ToTable("warehouses"));
-        modelBuilder.Entity<Region>(entity => entity.ToTable("regions"));
-        modelBuilder.Entity<Inventory>(entity => entity.ToTable("inventories"));
-        modelBuilder.Entity<ManagerScope>(entity => entity.ToTable("manager_scopes"));
-        modelBuilder.Entity<ReliefExportOrder>(entity => entity.ToTable("relief_export_orders"));
-        modelBuilder.Entity<ReliefExportItem>(entity => entity.ToTable("relief_export_items"));
-        modelBuilder.Entity<ReliefExportVehicle>(entity => entity.ToTable("relief_export_vehicles"));
-        modelBuilder.Entity<ReliefItem>(entity => entity.ToTable("relief_items"));
-        modelBuilder.Entity<StockHistory>(entity => entity.ToTable("stock_history"));
->>>>>>> Tuan
+        modelBuilder.Entity<StockHistory>(entity =>
+        {
+            entity.ToTable("stock_history");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Type).HasColumnName("type").HasMaxLength(3);
+            entity.Property(e => e.Date).HasColumnName("date");
+            entity.Property(e => e.Body).HasColumnName("body");
+            entity.Property(e => e.FromTo).HasColumnName("from_to").HasMaxLength(255);
+            entity.Property(e => e.Note).HasColumnName("note").HasMaxLength(500);
+        });
     }
 
     public override int SaveChanges()
