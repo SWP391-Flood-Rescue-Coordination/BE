@@ -13,3 +13,18 @@ public class VehicleResponseDto
     public DateTime? LastMaintenance { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
+
+public class UpdateVehicleStatusDto
+{
+    public string Status { get; set; } = string.Empty;
+}
+
+public class UpdateVehicleDto
+{
+    public int? VehicleTypeId { get; set; }
+    public string? VehicleName { get; set; }
+    public int? Capacity { get; set; }
+    public string? Status { get; set; }
+    public string? CurrentLocation { get; set; }
+    public DateTime? LastMaintenance { get; set; }
+}

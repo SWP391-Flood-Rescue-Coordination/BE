@@ -263,6 +263,51 @@ public class RescueRequestController : ControllerBase
     }
 
     /// <summary>
+    /// CITIZEN (đã đăng nhập) - Chỉnh sửa yêu cầu cứu hộ của chính mình.
+    /// Chỉ cho phép khi status = "Pending" hoặc "Verified".
+    /// </summary>
+    [HttpPut("{id}/update")]
+    [Authorize(Roles = "CITIZEN")]
+    public async Task<IActionResult> UpdateRequestByCitizen(int id, [FromBody] UpdateRescueRequestDto dto)
+    {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+        var userId = int.Parse(userIdString);
+
+        var request = await _context.RescueRequests
+            .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == userId);
+
+        if (request == null)
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền chỉnh sửa yêu cầu này."
+            });
+
+        if (request.Status != "Pending" && request.Status != "Verified")
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
+            });
+
+        request.Title                  = dto.Title ?? request.Title;
+        request.Description            = dto.Description ?? request.Description;
+        request.Phone                  = dto.ContactPhone ?? request.Phone;
+        request.ContactPhone           = dto.ContactPhone ?? request.ContactPhone;
+        request.Address                = dto.Address ?? request.Address;
+        request.Latitude               = dto.Latitude ?? request.Latitude;
+        request.Longitude              = dto.Longitude ?? request.Longitude;
+        request.NumberOfAffectedPeople = dto.NumberOfPeople ?? request.NumberOfAffectedPeople;
+        request.UpdatedAt              = DateTime.UtcNow;
+        request.UpdatedBy              = userId;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
+    }
+
+    /// <summary>
     /// Coordinator/Admin - Cập nhật trạng thái yêu cầu
     /// </summary>
     [HttpPut("{id}/status")]
