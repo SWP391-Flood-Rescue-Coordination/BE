@@ -130,30 +130,13 @@ public class RescueTeamController : ControllerBase
             UpdatedAt = now
         });
 
-        // ── 10. Nếu Completed hoặc Failed: trả team và vehicle về AVAILABLE/Available ────
+        // ── 10. Nếu Confirmed hoặc Failed: trả team về AVAILABLE
+        //        Vehicle sẽ được trả về AVAILABLE khi User xác nhận Completed.
         if (targetStatus == "Confirmed" || targetStatus == "Failed")
         {
             var team = operation.Team;
             if (team != null)
                 team.Status = "AVAILABLE";
-
-            // Cập nhật tất cả vehicles trong operation này về Available
-            var operationVehicles = await _context.RescueOperationVehicles
-                .Where(ov => ov.OperationId == operationId)
-                .Select(ov => ov.VehicleId)
-                .ToListAsync();
-
-            if (operationVehicles.Any())
-            {
-                var vehicles = await _context.Vehicles
-                    .Where(v => operationVehicles.Contains(v.VehicleId))
-                    .ToListAsync();
-                foreach (var v in vehicles)
-                {
-                    v.Status = "AVAILABLE";
-                    v.UpdatedAt = now;
-                }
-            }
         }
 
         try

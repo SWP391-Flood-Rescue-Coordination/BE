@@ -462,6 +462,26 @@ public class RescueRequestController : ControllerBase
             operation.CompletedAt = now;
         }
 
+        // Trả vehicle về AVAILABLE khi user xác nhận Completed
+        var operationIds = operations.Select(o => o.OperationId).ToList();
+        var vehicleIds = await _context.RescueOperationVehicles
+            .Where(ov => operationIds.Contains(ov.OperationId))
+            .Select(ov => ov.VehicleId)
+            .Distinct()
+            .ToListAsync();
+
+        if (vehicleIds.Any())
+        {
+            var vehicles = await _context.Vehicles
+                .Where(v => vehicleIds.Contains(v.VehicleId))
+                .ToListAsync();
+            foreach (var v in vehicles)
+            {
+                v.Status    = "AVAILABLE";
+                v.UpdatedAt = now;
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return Ok(new
@@ -543,6 +563,26 @@ public class RescueRequestController : ControllerBase
         {
             operation.Status      = "Completed";
             operation.CompletedAt = now;
+        }
+
+        // Trả vehicle về AVAILABLE khi guest xác nhận Completed
+        var operationIds = operations.Select(o => o.OperationId).ToList();
+        var vehicleIds = await _context.RescueOperationVehicles
+            .Where(ov => operationIds.Contains(ov.OperationId))
+            .Select(ov => ov.VehicleId)
+            .Distinct()
+            .ToListAsync();
+
+        if (vehicleIds.Any())
+        {
+            var vehicles = await _context.Vehicles
+                .Where(v => vehicleIds.Contains(v.VehicleId))
+                .ToListAsync();
+            foreach (var v in vehicles)
+            {
+                v.Status    = "AVAILABLE";
+                v.UpdatedAt = now;
+            }
         }
 
         await _context.SaveChangesAsync();
