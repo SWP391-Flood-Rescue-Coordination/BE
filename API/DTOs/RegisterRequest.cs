@@ -8,7 +8,7 @@ public class RegisterRequest
     public string Username { get; set; } = string.Empty;
     
     [Required(ErrorMessage = "Password là bắt buộc")]
-    [MinLength(6, ErrorMessage = "Password phải có ít nhất 6 ký tự")]
+    [MinLength(5, ErrorMessage = "Password phải có ít nhất  ký tự")]
     public string Password { get; set; } = string.Empty;
     
     [Required(ErrorMessage = "Họ tên là bắt buộc")]
