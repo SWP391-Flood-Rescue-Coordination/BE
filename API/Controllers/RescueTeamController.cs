@@ -293,4 +293,30 @@ public class RescueTeamController : ControllerBase
 
         return Ok(new { Success = true, Data = operation });
     }
+
+    /// <summary>
+    /// Coordinator/Admin - Xem danh sách đội cứu hộ (lọc theo trạng thái)
+    /// </summary>
+    [HttpGet("status")]
+    [Authorize(Roles = "COORDINATOR,ADMIN")]
+    public async Task<IActionResult> GetTeamsWithStatus([FromQuery] string? status = null)
+    {
+        var query = _context.RescueTeams.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(t => t.Status == status);
+
+        var teams = await query
+            .OrderBy(t => t.TeamName)
+            .Select(t => new
+            {
+                t.TeamId,
+                t.TeamName,
+                t.Status,
+                t.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Count = teams.Count, Data = teams });
+    }
 }
