@@ -87,28 +87,71 @@ public class VehicleController : ControllerBase
     }
 
     /// <summary>
-    /// Manager/Admin - Cập nhật nhanh trạng thái của phương tiện
+    /// Manager/Admin - Cập nhật thông tin phương tiện
     /// </summary>
-    [HttpPatch("{id}/status")]
+    [HttpPut("{id}")]
     [Authorize(Roles = "MANAGER,ADMIN")]
-    public async Task<IActionResult> UpdateVehicleStatus(int id, [FromBody] UpdateVehicleStatusDto dto)
+    public async Task<IActionResult> UpdateVehicle(int id, [FromBody] UpdateVehicleDto request)
     {
-        if (string.IsNullOrWhiteSpace(dto.Status))
-        {
-            return BadRequest(new { Success = false, Message = "Trạng thái không được để trống" });
-        }
-
         var vehicle = await _context.Vehicles.FindAsync(id);
+
         if (vehicle == null)
         {
             return NotFound(new { Success = false, Message = "Không tìm thấy phương tiện" });
         }
 
-        vehicle.Status = dto.Status;
+        // Kiểm tra VehicleTypeId hợp lệ nếu có gửi lên
+        if (request.VehicleTypeId.HasValue)
+        {
+            var vehicleTypeExists = await _context.VehicleTypes
+                .AnyAsync(vt => vt.VehicleTypeId == request.VehicleTypeId.Value);
+
+            if (!vehicleTypeExists)
+            {
+                return BadRequest(new { Success = false, Message = "Loại phương tiện không tồn tại" });
+            }
+
+            vehicle.VehicleTypeId = request.VehicleTypeId.Value;
+        }
+
+        if (request.VehicleName is not null)
+            vehicle.VehicleName = request.VehicleName;
+
+        if (request.Capacity.HasValue)
+            vehicle.Capacity = request.Capacity.Value;
+
+        if (request.Status is not null)
+            vehicle.Status = request.Status;
+
+        if (request.CurrentLocation is not null)
+            vehicle.CurrentLocation = request.CurrentLocation;
+
+        if (request.LastMaintenance.HasValue)
+            vehicle.LastMaintenance = request.LastMaintenance.Value;
+
         vehicle.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cập nhật trạng thái thành công" });
+        // Trả về thông tin mới nhất sau khi cập nhật
+        var updated = await _context.Vehicles
+            .Include(v => v.VehicleType)
+            .Where(v => v.VehicleId == id)
+            .Select(v => new VehicleResponseDto
+            {
+                VehicleId = v.VehicleId,
+                VehicleCode = v.VehicleCode,
+                VehicleName = v.VehicleName,
+                VehicleTypeName = v.VehicleType != null ? v.VehicleType.TypeName : "",
+                LicensePlate = v.LicensePlate,
+                Capacity = v.Capacity,
+                Status = v.Status,
+                CurrentLocation = v.CurrentLocation,
+                LastMaintenance = v.LastMaintenance,
+                UpdatedAt = v.UpdatedAt
+            })
+            .FirstAsync();
+
+        return Ok(new { Success = true, Message = "Cập nhật phương tiện thành công", Data = updated });
     }
 }

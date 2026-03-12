@@ -26,25 +26,23 @@ public class RescueRequestController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateRequest([FromBody] CreateRescueRequestDto dto)
     {
-        // Check for authenticated user
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         int? userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : null;
-        
 
         var request = new RescueRequest
         {
-            CitizenId = userId,
-            ContactName = userId == null ? dto.ContactName : null,
-            ContactPhone = dto.ContactPhone,
-            Title = dto.Title,
-            Phone = dto.ContactPhone,
-            Description = dto.Description,
-            Latitude = dto.Latitude,
-            Longitude = dto.Longitude,
-            Address = dto.Address,
-            NumberOfAffectedPeople = dto.NumberOfPeople, // Using NumberOfPeople from DTO
-            Status = "Pending",
-            CreatedAt = DateTime.UtcNow
+            CitizenId             = userId,
+            ContactName           = userId == null ? dto.ContactName : null,
+            ContactPhone          = dto.ContactPhone,
+            Title                 = dto.Title,
+            Phone                 = dto.ContactPhone,
+            Description           = dto.Description,
+            Latitude              = dto.Latitude,
+            Longitude             = dto.Longitude,
+            Address               = dto.Address,
+            NumberOfAffectedPeople = dto.NumberOfPeople,
+            Status                = "Pending",
+            CreatedAt             = DateTime.UtcNow
         };
 
         _context.RescueRequests.Add(request);
@@ -62,28 +60,28 @@ public class RescueRequestController : ControllerBase
     {
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
-        
+
         var userId = int.Parse(userIdString);
-        
+
         var requests = await _context.RescueRequests
             .Where(r => r.CitizenId == userId)
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new RescueRequestResponseDto
             {
-                RequestId = r.RequestId,
-                CitizenId = r.CitizenId,
-                CitizenName = r.Citizen != null ? r.Citizen.FullName : "",
-                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : "",
-                Title = r.Title,
-                Description = r.Description,
-                Latitude = r.Latitude,
-                Longitude = r.Longitude,
-                Address = r.Address,
-                PriorityLevelId = r.PriorityLevelId,
-                Status = r.Status ?? "Pending",
+                RequestId              = r.RequestId,
+                CitizenId              = r.CitizenId,
+                CitizenName            = r.Citizen != null ? r.Citizen.FullName : "",
+                CitizenPhone           = r.Citizen != null ? r.Citizen.Phone : "",
+                Title                  = r.Title,
+                Description            = r.Description,
+                Latitude               = r.Latitude,
+                Longitude              = r.Longitude,
+                Address                = r.Address,
+                PriorityLevelId        = r.PriorityLevelId,
+                Status                 = r.Status ?? "Pending",
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
+                CreatedAt              = r.CreatedAt,
+                UpdatedAt              = r.UpdatedAt
             })
             .ToListAsync();
 
@@ -91,25 +89,25 @@ public class RescueRequestController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy yêu cầu cứu hộ mới nhất của citizen đang đăng nhập
+    /// Lấy yêu cầu cứu hộ mới nhất.
+    /// - Citizen đã đăng nhập: lấy theo UserId từ JWT.
+    /// - Guest: lấy yêu cầu mới nhất chưa có CitizenId.
     /// </summary>
     [HttpGet("my-latest-request")]
     [AllowAnonymous]
     public async Task<IActionResult> GetMyLatestRequest()
     {
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        
+
         var query = _context.RescueRequests.AsQueryable();
 
         if (!string.IsNullOrEmpty(userIdString))
         {
-            // Nếu đã đăng nhập, lấy theo UserId
             int userId = int.Parse(userIdString);
             query = query.Where(r => r.CitizenId == userId);
         }
         else
         {
-            // Nếu là khách vãng lai, lấy yêu cầu mới nhất chưa có CitizenId gắn vào
             query = query.Where(r => r.CitizenId == null);
         }
 
@@ -117,20 +115,19 @@ public class RescueRequestController : ControllerBase
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new LatestRescueRequestDto
             {
-                Title = r.Title,
-                Description = r.Description,
-                Address = r.Address,
-                Status = r.Status ?? "Pending",
+                RequestId              = r.RequestId,
+                Title                  = r.Title,
+                Description            = r.Description,
+                Address                = r.Address,
+                Status                 = r.Status ?? "Pending",
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
+                CreatedAt              = r.CreatedAt,
+                UpdatedAt              = r.UpdatedAt
             })
             .FirstOrDefaultAsync();
 
         if (latestRequest == null)
-        {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ nào" });
-        }
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ nào." });
 
         return Ok(new { Success = true, Data = latestRequest });
     }
@@ -147,9 +144,7 @@ public class RescueRequestController : ControllerBase
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
-        {
             query = query.Where(r => r.Status == status);
-        }
 
         if (priorityId.HasValue)
         {
@@ -160,20 +155,20 @@ public class RescueRequestController : ControllerBase
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new RescueRequestResponseDto
             {
-                RequestId = r.RequestId,
-                CitizenId = r.CitizenId,
-                CitizenName = r.Citizen != null ? (r.Citizen.FullName ?? "") : (r.ContactName ?? ""),
-                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
-                Title = r.Title,
-                Description = r.Description,
-                Latitude = r.Latitude,
-                Longitude = r.Longitude,
-                Address = r.Address,
-                PriorityLevelId = r.PriorityLevelId,
-                Status = r.Status ?? "Pending",
+                RequestId              = r.RequestId,
+                CitizenId              = r.CitizenId,
+                CitizenName            = r.Citizen != null ? (r.Citizen.FullName ?? "") : (r.ContactName ?? ""),
+                CitizenPhone           = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
+                Title                  = r.Title,
+                Description            = r.Description,
+                Latitude               = r.Latitude,
+                Longitude              = r.Longitude,
+                Address                = r.Address,
+                PriorityLevelId        = r.PriorityLevelId,
+                Status                 = r.Status ?? "Pending",
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
+                CreatedAt              = r.CreatedAt,
+                UpdatedAt              = r.UpdatedAt
             })
             .ToListAsync();
 
@@ -191,27 +186,25 @@ public class RescueRequestController : ControllerBase
             .Where(r => r.RequestId == id)
             .Select(r => new RescueRequestResponseDto
             {
-                RequestId = r.RequestId,
-                CitizenId = r.CitizenId,
-                CitizenName = r.Citizen != null ? r.Citizen.FullName : r.ContactName,
-                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
-                Title = r.Title,
-                Description = r.Description,
-                Latitude = r.Latitude,
-                Longitude = r.Longitude,
-                Address = r.Address,
-                PriorityLevelId = r.PriorityLevelId,
-                Status = r.Status ?? "Pending",
+                RequestId              = r.RequestId,
+                CitizenId              = r.CitizenId,
+                CitizenName            = r.Citizen != null ? r.Citizen.FullName : r.ContactName,
+                CitizenPhone           = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
+                Title                  = r.Title,
+                Description            = r.Description,
+                Latitude               = r.Latitude,
+                Longitude              = r.Longitude,
+                Address                = r.Address,
+                PriorityLevelId        = r.PriorityLevelId,
+                Status                 = r.Status ?? "Pending",
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
+                CreatedAt              = r.CreatedAt,
+                UpdatedAt              = r.UpdatedAt
             })
             .FirstOrDefaultAsync();
 
         if (request == null)
-        {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
-        }
 
         return Ok(new { Success = true, Data = request });
     }
@@ -227,21 +220,19 @@ public class RescueRequestController : ControllerBase
             .Where(r => r.RequestId == requestId)
             .Select(r => new RescueRequestResponseDto
             {
-                RequestId = r.RequestId,
-                Title = r.Title,
-                Description = r.Description,
-                Status = r.Status ?? "Pending",
+                RequestId              = r.RequestId,
+                Title                  = r.Title,
+                Description            = r.Description,
+                Status                 = r.Status ?? "Pending",
                 NumberOfAffectedPeople = r.NumberOfAffectedPeople,
-                Address = r.Address,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
+                Address                = r.Address,
+                CreatedAt              = r.CreatedAt,
+                UpdatedAt              = r.UpdatedAt
             })
             .FirstOrDefaultAsync();
 
         if (request == null)
-        {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
-        }
 
         return Ok(new { Success = true, Data = request });
     }
@@ -257,26 +248,64 @@ public class RescueRequestController : ControllerBase
             .FirstOrDefaultAsync(r => r.RequestId == id);
 
         if (request == null)
-        {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
-        }
 
-        // Chỉ cho phép chỉnh sửa khi đang ở trạng thái Pending hoặc Verified (trước khi thực hiện cứu hộ)
-        // Tuy nhiên người dùng yêu cầu "chỉnh sửa lại cái request đó và request đó sẽ được lưu vào trong database, nếu chỉnh sửa thì cái request đó sẽ lưu thay đó request chưa chỉnh trước đó"
-        // Nên nếu request đã 'Completed' hay 'Cancelled' thì có lẽ không nên cho sửa.
         if (request.Status != "Pending" && request.Status != "Verified")
-        {
             return BadRequest(new { Success = false, Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}" });
-        }
 
-        request.Title = dto.Title ?? request.Title;
-        request.Description = dto.Description ?? request.Description;
-        request.Phone = dto.ContactPhone ?? request.Phone;
-        request.Address = dto.Address ?? request.Address;
-        request.Latitude = dto.Latitude ?? request.Latitude;
-        request.Longitude = dto.Longitude ?? request.Longitude;
+        request.Title                  = dto.Title ?? request.Title;
+        request.Description            = dto.Description ?? request.Description;
+        request.Phone                  = dto.ContactPhone ?? request.Phone;
+        request.Address                = dto.Address ?? request.Address;
+        request.Latitude               = dto.Latitude ?? request.Latitude;
+        request.Longitude              = dto.Longitude ?? request.Longitude;
         request.NumberOfAffectedPeople = dto.NumberOfPeople ?? request.NumberOfAffectedPeople;
-        request.UpdatedAt = DateTime.UtcNow;
+        request.UpdatedAt              = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
+    }
+
+    /// <summary>
+    /// CITIZEN (đã đăng nhập) - Chỉnh sửa yêu cầu cứu hộ của chính mình.
+    /// Chỉ cho phép khi status = "Pending" hoặc "Verified".
+    /// </summary>
+    [HttpPut("{id}/update")]
+    [Authorize(Roles = "CITIZEN")]
+    public async Task<IActionResult> UpdateRequestByCitizen(int id, [FromBody] UpdateRescueRequestDto dto)
+    {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+        var userId = int.Parse(userIdString);
+
+        var request = await _context.RescueRequests
+            .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == userId);
+
+        if (request == null)
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền chỉnh sửa yêu cầu này."
+            });
+
+        if (request.Status != "Pending" && request.Status != "Verified")
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
+            });
+
+        request.Title                  = dto.Title ?? request.Title;
+        request.Description            = dto.Description ?? request.Description;
+        request.Phone                  = dto.ContactPhone ?? request.Phone;
+        request.ContactPhone           = dto.ContactPhone ?? request.ContactPhone;
+        request.Address                = dto.Address ?? request.Address;
+        request.Latitude               = dto.Latitude ?? request.Latitude;
+        request.Longitude              = dto.Longitude ?? request.Longitude;
+        request.NumberOfAffectedPeople = dto.NumberOfPeople ?? request.NumberOfAffectedPeople;
+        request.UpdatedAt              = DateTime.UtcNow;
+        request.UpdatedBy              = userId;
 
         await _context.SaveChangesAsync();
 
@@ -291,24 +320,22 @@ public class RescueRequestController : ControllerBase
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDto dto)
     {
         var request = await _context.RescueRequests.FindAsync(id);
-        
+
         if (request == null)
-        {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
-        }
 
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         int userId = userIdString != null ? int.Parse(userIdString) : 0;
 
-        request.Status = dto.Status;
+        request.Status    = dto.Status;
         request.UpdatedAt = DateTime.UtcNow;
         request.UpdatedBy = userId;
-        
+
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
-            Status = dto.Status,
-            Notes = $"Trạng thái cập nhật bởi hệ thống quản lý",
+            Status    = dto.Status,
+            Notes     = "Trạng thái cập nhật bởi hệ thống quản lý",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
@@ -328,28 +355,24 @@ public class RescueRequestController : ControllerBase
         var request = await _context.RescueRequests.FindAsync(id);
 
         if (request == null)
-        {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
-        }
 
         if (request.Status != "Pending")
-        {
             return BadRequest(new { Success = false, Message = $"Yêu cầu cứu hộ phải ở trạng thái Pending (hiện tại: {request.Status})" });
-        }
 
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         int userId = userIdString != null ? int.Parse(userIdString) : 0;
 
         request.PriorityLevelId = dto.PriorityLevelId;
-        request.Status = "Verified";
-        request.UpdatedAt = DateTime.UtcNow;
-        request.UpdatedBy = userId;
+        request.Status          = "Verified";
+        request.UpdatedAt       = DateTime.UtcNow;
+        request.UpdatedBy       = userId;
 
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
-            Status = "Verified",
-            Notes = $"Coordinator thiết lập mức độ ưu tiên {dto.PriorityLevelId} và xác minh yêu cầu",
+            Status    = "Verified",
+            Notes     = $"Coordinator thiết lập mức độ ưu tiên {dto.PriorityLevelId} và xác minh yêu cầu",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
@@ -367,26 +390,26 @@ public class RescueRequestController : ControllerBase
     public async Task<IActionResult> UpdatePriority(int id, [FromBody] UpdatePriorityDto dto)
     {
         var request = await _context.RescueRequests.FindAsync(id);
-        
+
         if (request == null)
-        {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
-        }
 
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         int userId = userIdString != null ? int.Parse(userIdString) : 0;
 
         request.PriorityLevelId = dto.PriorityLevelId;
-        request.UpdatedAt = DateTime.UtcNow;
-        request.UpdatedBy = userId;
-        
+        request.UpdatedAt       = DateTime.UtcNow;
+        request.UpdatedBy       = userId;
+
         await _context.SaveChangesAsync();
 
         return Ok(new { Success = true, Message = "Cập nhật mức độ ưu tiên thành công" });
     }
 
     /// <summary>
-    /// Citizen - Xác nhận đã được cứu hộ
+    /// CITIZEN (đã đăng nhập) - Xác nhận đã được cứu hộ.
+    /// Chỉ gọi được khi status = "Confirmed".
+    /// Sau khi xác nhận, status request chuyển thành "Completed" và rescue operation cùng RequestId cũng chuyển thành "Completed".
     /// </summary>
     [HttpPut("{id}/confirm-rescued")]
     [Authorize(Roles = "CITIZEN")]
@@ -395,22 +418,145 @@ public class RescueRequestController : ControllerBase
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userIdString == null) return Unauthorized();
         var userId = int.Parse(userIdString);
-        
+
         var request = await _context.RescueRequests
             .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == userId);
-        
+
         if (request == null)
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền xác nhận yêu cầu này."
+            });
+
+        if (request.Status != "Confirmed")
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Chỉ có thể xác nhận khi yêu cầu đang ở trạng thái 'Confirmed'. Trạng thái hiện tại: '{request.Status}'."
+            });
+
+        var now = DateTime.UtcNow;
+
+        // Cập nhật trạng thái request
+        request.Status    = "Completed";
+        request.UpdatedAt = now;
+        request.UpdatedBy = userId;
+
+        _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+            RequestId = request.RequestId,
+            Status    = "Completed",
+            Notes     = "Công dân xác nhận đã được cứu hộ thành công.",
+            UpdatedBy = userId,
+            UpdatedAt = now
+        });
+
+        // Cập nhật trạng thái các rescue operation cùng RequestId
+        var operations = await _context.RescueOperations
+            .Where(o => o.RequestId == id)
+            .ToListAsync();
+
+        foreach (var operation in operations)
+        {
+            operation.Status      = "Completed";
+            operation.CompletedAt = now;
         }
 
-        request.Status = "Completed";
-        request.UpdatedAt = DateTime.UtcNow;
-        request.UpdatedBy = userId;
-        
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Xác nhận đã được cứu hộ thành công" });
+        return Ok(new
+        {
+            Success            = true,
+            Message            = "Cảm ơn bạn đã xác nhận! Yêu cầu cứu hộ đã được đóng lại.",
+            RequestId          = request.RequestId,
+            Status             = request.Status,
+            OperationsUpdated  = operations.Count,
+            CompletedAt        = now
+        });
+    }
+
+    /// <summary>
+    /// GUEST (không cần đăng nhập) - Xác nhận đã được cứu hộ bằng RequestId + Phone.
+    /// Phone phải khớp với ContactPhone hoặc Phone đã lưu khi tạo yêu cầu.
+    /// Chỉ gọi được khi status = "Confirmed".
+    /// Sau khi xác nhận, status request chuyển thành "Completed" và rescue operation cùng RequestId cũng chuyển thành "Completed".
+    /// </summary>
+    [HttpPut("guest/{id}/confirm-rescued")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
+    {
+        var inputPhone = dto.Phone?.Trim();
+        if (string.IsNullOrEmpty(inputPhone))
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Số điện thoại là bắt buộc để xác nhận."
+            });
+
+        var request = await _context.RescueRequests
+            .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == null);
+
+        if (request == null)
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Không tìm thấy yêu cầu cứu hộ. Yêu cầu không tồn tại hoặc thuộc về tài khoản đã đăng nhập."
+            });
+
+        var savedPhone = (request.ContactPhone ?? request.Phone ?? "").Trim();
+        if (!string.Equals(inputPhone, savedPhone, StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Số điện thoại không khớp với yêu cầu cứu hộ này."
+            });
+
+        if (request.Status != "Confirmed")
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Chỉ có thể xác nhận khi yêu cầu đang ở trạng thái 'Confirmed'. Trạng thái hiện tại: '{request.Status}'."
+            });
+
+        var now = DateTime.UtcNow;
+
+        // Cập nhật trạng thái request
+        request.Status    = "Completed";
+        request.UpdatedAt = now;
+        request.UpdatedBy = null; // Guest không có userId
+
+        _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
+        {
+            RequestId = request.RequestId,
+            Status    = "Completed",
+            Notes     = $"Khách vãng lai (SĐT: {inputPhone}) xác nhận đã được cứu hộ thành công.",
+            UpdatedBy = request.CitizenId ?? 1, // fallback: dùng citizen nếu có, không thì admin id=1
+            UpdatedAt = now
+        });
+
+        // Cập nhật trạng thái các rescue operation cùng RequestId
+        var operations = await _context.RescueOperations
+            .Where(o => o.RequestId == id)
+            .ToListAsync();
+
+        foreach (var operation in operations)
+        {
+            operation.Status      = "Completed";
+            operation.CompletedAt = now;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Success           = true,
+            Message           = "Cảm ơn bạn đã xác nhận! Yêu cầu cứu hộ đã được đóng lại.",
+            RequestId         = request.RequestId,
+            Status            = request.Status,
+            OperationsUpdated = operations.Count,
+            CompletedAt       = now
+        });
     }
 
     /// <summary>
@@ -420,30 +566,32 @@ public class RescueRequestController : ControllerBase
     [Authorize(Roles = "MANAGER,ADMIN,COORDINATOR")]
     public async Task<IActionResult> GetStatistics()
     {
-        var totalRequests = await _context.RescueRequests.CountAsync();
-        
-        var pending = await _context.RescueRequests.CountAsync(r => r.Status == "Pending");
-        var verified = await _context.RescueRequests.CountAsync(r => r.Status == "Verified");
-        var inProgress = await _context.RescueRequests.CountAsync(r => r.Status == "In Progress");
-        var completed = await _context.RescueRequests.CountAsync(r => r.Status == "Completed");
-        var cancelled = await _context.RescueRequests.CountAsync(r => r.Status == "Cancelled");
-        var duplicate = await _context.RescueRequests.CountAsync(r => r.Status == "Duplicate");
+        var totalRequests    = await _context.RescueRequests.CountAsync();
+        var pending          = await _context.RescueRequests.CountAsync(r => r.Status == "Pending");
+        var verified         = await _context.RescueRequests.CountAsync(r => r.Status == "Verified");
+        var inProgress       = await _context.RescueRequests.CountAsync(r => r.Status == "In Progress");
+        var completed        = await _context.RescueRequests.CountAsync(r => r.Status == "Completed");
+        var citizenConfirmed = await _context.RescueRequests.CountAsync(r => r.Status == "CitizenConfirmed");
+        var cancelled        = await _context.RescueRequests.CountAsync(r => r.Status == "Cancelled");
+        var duplicate        = await _context.RescueRequests.CountAsync(r => r.Status == "Duplicate");
+        var today            = DateTime.UtcNow.Date;
+        var todayRequests    = await _context.RescueRequests.CountAsync(r => r.CreatedAt >= today);
 
-        var today = DateTime.UtcNow.Date;
-        var todayRequests = await _context.RescueRequests.CountAsync(r => r.CreatedAt >= today);
-
-        var stats = new DashboardStatisticsDto
+        return Ok(new
         {
-            TotalRequests = totalRequests,
-            PendingRequests = pending,
-            VerifiedRequests = verified,
-            InProgressRequests = inProgress,
-            CompletedRequests = completed,
-            CancelledRequests = cancelled,
-            DuplicateRequests = duplicate,
-            TodayRequests = todayRequests
-        };
-
-        return Ok(new { Success = true, Data = stats });
+            Success = true,
+            Data = new DashboardStatisticsDto
+            {
+                TotalRequests            = totalRequests,
+                PendingRequests          = pending,
+                VerifiedRequests         = verified,
+                InProgressRequests       = inProgress,
+                CompletedRequests        = completed,
+                CitizenConfirmedRequests = citizenConfirmed,
+                CancelledRequests        = cancelled,
+                DuplicateRequests        = duplicate,
+                TodayRequests            = todayRequests
+            }
+        });
     }
 }

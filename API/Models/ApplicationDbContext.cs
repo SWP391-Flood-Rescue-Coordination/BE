@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RescueRequestStatusHistory> RescueRequestStatusHistories { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
+    public DbSet<ReliefItem> ReliefItems { get; set; }
 
     // Relief Inventory & Export
     public DbSet<ReliefItem> ReliefItems { get; set; }
@@ -215,6 +216,21 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Token);
         });
 
+
+        modelBuilder.Entity<ReliefItem>(entity =>
+        {
+            entity.ToTable("relief_items");
+            entity.HasKey(e => e.ItemId);
+            entity.Property(e => e.ItemId).HasColumnName("item_id");
+            entity.Property(e => e.ItemCode).HasColumnName("item_code").HasMaxLength(50);
+            entity.Property(e => e.ItemName).HasColumnName("item_name").HasMaxLength(200);
+            entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.Unit).HasColumnName("unit").HasMaxLength(20);
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+        });
+
         modelBuilder.Entity<Warehouse>(entity => entity.ToTable("warehouses"));
         modelBuilder.Entity<Region>(entity => entity.ToTable("regions"));
         modelBuilder.Entity<Inventory>(entity => entity.ToTable("inventories"));
@@ -224,6 +240,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ReliefExportVehicle>(entity => entity.ToTable("relief_export_vehicles"));
         modelBuilder.Entity<ReliefItem>(entity => entity.ToTable("relief_items"));
         modelBuilder.Entity<StockHistory>(entity => entity.ToTable("stock_history"));
+>>>>>>> Tuan
     }
 
     public override int SaveChanges()
