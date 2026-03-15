@@ -76,6 +76,14 @@ public class DashboardStatisticsDto
     public int TodayRequests { get; set; }
 }
 
+public class CitizenDashboardStatisticsDto
+{
+    public int ReceivedRequests { get; set; }
+    public int RescuedPeople { get; set; }
+    public int SupportedRequests { get; set; }
+    public int SafeReports { get; set; }
+}
+
 public class LatestRescueRequestDto
 {
     public int RequestId { get; set; }
