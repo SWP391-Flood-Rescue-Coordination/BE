@@ -139,24 +139,29 @@ public class RescueRequestController : ControllerBase
         var supportedStatuses = new[] { "Confirmed", "Completed", "CitizenConfirmed" };
         var safeStatuses = new[] { "Completed", "CitizenConfirmed" };
 
-        var receivedRequests = await _context.RescueRequests.CountAsync();
-        var supportedRequests = await _context.RescueRequests.CountAsync(r => supportedStatuses.Contains(r.Status));
-        var safeReports = await _context.RescueRequests.CountAsync(r => safeStatuses.Contains(r.Status));
-        var rescuedPeople =
-            await _context.RescueRequests
-                .Where(r => supportedStatuses.Contains(r.Status))
-                .Select(r => (int?)r.NumberOfAffectedPeople)
-                .SumAsync() ?? 0;
+        var stats = await _context.RescueRequests
+            .AsNoTracking()
+            .GroupBy(x => 1)
+            .Select(g => new
+            {
+                ReceivedRequests = g.Count(),
+                SupportedRequests = g.Count(r => supportedStatuses.Contains(r.Status)),
+                SafeReports = g.Count(r => safeStatuses.Contains(r.Status)),
+                RescuedPeople = g
+                    .Where(r => supportedStatuses.Contains(r.Status))
+                    .Sum(r => (int?)r.NumberOfAffectedPeople) ?? 0
+            })
+            .FirstOrDefaultAsync();
 
         return Ok(new
         {
             Success = true,
             Data = new CitizenDashboardStatisticsDto
             {
-                ReceivedRequests = receivedRequests,
-                RescuedPeople = rescuedPeople,
-                SupportedRequests = supportedRequests,
-                SafeReports = safeReports
+                ReceivedRequests = stats?.ReceivedRequests ?? 0,
+                RescuedPeople = stats?.RescuedPeople ?? 0,
+                SupportedRequests = stats?.SupportedRequests ?? 0,
+                SafeReports = stats?.SafeReports ?? 0
             }
         });
     }
