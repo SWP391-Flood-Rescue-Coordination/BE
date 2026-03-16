@@ -106,6 +106,13 @@ builder.Services.AddHttpClient<IDistanceService, OsrmDistanceService>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
+builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(client =>
+{
+    client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("FloodRescueCoordination/1.0 (support@floodrescue.vn)");
+});
+
 // =============================================
 // CẤU HÌNH JWT AUTHENTICATION
 // =============================================

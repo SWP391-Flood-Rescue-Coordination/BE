@@ -1,5 +1,6 @@
 using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
+using Flood_Rescue_Coordination.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,17 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 public class RescueRequestController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IGeocodingService _geocodingService;
 
-    public RescueRequestController(ApplicationDbContext context)
+    private const decimal HcmMinLatitude = 10.20m;
+    private const decimal HcmMaxLatitude = 11.20m;
+    private const decimal HcmMinLongitude = 106.20m;
+    private const decimal HcmMaxLongitude = 107.10m;
+
+    public RescueRequestController(ApplicationDbContext context, IGeocodingService geocodingService)
     {
         _context = context;
+        _geocodingService = geocodingService;
     }
 
     /// <summary>
@@ -26,8 +34,20 @@ public class RescueRequestController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateRequest([FromBody] CreateRescueRequestDto dto)
     {
+        if (!dto.Latitude.HasValue || !dto.Longitude.HasValue)
+        {
+            return BadRequest(new { Success = false, Message = "Vui lòng chọn vị trí trên bản đồ." });
+        }
+
+        if (!IsInHoChiMinhCity(dto.Latitude.Value, dto.Longitude.Value))
+        {
+            return BadRequest(new { Success = false, Message = "Vị trí phải nằm trong phạm vi TP.HCM." });
+        }
+
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         int? userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : null;
+
+        var resolvedAddress = await TryResolveAddressAsync(dto.Address, dto.Latitude.Value, dto.Longitude.Value);
 
         var request = new RescueRequest
         {
@@ -39,7 +59,7 @@ public class RescueRequestController : ControllerBase
             Description           = dto.Description,
             Latitude              = dto.Latitude,
             Longitude             = dto.Longitude,
-            Address               = dto.Address,
+            Address               = resolvedAddress,
             NumberOfAffectedPeople = dto.NumberOfPeople,
             Status                = "Pending",
             CreatedAt             = DateTime.UtcNow
@@ -49,6 +69,27 @@ public class RescueRequestController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { Success = true, Message = "Tạo yêu cầu cứu hộ thành công", RequestId = request.RequestId });
+    }
+
+    /// <summary>
+    /// Lấy địa chỉ từ tọa độ do user chọn trên bản đồ (chỉ trong phạm vi TP.HCM)
+    /// </summary>
+    [HttpGet("map/reverse-geocode")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ReverseGeocode([FromQuery] decimal lat, [FromQuery] decimal lon, CancellationToken cancellationToken)
+    {
+        if (!IsInHoChiMinhCity(lat, lon))
+        {
+            return BadRequest(new { Success = false, Message = "Vị trí phải nằm trong phạm vi TP.HCM." });
+        }
+
+        var address = await _geocodingService.ReverseGeocodeAsync(lat, lon, cancellationToken);
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return NotFound(new { Success = false, Message = "Không lấy được địa chỉ từ tọa độ đã chọn." });
+        }
+
+        return Ok(new { Success = true, Data = new { Latitude = lat, Longitude = lon, Address = address } });
     }
 
     /// <summary>
@@ -286,12 +327,27 @@ public class RescueRequestController : ControllerBase
         if (request.Status != "Pending" && request.Status != "Verified")
             return BadRequest(new { Success = false, Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}" });
 
+        var nextLatitude = dto.Latitude ?? request.Latitude;
+        var nextLongitude = dto.Longitude ?? request.Longitude;
+
+        if (!nextLatitude.HasValue || !nextLongitude.HasValue)
+        {
+            return BadRequest(new { Success = false, Message = "Yêu cầu phải có vị trí hợp lệ trên bản đồ." });
+        }
+
+        if (!IsInHoChiMinhCity(nextLatitude.Value, nextLongitude.Value))
+        {
+            return BadRequest(new { Success = false, Message = "Vị trí phải nằm trong phạm vi TP.HCM." });
+        }
+
+        var resolvedAddress = await TryResolveAddressAsync(dto.Address, nextLatitude.Value, nextLongitude.Value);
+
         request.Title                  = dto.Title ?? request.Title;
         request.Description            = dto.Description ?? request.Description;
         request.Phone                  = dto.ContactPhone ?? request.Phone;
-        request.Address                = dto.Address ?? request.Address;
-        request.Latitude               = dto.Latitude ?? request.Latitude;
-        request.Longitude              = dto.Longitude ?? request.Longitude;
+        request.Address                = resolvedAddress;
+        request.Latitude               = nextLatitude;
+        request.Longitude              = nextLongitude;
         request.NumberOfAffectedPeople = dto.NumberOfPeople ?? request.NumberOfAffectedPeople;
         request.UpdatedAt              = DateTime.UtcNow;
 
@@ -329,13 +385,28 @@ public class RescueRequestController : ControllerBase
                 Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
             });
 
+        var nextLatitude = dto.Latitude ?? request.Latitude;
+        var nextLongitude = dto.Longitude ?? request.Longitude;
+
+        if (!nextLatitude.HasValue || !nextLongitude.HasValue)
+        {
+            return BadRequest(new { Success = false, Message = "Yêu cầu phải có vị trí hợp lệ trên bản đồ." });
+        }
+
+        if (!IsInHoChiMinhCity(nextLatitude.Value, nextLongitude.Value))
+        {
+            return BadRequest(new { Success = false, Message = "Vị trí phải nằm trong phạm vi TP.HCM." });
+        }
+
+        var resolvedAddress = await TryResolveAddressAsync(dto.Address, nextLatitude.Value, nextLongitude.Value);
+
         request.Title                  = dto.Title ?? request.Title;
         request.Description            = dto.Description ?? request.Description;
         request.Phone                  = dto.ContactPhone ?? request.Phone;
         request.ContactPhone           = dto.ContactPhone ?? request.ContactPhone;
-        request.Address                = dto.Address ?? request.Address;
-        request.Latitude               = dto.Latitude ?? request.Latitude;
-        request.Longitude              = dto.Longitude ?? request.Longitude;
+        request.Address                = resolvedAddress;
+        request.Latitude               = nextLatitude;
+        request.Longitude              = nextLongitude;
         request.NumberOfAffectedPeople = dto.NumberOfPeople ?? request.NumberOfAffectedPeople;
         request.UpdatedAt              = DateTime.UtcNow;
         request.UpdatedBy              = userId;
@@ -666,5 +737,24 @@ public class RescueRequestController : ControllerBase
                 TodayRequests            = todayRequests
             }
         });
+    }
+
+    private static bool IsInHoChiMinhCity(decimal latitude, decimal longitude)
+    {
+        return latitude >= HcmMinLatitude
+            && latitude <= HcmMaxLatitude
+            && longitude >= HcmMinLongitude
+            && longitude <= HcmMaxLongitude;
+    }
+
+    private async Task<string?> TryResolveAddressAsync(string? inputAddress, decimal latitude, decimal longitude)
+    {
+        if (!string.IsNullOrWhiteSpace(inputAddress))
+        {
+            return inputAddress.Trim();
+        }
+
+        var address = await _geocodingService.ReverseGeocodeAsync(latitude, longitude);
+        return string.IsNullOrWhiteSpace(address) ? null : address.Trim();
     }
 }
