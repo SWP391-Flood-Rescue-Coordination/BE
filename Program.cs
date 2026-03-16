@@ -100,6 +100,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // =============================================
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddHttpClient<IDistanceService, OsrmDistanceService>(client =>
+{
+    client.BaseAddress = new Uri("https://router.project-osrm.org/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 // =============================================
 // CẤU HÌNH JWT AUTHENTICATION
@@ -235,6 +240,22 @@ using (var scope = app.Services.CreateScope())
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'relief_items') AND name = 'min_quantity')
                 BEGIN
                     ALTER TABLE relief_items ADD min_quantity INT NOT NULL DEFAULT 0;
+                END
+            END
+        ");
+
+        // Thêm cột tọa độ cho rescue_teams nếu chưa có
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'rescue_teams')
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'rescue_teams') AND name = 'base_latitude')
+                BEGIN
+                    ALTER TABLE rescue_teams ADD base_latitude DECIMAL(9,6) NULL;
+                END
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'rescue_teams') AND name = 'base_longitude')
+                BEGIN
+                    ALTER TABLE rescue_teams ADD base_longitude DECIMAL(9,6) NULL;
                 END
             END
         ");
