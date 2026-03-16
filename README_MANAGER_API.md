@@ -6,7 +6,7 @@ Manager có trách nhiệm quản lý hệ thống phân phối và lưu kho, ba
 ## API Endpoints mới: Quản lý Kho (Stock Management)
 
 ### 1. Nhập kho vật tư cứu trợ
-- **Endpoint**: `POST /api/ReliefItem/import`
+- **Endpoint**: `POST /api/StockHistory/import`
 - **Quyền hạn**: `Roles = "MANAGER"`
 - **Mô tả**: Cho phép Manager tạo phiếu nhập kho vật tư cứu trợ khi tiếp nhận hàng từ các nguồn hỗ trợ (ví dụ như nhà tài trợ, tổ chức thiện nguyện, cơ quan khác,…). Hệ thống sẽ tự động cập nhật số lượng tồn kho của các mặt hàng và lưu lại lịch sử thay đổi để truy vết nguồn gốc.
 - **Body (JSON)**:
@@ -47,7 +47,7 @@ Manager có trách nhiệm quản lý hệ thống phân phối và lưu kho, ba
 
 ## Luồng hoạt động tiêu chuẩn khi trực tiếp nhận hàng cứu trợ
 1. **Manager** đăng nhập vào API và nhận token với quyền MANAGER.
-2. Khi tiếp nhận lô hàng, **Manager** truy cập Swagger, vào mục `ReliefItem` và mở `POST /api/ReliefItem/import`.
+2. Khi tiếp nhận lô hàng, **Manager** truy cập Swagger, vào mục `StockHistory` và mở `POST /api/StockHistory/import`.
 3. Điền các mục thông tin tổng quan (`source`, `location`) và cung cấp một mảng JSON chứa các `itemId`, kèm số lượng nhập tương ứng. Nhấn Execute (Try it out).
 4. Phản hồi thành công (Status 200). Các `ReliefItems` khai báo sẽ được hệ thống tăng số tồn kho.
 5. (Tuỳ chọn) Manager có thể gọi API `GET /api/StockHistory?type=IN` để xem lại phiếu thông tin nhập kho cùng nguồn tiếp nhận (body, source, note) hoặc `GET /api/ReliefItem/low-stock` để theo dõi các vật tư.
