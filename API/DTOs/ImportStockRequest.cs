@@ -7,8 +7,7 @@ public class ImportStockRequest
     [Required(ErrorMessage = "Nguồn gốc hàng (Source) không được rỗng.")]
     public string Source { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Địa chỉ tiếp nhận hàng (Location) không được rỗng.")]
-    public string Location { get; set; } = string.Empty;
+    public string? Note { get; set; }
 
     [Required(ErrorMessage = "Danh sách vật tư không được rỗng.")]
     [MinLength(1, ErrorMessage = "Danh sách vật tư không được rỗng.")]
