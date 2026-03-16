@@ -61,4 +61,74 @@ public class StockHistoryController : ControllerBase
             Data    = items
         });
     }
+
+    /// <summary>
+    /// Tạo phiếu nhập kho vật tư cứu trợ khi tiếp nhận hàng từ các nguồn hỗ trợ.
+    /// </summary>
+    [HttpPost("import")]
+    [Authorize(Roles = "MANAGER")]
+    public async Task<IActionResult> ImportStock([FromBody] ImportStockRequest request)
+    {
+        if (request.Items == null || request.Items.Count == 0)
+        {
+            return BadRequest(new { Success = false, Message = "Danh sách vật tư không được rỗng." });
+        }
+
+        var importedItemsDetail = new List<string>();
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            foreach (var itemInput in request.Items)
+            {
+                if (itemInput.Quantity <= 0)
+                {
+                    return BadRequest(new { Success = false, Message = $"Số lượng vật tư (ItemId: {itemInput.ItemId}) phải lớn hơn 0." });
+                }
+
+                var reliefItem = await _context.ReliefItems.FindAsync(itemInput.ItemId);
+                if (reliefItem == null)
+                {
+                    return BadRequest(new { Success = false, Message = $"Vật tư với ID {itemInput.ItemId} không tồn tại trong hệ thống." });
+                }
+
+                reliefItem.Quantity += itemInput.Quantity;
+                importedItemsDetail.Add($"{reliefItem.ItemName} (+{itemInput.Quantity} {reliefItem.Unit})");
+            }
+
+            var noteContent = $"Địa chỉ tiếp nhận: {request.Location}";
+            var bodyContent = "Nhập: " + string.Join(", ", importedItemsDetail);
+
+            // Limit body width to max 500 characters
+            if (bodyContent.Length > 500)
+            {
+                bodyContent = bodyContent.Substring(0, 497) + "...";
+            }
+
+            var history = new StockHistory
+            {
+                Type = "IN",
+                Date = DateTime.UtcNow,
+                FromTo = request.Source,
+                Note = noteContent.Length > 500 ? noteContent.Substring(0, 497) + "..." : noteContent,
+                Body = bodyContent
+            };
+
+            _context.StockHistories.Add(history);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                Success = true,
+                Message = "Tạo phiếu nhập kho thành công.",
+                HistoryId = history.Id
+            });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            return StatusCode(500, new { Success = false, Message = "Lỗi khi tạo phiếu nhập kho: " + ex.Message });
+        }
+    }
 }
