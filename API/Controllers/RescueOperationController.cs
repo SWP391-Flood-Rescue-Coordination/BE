@@ -106,6 +106,7 @@ public class RescueOperationController : ControllerBase
                 AssignedBy = coordinatorId,
                 AssignedAt = now,
                 Status     = "Assigned",
+                NumberOfAffectedPeople = (rescueRequest.AdultCount ?? 0) + (rescueRequest.ElderlyCount ?? 0) + (rescueRequest.ChildrenCount ?? 0),
                 EstimatedTime = dto.EstimatedTime
             };
             _context.RescueOperations.Add(operation);
@@ -159,7 +160,7 @@ public class RescueOperationController : ControllerBase
                 AssignedVehicleIds = vehicleIds,
                 AssignedAt         = now,
                 Status             = operation.Status,
-                NumberOfAffectedPeople = rescueRequest.NumberOfAffectedPeople,
+                NumberOfAffectedPeople = operation.NumberOfAffectedPeople,
                 EstimatedTime      = operation.EstimatedTime
             };
         });

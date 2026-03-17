@@ -40,10 +40,31 @@ public class RescueRequestController : ControllerBase
             Latitude              = dto.Latitude,
             Longitude             = dto.Longitude,
             Address               = dto.Address,
-            NumberOfAffectedPeople = dto.NumberOfPeople,
+            AdultCount            = dto.AdultCount,
+            ElderlyCount          = dto.ElderlyCount,
+            ChildrenCount         = dto.ChildrenCount,
             Status                = "Pending",
             CreatedAt             = DateTime.UtcNow
         };
+
+        // Auto-calculate Priority Level: E = ElderlyCount, C = ChildrenCount
+        // V = 1.5 * E + 1.8 * C
+        int elderly = dto.ElderlyCount ?? 0;
+        int children = dto.ChildrenCount ?? 0;
+        double v = 1.5 * elderly + 1.8 * children;
+
+        if (v >= 6)
+        {
+            request.PriorityLevelId = 1; // High
+        }
+        else if (v >= 3)
+        {
+            request.PriorityLevelId = 2; // Medium
+        }
+        else
+        {
+            request.PriorityLevelId = 3; // Low
+        }
 
         _context.RescueRequests.Add(request);
         await _context.SaveChangesAsync();
@@ -79,7 +100,9 @@ public class RescueRequestController : ControllerBase
                 Address                = r.Address,
                 PriorityLevelId        = r.PriorityLevelId,
                 Status                 = r.Status ?? "Pending",
-                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
+                AdultCount             = r.AdultCount,
+                ElderlyCount           = r.ElderlyCount,
+                ChildrenCount          = r.ChildrenCount,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -120,7 +143,9 @@ public class RescueRequestController : ControllerBase
                 Description            = r.Description,
                 Address                = r.Address,
                 Status                 = r.Status ?? "Pending",
-                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
+                AdultCount             = r.AdultCount,
+                ElderlyCount           = r.ElderlyCount,
+                ChildrenCount          = r.ChildrenCount,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -165,7 +190,9 @@ public class RescueRequestController : ControllerBase
                 Address                = r.Address,
                 PriorityLevelId        = r.PriorityLevelId,
                 Status                 = r.Status ?? "Pending",
-                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
+                AdultCount             = r.AdultCount,
+                ElderlyCount           = r.ElderlyCount,
+                ChildrenCount          = r.ChildrenCount,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -196,7 +223,9 @@ public class RescueRequestController : ControllerBase
                 Address                = r.Address,
                 PriorityLevelId        = r.PriorityLevelId,
                 Status                 = r.Status ?? "Pending",
-                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
+                AdultCount             = r.AdultCount,
+                ElderlyCount           = r.ElderlyCount,
+                ChildrenCount          = r.ChildrenCount,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -223,7 +252,9 @@ public class RescueRequestController : ControllerBase
                 Title                  = r.Title,
                 Description            = r.Description,
                 Status                 = r.Status ?? "Pending",
-                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
+                AdultCount             = r.AdultCount,
+                ElderlyCount           = r.ElderlyCount,
+                ChildrenCount          = r.ChildrenCount,
                 Address                = r.Address,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
@@ -258,7 +289,15 @@ public class RescueRequestController : ControllerBase
         request.Address                = dto.Address ?? request.Address;
         request.Latitude               = dto.Latitude ?? request.Latitude;
         request.Longitude              = dto.Longitude ?? request.Longitude;
-        request.NumberOfAffectedPeople = dto.NumberOfPeople ?? request.NumberOfAffectedPeople;
+        
+        bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue;
+        if (hasAnyCountUpdate)
+        {
+            request.AdultCount = dto.AdultCount ?? request.AdultCount;
+            request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
+            request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+        }
+
         request.UpdatedAt              = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -302,7 +341,15 @@ public class RescueRequestController : ControllerBase
         request.Address                = dto.Address ?? request.Address;
         request.Latitude               = dto.Latitude ?? request.Latitude;
         request.Longitude              = dto.Longitude ?? request.Longitude;
-        request.NumberOfAffectedPeople = dto.NumberOfPeople ?? request.NumberOfAffectedPeople;
+        
+        bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue;
+        if (hasAnyCountUpdate)
+        {
+            request.AdultCount = dto.AdultCount ?? request.AdultCount;
+            request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
+            request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+        }
+
         request.UpdatedAt              = DateTime.UtcNow;
         request.UpdatedBy              = userId;
 
