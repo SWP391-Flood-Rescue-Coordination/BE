@@ -391,12 +391,11 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Message = "Cập nhật trạng thái thành công" });
     }
 
-    /// <summary>
-    /// Coordinator - Thiết lập priority level và xác minh yêu cầu
+    /// Coordinator - Xác minh yêu cầu
     /// </summary>
-    [HttpPut("{id}/set-priority-and-verify")]
+    [HttpPut("{id}/verify")]
     [Authorize(Roles = "COORDINATOR")]
-    public async Task<IActionResult> SetPriorityAndVerify(int id, [FromBody] SetPriorityAndVerifyDto dto)
+    public async Task<IActionResult> VerifyRequest(int id)
     {
         var request = await _context.RescueRequests.FindAsync(id);
 
@@ -409,7 +408,6 @@ public class RescueRequestController : ControllerBase
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         int userId = userIdString != null ? int.Parse(userIdString) : 0;
 
-        request.PriorityLevelId = dto.PriorityLevelId;
         request.Status          = "Verified";
         request.UpdatedAt       = DateTime.UtcNow;
         request.UpdatedBy       = userId;
@@ -418,38 +416,14 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status    = "Verified",
-            Notes     = $"Coordinator thiết lập mức độ ưu tiên {dto.PriorityLevelId} và xác minh yêu cầu",
+            Notes     = $"Coordinator xác minh yêu cầu (ưu tiên hiện tại: {request.PriorityLevelId})",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Thiết lập mức độ ưu tiên và xác minh yêu cầu thành công" });
-    }
-
-    /// <summary>
-    /// Manager/Admin/Coordinator - Cập nhật mức độ ưu tiên của yêu cầu
-    /// </summary>
-    [HttpPut("{id}/priority")]
-    [Authorize(Roles = "MANAGER,ADMIN,COORDINATOR")]
-    public async Task<IActionResult> UpdatePriority(int id, [FromBody] UpdatePriorityDto dto)
-    {
-        var request = await _context.RescueRequests.FindAsync(id);
-
-        if (request == null)
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
-
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        int userId = userIdString != null ? int.Parse(userIdString) : 0;
-
-        request.PriorityLevelId = dto.PriorityLevelId;
-        request.UpdatedAt       = DateTime.UtcNow;
-        request.UpdatedBy       = userId;
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new { Success = true, Message = "Cập nhật mức độ ưu tiên thành công" });
+        return Ok(new { Success = true, Message = "Xác minh yêu cầu thành công" });
     }
 
     /// <summary>

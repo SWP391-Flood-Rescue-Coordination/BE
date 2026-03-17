@@ -296,6 +296,8 @@ public class RescueTeamController : ControllerBase
                 t.TeamId,
                 t.TeamName,
                 t.Status,
+                t.BaseLatitude,
+                t.BaseLongitude,
                 t.CreatedAt
             })
             .ToListAsync();

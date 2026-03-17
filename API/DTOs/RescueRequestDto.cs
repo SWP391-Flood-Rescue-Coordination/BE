@@ -62,10 +62,6 @@ public class UpdateStatusDto
     public string Status { get; set; } = string.Empty;
 }
 
-public class UpdatePriorityDto
-{
-    public int PriorityLevelId { get; set; }
-}
 
 public class UpdateRequestFromCoordinatorDto
 {
@@ -73,11 +69,6 @@ public class UpdateRequestFromCoordinatorDto
     public int? PriorityLevelId { get; set; }
 }
 
-public class SetPriorityAndVerifyDto
-{
-    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "PriorityLevelId là bắt buộc")]
-    public int PriorityLevelId { get; set; }
-}
 
 public class DashboardStatisticsDto
 {
