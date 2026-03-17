@@ -18,6 +18,37 @@ public class ReliefItemController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy danh sách tất cả vật phẩm cứu trợ. (Cho Front-end)
+    /// </summary>
+    [HttpGet]
+    [Authorize(Roles = "ADMIN,MANAGER,COORDINATOR")]
+    public async Task<IActionResult> GetAllReliefItems()
+    {
+        var items = await _context.ReliefItems
+            .OrderBy(i => i.ItemName)
+            .Select(i => new ReliefItemDto
+            {
+                ItemId    = i.ItemId,
+                ItemCode  = i.ItemCode,
+                ItemName  = i.ItemName,
+                CategoryId = i.CategoryId,
+                Unit      = i.Unit,
+                Quantity  = i.Quantity,
+                MinQuantity = i.MinQuantity,
+                IsActive  = i.IsActive,
+                CreatedAt = i.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            Success = true,
+            Count = items.Count,
+            Data = items
+        });
+    }
+
+    /// <summary>
     /// Lấy danh sách vật phẩm có quantity nhỏ hơn hoặc bằng n.
     /// </summary>
     /// <param name="n">Ngưỡng số lượng tối đa (mặc định = 6)</param>
@@ -110,4 +141,5 @@ public class ReliefItemController : ControllerBase
             }
         });
     }
+
 }

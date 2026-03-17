@@ -13,7 +13,7 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/rescue-team")]
-[Authorize(Roles = "RESCUE_TEAM")]
+[Authorize(Roles = "RESCUE_TEAM,COORDINATOR,ADMIN")]
 public class RescueTeamController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -281,7 +281,7 @@ public class RescueTeamController : ControllerBase
     /// Coordinator/Admin - Xem danh sách đội cứu hộ (lọc theo trạng thái)
     /// </summary>
     [HttpGet("status")]
-    [Authorize(Roles = "COORDINATOR,ADMIN")]
+    [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
     public async Task<IActionResult> GetTeamsWithStatus([FromQuery] string? status = null)
     {
         var query = _context.RescueTeams.AsQueryable();

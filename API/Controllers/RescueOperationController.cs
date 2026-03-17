@@ -1,5 +1,6 @@
 using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
+using Flood_Rescue_Coordination.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 public class RescueOperationController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IDistanceService _distanceService;
 
-    public RescueOperationController(ApplicationDbContext context)
+    public RescueOperationController(ApplicationDbContext context, IDistanceService distanceService)
     {
         _context = context;
+        _distanceService = distanceService;
     }
 
     /// <summary>
@@ -174,7 +177,7 @@ public class RescueOperationController : ControllerBase
     }
 
     /// <summary>
-    /// RESCUE_TEAM - Lấy danh sách các operation đã được giao cho một team,
+    /// RESCUE_TEAM - Lấy danh sách các operation đã được giao cho một team,    
     /// sắp xếp theo thời gian phân công mới nhất trước.
     /// Chỉ thành viên của team đó mới được gọi.
     /// </summary>
@@ -182,7 +185,13 @@ public class RescueOperationController : ControllerBase
     [Authorize(Roles = "RESCUE_TEAM")]
     public async Task<IActionResult> GetOperationsByTeam(int teamId)
     {
-        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userIdText = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdText, out var currentUserId))
+        {
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        }
+
+        var now = DateTime.UtcNow;
 
         // Kiểm tra user có thuộc teamId này không
         var isMember = await _context.RescueTeamMembers
@@ -503,5 +512,80 @@ public class RescueOperationController : ControllerBase
         });
 
         return result ?? StatusCode(500, new { Success = false, Message = "Lỗi hệ thống khi cập nhật trạng thái" });
+    }
+
+    [HttpGet("requests/{requestId:int}/nearest-teams")]
+    [Authorize(Roles = "COORDINATOR")]
+    public async Task<IActionResult> GetNearestTeamsForRequest(int requestId, CancellationToken cancellationToken)
+    {
+        var request = await _context.RescueRequests
+            .AsNoTracking()
+            .Where(r => r.RequestId == requestId)
+            .Select(r => new
+            {
+                r.RequestId,
+                r.Latitude,
+                r.Longitude
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (request == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ." });
+        }
+
+        if (!request.Latitude.HasValue || !request.Longitude.HasValue)
+        {
+            return BadRequest(new { Success = false, Message = "Yêu cầu cứu hộ chưa có tọa độ hợp lệ." });
+        }
+
+        var teams = await _context.RescueTeams
+            .AsNoTracking()
+            .Where(t => t.Status == "AVAILABLE" && t.BaseLatitude.HasValue && t.BaseLongitude.HasValue)
+            .Select(t => new
+            {
+                t.TeamId,
+                t.TeamName,
+                t.Status,
+                t.BaseLatitude,
+                t.BaseLongitude
+            })
+            .ToListAsync(cancellationToken);
+
+        var result = new List<RescueTeamDistanceDto>();
+
+        foreach (var team in teams)
+        {
+            var distanceKm = await _distanceService.GetRoadDistanceKmAsync(
+                (double)team.BaseLatitude!.Value,
+                (double)team.BaseLongitude!.Value,
+                (double)request.Latitude.Value,
+                (double)request.Longitude.Value,
+                cancellationToken);
+
+            result.Add(new RescueTeamDistanceDto
+            {
+                TeamId = team.TeamId,
+                TeamName = team.TeamName,
+                Status = team.Status,
+                BaseLatitude = team.BaseLatitude.Value,
+                BaseLongitude = team.BaseLongitude.Value,
+                RequestLatitude = request.Latitude.Value,
+                RequestLongitude = request.Longitude.Value,
+                DistanceKm = Math.Round(distanceKm, 2)
+            });
+        }
+
+        var ordered = result
+            .OrderBy(x => x.DistanceKm)
+            .ToList();
+
+        return Ok(new
+        {
+            Success = true,
+            RequestId = requestId,
+            Count = ordered.Count,
+            Data = ordered
+        });
     }
 }

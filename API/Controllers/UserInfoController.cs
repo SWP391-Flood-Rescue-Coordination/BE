@@ -71,13 +71,33 @@ public class UserInfoController : ControllerBase
             return NotFound(new { Success = false, Message = "Không tìm thấy người dùng" });
         }
 
+        // 1. Không cho phép admin tự thay đổi role của chính mình
+        var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(currentUserIdClaim, out int currentUserId) && currentUserId == id)
+        {
+            return BadRequest(new { Success = false, Message = "Admin không thể tự thay đổi role của chính mình" });
+        }
+
+        // 2. Không cho phép thay đổi role của người đang là Admin hoặc Manager
+        if (user.Role == "ADMIN" || user.Role == "MANAGER")
+        {
+            return BadRequest(new { Success = false, Message = "Admin không thể thay đổi role của người dùng có quyền Admin hoặc Manager" });
+        }
+
+        // 3. Không cho phép thay đổi role thành Admin hoặc Manager
+        string newRole = request.Role.ToUpper();
+        if (newRole == "ADMIN" || newRole == "MANAGER")
+        {
+            return BadRequest(new { Success = false, Message = "Admin không thể cấp quyền Admin hoặc Manager cho người dùng" });
+        }
+
         var validRoles = new List<string> { "ADMIN", "COORDINATOR", "MANAGER", "RESCUE_TEAM", "CITIZEN" };
-        if (!validRoles.Contains(request.Role.ToUpper()))
+        if (!validRoles.Contains(newRole))
         {
             return BadRequest(new { Success = false, Message = "Role không hợp lệ" });
         }
 
-        user.Role = request.Role.ToUpper();
+        user.Role = newRole;
         await _context.SaveChangesAsync();
 
         return Ok(new { Success = true, Message = $"Đã cập nhật role cho người dùng {user.Username} thành {user.Role}" });
