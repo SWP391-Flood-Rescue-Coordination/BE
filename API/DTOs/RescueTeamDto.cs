@@ -2,7 +2,7 @@ namespace Flood_Rescue_Coordination.API.DTOs;
 
 /// <summary>
 /// DTO để Rescue Team cập nhật trạng thái nhiệm vụ
-/// newStatus chấp nhận: "IN_PROGRESS" hoặc "COMPLETED"
+/// newStatus chấp nhận: "IN_PROGRESS", "COMPLETED" hoặc "FAILED"
 /// </summary>
 public class UpdateMissionStatusDto
 {

@@ -27,11 +27,11 @@ public class RescueTeamController : ControllerBase
     /// Cập nhật trạng thái nhiệm vụ (operation) của đội cứu hộ.
     /// 
     /// Trạng thái hợp lệ (Operation Status):
-    ///   - "In Progress"  : Đội đã bắt đầu thực hiện (từ Assigned → In Progress)
-    ///   - "Completed"    : Đội đã hoàn thành (từ In Progress → Completed)
+    ///   - "In Progress" : Đội đã bắt đầu thực hiện.
+    ///   - "Completed"   : Đội đã hoàn thành, request chuyển thẳng Completed.
+    ///   - "Failed"      : Nhiệm vụ thất bại, request quay về Verified để điều phối lại.
     /// 
-    /// Kèm theo đó rescue_request cũng được cập nhật status tương ứng.
-    /// Nếu Completed, team và vehicle sẽ được trả về trạng thái AVAILABLE/Available.
+    /// Khi Completed/Failed, team và vehicle sẽ được trả về trạng thái AVAILABLE.
     /// </summary>
     [HttpPut("operations/{operationId}/status")]
     public async Task<IActionResult> UpdateMissionStatus(
@@ -45,10 +45,13 @@ public class RescueTeamController : ControllerBase
 
         // ── 2. Validate newStatus ─────────────────────────────────────────────
         string targetStatus = dto.NewStatus;
-        if (targetStatus.Equals("CONFIRMED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Confirmed";
+        if (targetStatus.Equals("IN_PROGRESS", StringComparison.OrdinalIgnoreCase)) targetStatus = "In Progress";
+        // Backward compatibility: frontend cũ gửi CONFIRMED => Completed
+        if (targetStatus.Equals("CONFIRMED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Completed";
+        if (targetStatus.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Completed";
         if (targetStatus.Equals("FAILED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Failed";
 
-        var allowedStatuses = new[] { "Confirmed", "Failed" };
+        var allowedStatuses = new[] { "In Progress", "Completed", "Failed" };
         if (!allowedStatuses.Contains(targetStatus))
             return BadRequest(new
             {
@@ -83,9 +86,13 @@ public class RescueTeamController : ControllerBase
             return Forbid(); // 403
 
         // ── 5. Kiểm tra rescue_operation.status hợp lệ ────────────────────────
-        var allowedFrom = targetStatus == "Confirmed"
-            ? new[] { "Assigned" }
-            : new[] { "Assigned", "Confirmed" };
+        var allowedFrom = targetStatus switch
+        {
+            "In Progress" => new[] { "Assigned" },
+            "Completed" => new[] { "Assigned", "In Progress" },
+            "Failed" => new[] { "Assigned", "In Progress" },
+            _ => Array.Empty<string>()
+        };
 
         if (!allowedFrom.Contains(operation.Status))
             return BadRequest(new
@@ -102,8 +109,12 @@ public class RescueTeamController : ControllerBase
         {
             operation.StartedAt = now;
         }
-        if (targetStatus == "Confirmed" || targetStatus == "Failed")
+        if (targetStatus == "Completed" || targetStatus == "Failed")
         {
+            if (targetStatus == "Completed" && operation.StartedAt == null)
+            {
+                operation.StartedAt = now;
+            }
             operation.CompletedAt = now;
         }
 
@@ -130,13 +141,30 @@ public class RescueTeamController : ControllerBase
             UpdatedAt = now
         });
 
-        // ── 10. Nếu Confirmed hoặc Failed: trả team về AVAILABLE
-        //        Vehicle sẽ được trả về AVAILABLE khi User xác nhận Completed.
-        if (targetStatus == "Confirmed" || targetStatus == "Failed")
+        // ── 10. Nếu Completed hoặc Failed: trả team + vehicle về AVAILABLE
+        if (targetStatus == "Completed" || targetStatus == "Failed")
         {
             var team = operation.Team;
             if (team != null)
                 team.Status = "AVAILABLE";
+
+            var vehicleIds = await _context.RescueOperationVehicles
+                .Where(ov => ov.OperationId == operation.OperationId)
+                .Select(ov => ov.VehicleId)
+                .ToListAsync();
+
+            if (vehicleIds.Any())
+            {
+                var vehicles = await _context.Vehicles
+                    .Where(v => vehicleIds.Contains(v.VehicleId))
+                    .ToListAsync();
+
+                foreach (var vehicle in vehicles)
+                {
+                    vehicle.Status = "AVAILABLE";
+                    vehicle.UpdatedAt = now;
+                }
+            }
         }
 
         try
@@ -159,7 +187,8 @@ public class RescueTeamController : ControllerBase
             CompletedAt = operation.CompletedAt,
             Message = targetStatus switch
             {
-                "Confirmed" => "Đã xác nhận cứu hộ thành công, chờ người dân xác nhận hoàn tất.",
+                "In Progress" => "Đã cập nhật nhiệm vụ sang In Progress.",
+                "Completed" => "Đội cứu hộ đã hoàn thành nhiệm vụ, yêu cầu đã chuyển sang Completed.",
                 "Failed" => "Cập nhật nhiệm vụ thất bại thành công.",
                 _ => "Cập nhật trạng thái nhiệm vụ thành công."
             }
