@@ -176,7 +176,6 @@ public class RescueRequestController : ControllerBase
 
 
         var requests = await query
-            .OrderByDescending(r => r.CreatedAt)
             .Select(r => new RescueRequestResponseDto
             {
                 RequestId              = r.RequestId,
@@ -198,7 +197,32 @@ public class RescueRequestController : ControllerBase
             })
             .ToListAsync();
 
+        requests = requests
+            .OrderByDescending(r => r.Status == "Pending" || r.Status == "Verified")
+            .ThenBy(r => GetWardFromAddress(r.Address))
+            .ThenByDescending(r => r.CreatedAt)
+            .ToList();
+
         return Ok(new { Success = true, Data = requests });
+    }
+
+    private string GetWardFromAddress(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address)) return string.Empty;
+        var parts = address.Split(',');
+        if (parts.Length >= 2)
+        {
+            foreach (var part in parts)
+            {
+                var p = part.Trim().ToLower();
+                if (p.StartsWith("phường") || p.StartsWith("p.") || p.StartsWith("xã") || p.StartsWith("thị trấn"))
+                {
+                    return p;
+                }
+            }
+            return parts.Length > 1 ? parts[1].Trim().ToLower() : address.ToLower();
+        }
+        return address.ToLower();
     }
 
     /// <summary>
