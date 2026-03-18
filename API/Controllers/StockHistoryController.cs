@@ -152,9 +152,6 @@ public class StockHistoryController : ControllerBase
         if (request.Items == null || request.Items.Count == 0)
             return BadRequest(new { Success = false, Message = "Danh sách vật tư xuất không được rỗng." });
 
-        if (request.VehicleIds == null || request.VehicleIds.Count == 0)
-            return BadRequest(new { Success = false, Message = "Cần ít nhất một phương tiện để vận chuyển." });
-
         var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out int userId))
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
@@ -171,20 +168,10 @@ public class StockHistoryController : ControllerBase
                 if (manager == null)
                     return Unauthorized(new { Success = false, Message = "Không tìm thấy thông tin Manager." });
 
-                // 1. Kiểm tra đơn vị nhận (TeamId) - Bắt buộc và phải AVAILABLE
-                var team = await _context.RescueTeams.FindAsync(request.TeamId);
-                if (team == null)
-                    return NotFound(new { Success = false, Message = $"Không tìm thấy đơn vị nhận với ID {request.TeamId}" });
-
-                if (!string.Equals(team.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
-                {
-                    return BadRequest(new { Success = false, Message = $"Đội cứu hộ '{team.TeamName}' hiện đang không rảnh (Trạng thái: {team.Status}). Chỉ được xuất kho cho đội đang rảnh (AVAILABLE)." });
-                }
-
-                // Điểm đến: Nếu có destination thì dùng, nếu không thì dùng tên của team
+                // 1. Địa điểm nhận (Destination)
                 string finalDestination = !string.IsNullOrEmpty(request.Destination) 
-                    ? $"{team.TeamName} (Phân phát tại: {request.Destination})" 
-                    : $"{team.TeamName}";
+                    ? request.Destination 
+                    : "Chưa xác định";
 
                 // 2. Kiểm tra tồn kho và chuẩn bị Body
                 var exportItemsBodyList = new List<string>();
@@ -204,30 +191,11 @@ public class StockHistoryController : ControllerBase
                     exportItemsBodyList.Add($"{itemInput.ItemId}-{itemInput.Quantity}");
                 }
 
-                // 3. Kiểm tra phương tiện (Phải AVAILABLE)
-                var vehicles = await _context.Vehicles.Where(v => request.VehicleIds.Contains(v.VehicleId)).ToListAsync();
-                if (vehicles.Count != request.VehicleIds.Count)
-                    throw new Exception("Một hoặc nhiều phương tiện đã chọn không tồn tại.");
-
-                var vehicleNames = new List<string>();
-
-                foreach (var v in vehicles)
-                {
-                    if (!string.Equals(v.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
-                        throw new Exception($"Phương tiện '{v.VehicleName}' ({v.LicensePlate}) hiện đang bận (Trạng thái: {v.Status}). Chỉ chọn phương tiện sẵn sàng (AVAILABLE).");
-
-                    vehicleNames.Add($"{v.VehicleName} ({v.LicensePlate})");
-                    
-                    // Cập nhật trạng thái phương tiện
-                    v.Status = "InUse";
-                    v.UpdatedAt = DateTime.UtcNow;
-                }
-
-                // 4. Tạo lịch sử
+                // 3. Tạo lịch sử
                 var bodyContent = string.Join(",", exportItemsBodyList);
-                var noteWithVehicles = $"Đơn vị nhận: {finalDestination} | Phương tiện: {string.Join(", ", vehicleNames)}";
+                var finalNote = $"Địa điểm nhận: {finalDestination}";
                 if (!string.IsNullOrEmpty(request.Note))
-                    noteWithVehicles += $" | Ghi chú: {request.Note}";
+                    finalNote += $" | Ghi chú: {request.Note}";
 
                 var history = new StockHistory
                 {
@@ -235,13 +203,10 @@ public class StockHistoryController : ControllerBase
                     Date = DateTime.UtcNow,
                     FromTo = finalDestination,
                     Body = bodyContent.Length > 500 ? bodyContent.Substring(0, 497) + "..." : bodyContent,
-                    Note = noteWithVehicles.Length > 500 ? noteWithVehicles.Substring(0, 497) + "..." : noteWithVehicles
+                    Note = finalNote.Length > 500 ? finalNote.Substring(0, 497) + "..." : finalNote
                 };
 
                 _context.StockHistories.Add(history);
-
-                // Cập nhật trạng thái đội cứu hộ sang đang làm nhiệm vụ
-                team.Status = "ON_MISSION";
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -254,11 +219,9 @@ public class StockHistoryController : ControllerBase
                     Data = new
                     {
                         history.Type,
-                        TargetTeam = team.TeamName,
                         history.FromTo,
                         history.Body,
-                        history.Note,
-                        VehiclesUsed = vehicleNames
+                        history.Note
                     }
                 });
             });

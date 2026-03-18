@@ -282,6 +282,18 @@ if (app.Environment.IsDevelopment())
 
 // app.UseHttpsRedirection();
 
+// Middleware xử lý dấu gạch chéo ở cuối (Trailing Slash) để hỗ trợ Frontend
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value;
+    if (path != null && path.Length > 1 && path.EndsWith('/'))
+    {
+        context.Request.Path = path.Substring(0, path.Length - 1);
+    }
+    await next();
+});
+
+
 app.UseAuthentication();
 app.UseAuthorization();
 
