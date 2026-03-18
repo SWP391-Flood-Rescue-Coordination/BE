@@ -40,35 +40,26 @@ Manager có trách nhiệm quản lý hệ thống phân phối và lưu kho, ba
 ### 2. Xuất kho vật tư cứu trợ
 - **Endpoint**: `POST /api/StockHistory/export`
 - **Quyền hạn**: `Roles = "MANAGER"`
-- **Mô tả**: Tạo phiếu xuất kho để điều phối hàng hóa đến đơn vị nhận. Hệ thống sẽ kiểm tra tồn kho, sức chứa phương tiện và trạng thái phương tiện trước khi thực hiện.
+- **Mô tả**: Tạo phiếu xuất kho để điều phối hàng hóa đến đơn vị nhận. Hệ thống sẽ kiểm tra tồn kho trước khi thực hiện.
 - **Body (JSON)**:
     ```json
     {
-      "teamId": 4,
-      "destination": "Thôn 2, Xã Tân Lập, Huyện Lệ Thủy, Quảng Bình",
+      "destination": "UBND Phường 22, Quận Bình Thạnh, TP.HCM",
       "note": "Xuất hỗ trợ khẩn cấp đợt 2",
       "items": [
         {
           "itemId": 1,
           "quantity": 50
         }
-      ],
-      "vehicleIds": [1, 2]
+      ]
     }
     ```
 - **Lưu ý**: 
-  - `teamId`: (Bắt buộc) ID của đội cứu hộ tiếp nhận hàng. 
-  - `destination`: (Tùy chọn) Địa điểm cụ thể sẽ phân phát hàng (ví dụ: địa chỉ cụ thể ở thôn/xã). Nếu để trống, hệ thống sẽ dùng địa chỉ mặc định của Đội cứu hộ.
-- **Điều kiện tiên quyết**:
-  - **Đội cứu hộ**: Phải có trạng thái `AVAILABLE` (đang rảnh).
-  - **Phương tiện**: Phải có trạng thái `AVAILABLE` (sẵn sàng).
+  - `destination`: (Tùy chọn) Địa điểm hoặc đơn vị nhận hàng cụ thể. Nếu để trống, hệ thống sẽ ghi nhận là "Chưa xác định".
 - **Logic xử lý & Kiểm tra**:
   1. **Kiểm tra tồn kho**: Phải đủ số lượng hàng trong kho để xuất.
-  2. **Kiểm tra phương tiện**: Các `vehicleId` được chọn phải tồn tại và có trạng thái `Available`.
-  3. **Cập nhật dữ liệu**: 
+  2. **Cập nhật dữ liệu**: 
      - Giảm tồn kho (`Quantity`) của vật tư.
-     - Chuyển trạng thái xe sang `InUse`.
-     - Chuyển trạng thái Đội cứu hộ sang `ON_MISSION`.
      - Lưu lịch sử `StockHistory` loại `OUT`.
 
 ### 3. Xem lịch sử nhập/xuất kho

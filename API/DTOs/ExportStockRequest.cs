@@ -4,9 +4,6 @@ namespace Flood_Rescue_Coordination.API.DTOs;
 
 public class ExportStockRequest
 {
-    [Required(ErrorMessage = "Vui lòng chọn đơn vị nhận hàng (TeamId).")]
-    public int TeamId { get; set; }
-
     public string? Destination { get; set; }
 
     public string? Note { get; set; }
@@ -14,10 +11,6 @@ public class ExportStockRequest
     [Required(ErrorMessage = "Danh sách vật tư không được rỗng.")]
     [MinLength(1, ErrorMessage = "Danh sách vật tư không được rỗng.")]
     public List<ExportStockItem> Items { get; set; } = new();
-
-    [Required(ErrorMessage = "Cần chọn ít nhất một phương tiện vận chuyển.")]
-    [MinLength(1, ErrorMessage = "Cần chọn ít nhất một phương tiện vận chuyển.")]
-    public List<int> VehicleIds { get; set; } = new();
 }
 
 public class ExportStockItem
