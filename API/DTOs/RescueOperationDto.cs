@@ -1,4 +1,6 @@
-namespace Flood_Rescue_Coordination.API.DTOs;
+using System.ComponentModel.DataAnnotations;
+
+    namespace Flood_Rescue_Coordination.API.DTOs;
 
 public class AssignRescueDto
 {
@@ -54,12 +56,36 @@ public class TeamOperationDto
     public List<int> VehicleIds { get; set; } = new();
 }
 
-public class UpdateOperationStatusDto
+public class UpdateOperationStatusDto : IValidatableObject
 {
-    /// <summary>Trạng thái mới: IN_PROGRESS, COMPLETED hoặc FAILED</summary>
+    /// <summary>Trạng thái mới: COMPLETED hoặc FAILED</summary>
     public string NewStatus { get; set; } = string.Empty;
 
-    /// <summary>Lý do (Bắt buộc nếu trạng thái là FAILED)</summary>
+    /// <summary>Lý do (bắt buộc nếu trạng thái là FAILED)</summary>
     public string? Reason { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(NewStatus))
+        {
+            yield return new ValidationResult("NewStatus là bắt buộc.", [nameof(NewStatus)]);
+            yield break;
+        }
+
+        var key = NewStatus.Trim().ToUpperInvariant();
+        if (key != "COMPLETED" && key != "FAILED")
+        {
+            yield return new ValidationResult(
+                "NewStatus không hợp lệ. Chỉ chấp nhận: COMPLETED hoặc FAILED.",
+                [nameof(NewStatus)]);
+        }
+
+        if (key == "FAILED" && string.IsNullOrWhiteSpace(Reason))
+        {
+            yield return new ValidationResult(
+                "Reason là bắt buộc khi NewStatus = FAILED.",
+                [nameof(Reason)]);
+        }
+    }
 }
 

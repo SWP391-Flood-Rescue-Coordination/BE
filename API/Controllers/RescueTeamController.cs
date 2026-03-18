@@ -27,11 +27,11 @@ public class RescueTeamController : ControllerBase
     /// Cập nhật trạng thái nhiệm vụ (operation) của đội cứu hộ.
     /// 
     /// Trạng thái hợp lệ (Operation Status):
-    ///   - "In Progress"  : Đội đã bắt đầu thực hiện (từ Assigned → In Progress)
-    ///   - "Completed"    : Đội đã hoàn thành (từ In Progress → Completed)
+    ///   - "In Progress" : Đội đã bắt đầu thực hiện.
+    ///   - "Completed"   : Đội đã hoàn thành, request chuyển thẳng Completed.
+    ///   - "Failed"      : Nhiệm vụ thất bại, request quay về Verified để điều phối lại.
     /// 
-    /// Kèm theo đó rescue_request cũng được cập nhật status tương ứng.
-    /// Nếu Completed, team và vehicle sẽ được trả về trạng thái AVAILABLE/Available.
+    /// Khi Completed/Failed, team và vehicle sẽ được trả về trạng thái AVAILABLE.
     /// </summary>
     [HttpPut("operations/{operationId}/status")]
     public async Task<IActionResult> UpdateMissionStatus(
@@ -44,17 +44,13 @@ public class RescueTeamController : ControllerBase
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
 
         // ── 2. Validate newStatus ─────────────────────────────────────────────
-        string targetStatus = dto.NewStatus;
-        if (targetStatus.Equals("CONFIRMED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Confirmed";
-        if (targetStatus.Equals("FAILED", StringComparison.OrdinalIgnoreCase)) targetStatus = "Failed";
+        string targetStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
+        string targetStatus = targetStatusKey == "COMPLETED" ? "Completed"
+            : targetStatusKey == "FAILED" ? "Failed"
+            : string.Empty;
 
-        var allowedStatuses = new[] { "Confirmed", "Failed" };
-        if (!allowedStatuses.Contains(targetStatus))
-            return BadRequest(new
-            {
-                Success = false,
-                Message = $"Trạng thái không hợp lệ. Chỉ chấp nhận: {string.Join(", ", allowedStatuses)}"
-            });
+        if (string.IsNullOrEmpty(targetStatus))
+            return BadRequest(new { Success = false, Message = "Trạng thái không hợp lệ. Chỉ chấp nhận: COMPLETED, FAILED." });
 
         if (targetStatus == "Failed" && string.IsNullOrWhiteSpace(dto.Reason))
         {
@@ -83,11 +79,7 @@ public class RescueTeamController : ControllerBase
             return Forbid(); // 403
 
         // ── 5. Kiểm tra rescue_operation.status hợp lệ ────────────────────────
-        var allowedFrom = targetStatus == "Confirmed"
-            ? new[] { "Assigned" }
-            : new[] { "Assigned", "Confirmed" };
-
-        if (!allowedFrom.Contains(operation.Status))
+        if (operation.Status != "Assigned")
             return BadRequest(new
             {
                 Success = false,
@@ -98,45 +90,46 @@ public class RescueTeamController : ControllerBase
 
         // ── 7. Cập nhật rescue_operations ───────────────────────────────────
         operation.Status = targetStatus;
-        if (operation.StartedAt == null)
-        {
-            operation.StartedAt = now;
-        }
-        if (targetStatus == "Confirmed" || targetStatus == "Failed")
-        {
-            operation.CompletedAt = now;
-        }
+        operation.StartedAt ??= now;
+        operation.CompletedAt = now;
 
         // ── 8. Cập nhật rescue_requests.status ───────────────────────────────
-        if (targetStatus == "Failed")
-        {
-            request.Status = "Verified"; // Trả về Verified để điều phối lại
-        }
-        else
-        {
-            request.Status = targetStatus;
-        }
+        request.Status = targetStatus == "Failed" ? "Verified" : "Completed";
         request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
-            Status = targetStatus,
-            Notes = targetStatus == "Failed" 
-                ? $"Nhiệm vụ thất bại. Lý do: {dto.Reason}" 
-                : $"Đội cứu hộ cập nhật trạng thái nhiệm vụ sang {targetStatus}",
+            Status = request.Status,
+            Notes = targetStatus == "Failed"
+                ? $"Nhiệm vụ thất bại. Lý do: {dto.Reason}"
+                : "Đội cứu hộ hoàn tất nhiệm vụ, yêu cầu chuyển trực tiếp sang Completed.",
             UpdatedBy = userId,
             UpdatedAt = now
         });
 
-        // ── 10. Nếu Confirmed hoặc Failed: trả team về AVAILABLE
-        //        Vehicle sẽ được trả về AVAILABLE khi User xác nhận Completed.
-        if (targetStatus == "Confirmed" || targetStatus == "Failed")
+        // ── 10. Nếu Completed hoặc Failed: trả team + vehicle về AVAILABLE
+        var team = operation.Team;
+        if (team != null)
+            team.Status = "AVAILABLE";
+
+        var vehicleIds = await _context.RescueOperationVehicles
+            .Where(ov => ov.OperationId == operation.OperationId)
+            .Select(ov => ov.VehicleId)
+            .ToListAsync();
+
+        if (vehicleIds.Any())
         {
-            var team = operation.Team;
-            if (team != null)
-                team.Status = "AVAILABLE";
+            var vehicles = await _context.Vehicles
+                .Where(v => vehicleIds.Contains(v.VehicleId))
+                .ToListAsync();
+
+            foreach (var vehicle in vehicles)
+            {
+                vehicle.Status = "AVAILABLE";
+                vehicle.UpdatedAt = now;
+            }
         }
 
         try
@@ -157,12 +150,9 @@ public class RescueTeamController : ControllerBase
             RequestStatus = request.Status,
             StartedAt = operation.StartedAt,
             CompletedAt = operation.CompletedAt,
-            Message = targetStatus switch
-            {
-                "Confirmed" => "Đã xác nhận cứu hộ thành công, chờ người dân xác nhận hoàn tất.",
-                "Failed" => "Cập nhật nhiệm vụ thất bại thành công.",
-                _ => "Cập nhật trạng thái nhiệm vụ thành công."
-            }
+            Message = targetStatus == "Failed"
+                ? "Cập nhật nhiệm vụ thất bại thành công. Yêu cầu đã quay lại Verified."
+                : "Hoàn tất nhiệm vụ thành công. Yêu cầu đã chuyển trực tiếp sang Completed."
         });
     }
 
@@ -189,8 +179,7 @@ public class RescueTeamController : ControllerBase
         var operations = await _context.RescueOperations
             .Include(o => o.Request)
             .Include(o => o.Team)
-            .Where(o => myTeamIds.Contains(o.TeamId)
-                     && (o.Status == "Assigned" || o.Status == "In Progress"))
+            .Where(o => myTeamIds.Contains(o.TeamId) && o.Status == "Assigned")
             .OrderBy(o => o.AssignedAt)
             .Select(o => new
             {
@@ -210,6 +199,7 @@ public class RescueTeamController : ControllerBase
                 o.Status,
                 o.AssignedAt,
                 o.StartedAt,
+                o.CompletedAt,
                 Vehicles = _context.RescueOperationVehicles
                             .Where(ov => ov.OperationId == o.OperationId)
                             .Join(_context.Vehicles, ov => ov.VehicleId, v => v.VehicleId, (ov, v) => v.VehicleName)
