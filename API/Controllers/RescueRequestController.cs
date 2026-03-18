@@ -517,86 +517,12 @@ public class RescueRequestController : ControllerBase
     /// </summary>
     [HttpPut("{id}/confirm-rescued")]
     [Authorize(Roles = "CITIZEN")]
-    public async Task<IActionResult> ConfirmRescued(int id)
+    public IActionResult ConfirmRescued(int id)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (userIdString == null) return Unauthorized();
-        var userId = int.Parse(userIdString);
-
-        var request = await _context.RescueRequests
-            .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == userId);
-
-        if (request == null)
-            return NotFound(new
-            {
-                Success = false,
-                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền xác nhận yêu cầu này."
-            });
-
-        if (request.Status != "Confirmed")
-            return BadRequest(new
-            {
-                Success = false,
-                Message = $"Chỉ có thể xác nhận khi yêu cầu đang ở trạng thái 'Confirmed'. Trạng thái hiện tại: '{request.Status}'."
-            });
-
-        var now = DateTime.UtcNow;
-
-        // Cập nhật trạng thái request
-        request.Status    = "Completed";
-        request.UpdatedAt = now;
-        request.UpdatedBy = userId;
-
-        _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
+        return StatusCode(StatusCodes.Status410Gone, new
         {
-            RequestId = request.RequestId,
-            Status    = "Completed",
-            Notes     = "Công dân xác nhận đã được cứu hộ thành công.",
-            UpdatedBy = userId,
-            UpdatedAt = now
-        });
-
-        // Cập nhật trạng thái các rescue operation cùng RequestId
-        var operations = await _context.RescueOperations
-            .Where(o => o.RequestId == id)
-            .ToListAsync();
-
-        foreach (var operation in operations)
-        {
-            operation.Status      = "Completed";
-            operation.CompletedAt = now;
-        }
-
-        // Trả vehicle về AVAILABLE khi user xác nhận Completed
-        var operationIds = operations.Select(o => o.OperationId).ToList();
-        var vehicleIds = await _context.RescueOperationVehicles
-            .Where(ov => operationIds.Contains(ov.OperationId))
-            .Select(ov => ov.VehicleId)
-            .Distinct()
-            .ToListAsync();
-
-        if (vehicleIds.Any())
-        {
-            var vehicles = await _context.Vehicles
-                .Where(v => vehicleIds.Contains(v.VehicleId))
-                .ToListAsync();
-            foreach (var v in vehicles)
-            {
-                v.Status    = "AVAILABLE";
-                v.UpdatedAt = now;
-            }
-        }
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new
-        {
-            Success            = true,
-            Message            = "Cảm ơn bạn đã xác nhận! Yêu cầu cứu hộ đã được đóng lại.",
-            RequestId          = request.RequestId,
-            Status             = request.Status,
-            OperationsUpdated  = operations.Count,
-            CompletedAt        = now
+            Success = false,
+            Message = "Endpoint không còn sử dụng. Theo quy trình mới, yêu cầu tự chuyển Completed khi Rescue Team hoàn tất nhiệm vụ."
         });
     }
 
@@ -608,98 +534,12 @@ public class RescueRequestController : ControllerBase
     /// </summary>
     [HttpPut("guest/{id}/confirm-rescued")]
     [AllowAnonymous]
-    public async Task<IActionResult> GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
+    public IActionResult GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
     {
-        var inputPhone = dto.Phone?.Trim();
-        if (string.IsNullOrEmpty(inputPhone))
-            return BadRequest(new
-            {
-                Success = false,
-                Message = "Số điện thoại là bắt buộc để xác nhận."
-            });
-
-        var request = await _context.RescueRequests
-            .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == null);
-
-        if (request == null)
-            return NotFound(new
-            {
-                Success = false,
-                Message = "Không tìm thấy yêu cầu cứu hộ. Yêu cầu không tồn tại hoặc thuộc về tài khoản đã đăng nhập."
-            });
-
-        var savedPhone = (request.ContactPhone ?? request.Phone ?? "").Trim();
-        if (!string.Equals(inputPhone, savedPhone, StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new
-            {
-                Success = false,
-                Message = "Số điện thoại không khớp với yêu cầu cứu hộ này."
-            });
-
-        if (request.Status != "Confirmed")
-            return BadRequest(new
-            {
-                Success = false,
-                Message = $"Chỉ có thể xác nhận khi yêu cầu đang ở trạng thái 'Confirmed'. Trạng thái hiện tại: '{request.Status}'."
-            });
-
-        var now = DateTime.UtcNow;
-
-        // Cập nhật trạng thái request
-        request.Status    = "Completed";
-        request.UpdatedAt = now;
-        request.UpdatedBy = null; // Guest không có userId
-
-        _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
+        return StatusCode(StatusCodes.Status410Gone, new
         {
-            RequestId = request.RequestId,
-            Status    = "Completed",
-            Notes     = $"Khách vãng lai (SĐT: {inputPhone}) xác nhận đã được cứu hộ thành công.",
-            UpdatedBy = request.CitizenId ?? 1, // fallback: dùng citizen nếu có, không thì admin id=1
-            UpdatedAt = now
-        });
-
-        // Cập nhật trạng thái các rescue operation cùng RequestId
-        var operations = await _context.RescueOperations
-            .Where(o => o.RequestId == id)
-            .ToListAsync();
-
-        foreach (var operation in operations)
-        {
-            operation.Status      = "Completed";
-            operation.CompletedAt = now;
-        }
-
-        // Trả vehicle về AVAILABLE khi guest xác nhận Completed
-        var operationIds = operations.Select(o => o.OperationId).ToList();
-        var vehicleIds = await _context.RescueOperationVehicles
-            .Where(ov => operationIds.Contains(ov.OperationId))
-            .Select(ov => ov.VehicleId)
-            .Distinct()
-            .ToListAsync();
-
-        if (vehicleIds.Any())
-        {
-            var vehicles = await _context.Vehicles
-                .Where(v => vehicleIds.Contains(v.VehicleId))
-                .ToListAsync();
-            foreach (var v in vehicles)
-            {
-                v.Status    = "AVAILABLE";
-                v.UpdatedAt = now;
-            }
-        }
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new
-        {
-            Success           = true,
-            Message           = "Cảm ơn bạn đã xác nhận! Yêu cầu cứu hộ đã được đóng lại.",
-            RequestId         = request.RequestId,
-            Status            = request.Status,
-            OperationsUpdated = operations.Count,
-            CompletedAt       = now
+            Success = false,
+            Message = "Endpoint không còn sử dụng. Theo quy trình mới, yêu cầu tự chuyển Completed khi Rescue Team hoàn tất nhiệm vụ."
         });
     }
 

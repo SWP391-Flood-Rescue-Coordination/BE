@@ -267,6 +267,51 @@ using (var scope = app.Services.CreateScope())
             END
         ");
 
+        // Chuẩn hóa dữ liệu trạng thái cũ + cập nhật constraint theo state machine mới
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'rescue_requests')
+            BEGIN
+                -- Normalize dữ liệu cũ
+                UPDATE rescue_requests
+                SET status = 'Assigned'
+                WHERE status IN ('In Progress', 'IN_PROGRESS');
+
+                UPDATE rescue_requests
+                SET status = 'Completed'
+                WHERE status IN ('Confirmed', 'CONFIRMED', 'CitizenConfirmed');
+
+                -- Cập nhật CHECK constraint
+                IF EXISTS (SELECT * FROM sys.check_constraints WHERE name = 'CK_rescue_requests_status_allowed')
+                BEGIN
+                    ALTER TABLE rescue_requests DROP CONSTRAINT CK_rescue_requests_status_allowed;
+                END
+
+                ALTER TABLE rescue_requests WITH CHECK ADD CONSTRAINT CK_rescue_requests_status_allowed
+                CHECK ([status] IN ('Pending', 'Verified', 'Assigned', 'Completed', 'Cancelled', 'Duplicate'));
+            END
+
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'rescue_operations')
+            BEGIN
+                -- Normalize dữ liệu cũ
+                UPDATE rescue_operations
+                SET status = 'Assigned'
+                WHERE status IN ('In Progress', 'IN_PROGRESS', 'Pending', 'Verified');
+
+                UPDATE rescue_operations
+                SET status = 'Completed'
+                WHERE status IN ('Confirmed', 'CONFIRMED', 'CitizenConfirmed');
+
+                -- Cập nhật CHECK constraint
+                IF EXISTS (SELECT * FROM sys.check_constraints WHERE name = 'CK_rescue_operations_status_allowed')
+                BEGIN
+                    ALTER TABLE rescue_operations DROP CONSTRAINT CK_rescue_operations_status_allowed;
+                END
+
+                ALTER TABLE rescue_operations WITH CHECK ADD CONSTRAINT CK_rescue_operations_status_allowed
+                CHECK ([status] IN ('Assigned', 'Completed', 'Failed'));
+            END
+        ");
+
         Console.WriteLine("Database tables verified/created successfully.");
     }
     catch (Exception ex)
