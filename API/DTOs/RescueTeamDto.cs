@@ -2,16 +2,16 @@ namespace Flood_Rescue_Coordination.API.DTOs;
 
 /// <summary>
 /// DTO để Rescue Team cập nhật trạng thái nhiệm vụ
-/// newStatus chấp nhận: "IN_PROGRESS" hoặc "COMPLETED"
+/// newStatus chấp nhận: "COMPLETED", "CANCELLED" hoặc "CANCELED"
 /// </summary>
 public class UpdateMissionStatusDto
 {
     /// <summary>
-    /// Trạng thái mới của nhiệm vụ: "IN_PROGRESS", "COMPLETED" hoặc "FAILED"
+    /// Trạng thái mới của nhiệm vụ: "COMPLETED", "CANCELLED" hoặc "CANCELED"
     /// </summary>
     public string NewStatus { get; set; } = string.Empty;
 
-    /// <summary>Lý do (Bắt buộc nếu trạng thái là FAILED)</summary>
+    /// <summary>Lý do hủy nhiệm vụ (không bắt buộc)</summary>
     public string? Reason { get; set; }
 }
 
