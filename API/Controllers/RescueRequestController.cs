@@ -3,6 +3,7 @@ using Flood_Rescue_Coordination.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Security.Claims;
 
 namespace Flood_Rescue_Coordination.API.Controllers;
@@ -445,27 +446,97 @@ public class RescueRequestController : ControllerBase
     /// </summary>
     [HttpPut("{id}/confirm-rescued")]
     [Authorize(Roles = "CITIZEN")]
-    public IActionResult ConfirmRescued(int id)
+    public async Task<IActionResult> ConfirmRescued(int id)
     {
-        return StatusCode(StatusCodes.Status410Gone, new
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdString))
         {
-            Success = false,
-            Message = "Endpoint không còn sử dụng. Theo quy trình mới, Rescue Team sẽ chuyển yêu cầu trực tiếp sang Completed hoặc Cancelled."
+            return Unauthorized(new { Success = false, Message = "Phiên đăng nhập không hợp lệ." });
+        }
+
+        var userId = int.Parse(userIdString);
+
+        var request = await _context.RescueRequests
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == userId);
+
+        if (request == null)
+        {
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền xem yêu cầu này."
+            });
+        }
+
+        if (!string.Equals(request.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Yêu cầu hiện đang ở trạng thái '{request.Status}', chưa thể báo an toàn."
+            });
+        }
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Hệ thống đã ghi nhận bạn đã an toàn. Yêu cầu hiện đang ở trạng thái Completed.",
+            RequestId = request.RequestId,
+            Status = request.Status
         });
     }
 
     /// <summary>
-    /// Endpoint cũ cho khách vãng lai xác nhận đã được cứu hộ bằng RequestId + Phone.
-    /// Theo quy trình mới, Rescue Team sẽ chuyển request trực tiếp sang Completed hoặc Cancelled.
+    /// Endpoint cho khách vãng lai báo đã an toàn bằng RequestId + Phone.
+    /// Theo quy trình mới, Rescue Team đã chuyển request sang Completed trước đó.
     /// </summary>
     [HttpPut("guest/{id}/confirm-rescued")]
     [AllowAnonymous]
-    public IActionResult GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
+    public async Task<IActionResult> GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
     {
-        return StatusCode(StatusCodes.Status410Gone, new
+        var request = await _context.RescueRequests
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.RequestId == id);
+
+        if (request == null)
         {
-            Success = false,
-            Message = "Endpoint không còn sử dụng. Theo quy trình mới, Rescue Team sẽ chuyển yêu cầu trực tiếp sang Completed hoặc Cancelled."
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Không tìm thấy yêu cầu cứu hộ."
+            });
+        }
+
+        var normalizedInputPhone = NormalizePhone(dto.Phone);
+        var normalizedContactPhone = NormalizePhone(request.ContactPhone);
+        var normalizedPhone = NormalizePhone(request.Phone);
+
+        if (string.IsNullOrWhiteSpace(normalizedInputPhone) ||
+            (normalizedInputPhone != normalizedContactPhone && normalizedInputPhone != normalizedPhone))
+        {
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Không tìm thấy yêu cầu cứu hộ phù hợp với thông tin xác nhận."
+            });
+        }
+
+        if (!string.Equals(request.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Yêu cầu hiện đang ở trạng thái '{request.Status}', chưa thể báo an toàn."
+            });
+        }
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Hệ thống đã ghi nhận bạn đã an toàn. Yêu cầu hiện đang ở trạng thái Completed.",
+            RequestId = request.RequestId,
+            Status = request.Status
         });
     }
 
@@ -503,5 +574,21 @@ public class RescueRequestController : ControllerBase
                 TodayRequests            = todayRequests
             }
         });
+    }
+
+    private static string NormalizePhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            return string.Empty;
+        }
+
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("84", StringComparison.Ordinal) && digits.Length > 2)
+        {
+            return $"0{digits[2..]}";
+        }
+
+        return digits;
     }
 }
