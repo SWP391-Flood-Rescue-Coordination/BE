@@ -101,6 +101,14 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Memory Cache – dùng cho OTP (quên mật khẩu)
+builder.Services.AddMemoryCache();
+
+// SMS Service – OTP quên mật khẩu
+// OTP sinh ngẫu nhiên, log ra console, hết hạn sau 3 phút, chỉ dùng 1 lần
+builder.Services.AddScoped<ISmsService, MockSmsService>();
+
+
 // =============================================
 // CẤU HÌNH JWT AUTHENTICATION
 // =============================================

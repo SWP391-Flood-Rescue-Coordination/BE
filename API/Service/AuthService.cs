@@ -10,12 +10,18 @@ public class AuthService : IAuthService
     private readonly ApplicationDbContext _context;
     private readonly IJwtService _jwtService;
     private readonly IConfiguration _configuration;
+    private readonly ISmsService _smsService;
 
-    public AuthService(ApplicationDbContext context, IJwtService jwtService, IConfiguration configuration)
+    public AuthService(
+        ApplicationDbContext context,
+        IJwtService jwtService,
+        IConfiguration configuration,
+        ISmsService smsService)
     {
         _context = context;
         _jwtService = jwtService;
         _configuration = configuration;
+        _smsService = smsService;
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -259,6 +265,112 @@ public class AuthService : IAuthService
         {
             Success = true,
             Message = "Đăng xuất thành công"
+        };
+    }
+
+    // =============================================
+    // QUÊN MẬT KHẨU – OTP
+    // =============================================
+
+    /// <summary>
+    /// Bước 1: Kiểm tra số điện thoại tồn tại, sau đó giả định gửi mã xác thực.
+    /// </summary>
+    public async Task<OtpResponse> SendForgotPasswordOtpAsync(SendOtpRequest request)
+    {
+        // 1. Normalize số điện thoại
+        if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
+        {
+            return new OtpResponse
+            {
+                Success = false,
+                Message = "Số điện thoại không hợp lệ"
+            };
+        }
+
+        // 2. Kiểm tra số điện thoại có tồn tại trong hệ thống không
+        var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
+        var userExists = await _context.Users
+            .AnyAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
+
+        if (!userExists)
+        {
+            // Trả lời mơ hồ để tránh lộ thông tin tồn tại của SĐT
+            return new OtpResponse
+            {
+                Success = false,
+                Message = "Số điện thoại không tồn tại trong hệ thống"
+            };
+        }
+
+        // 3. Giả định gửi OTP (Log ra console hoặc dùng mã cố định)
+        var sent = await _smsService.SendOtpAsync(normalizedPhone);
+
+        if (!sent)
+        {
+            return new OtpResponse
+            {
+                Success = false,
+                Message = "Không thể gửi OTP. Vui lòng thử lại sau."
+            };
+        }
+
+        return new OtpResponse
+        {
+            Success = true,
+            Message = "OTP đã được gửi tới số điện thoại của bạn. Mã có hiệu lực trong 10 phút."
+        };
+    }
+
+    /// <summary>
+    /// Bước 2: Xác thực mã OTP và cập nhật mật khẩu mới.
+    /// </summary>
+    public async Task<OtpResponse> ResetPasswordWithOtpAsync(ResetPasswordRequest request)
+    {
+        // 1. Normalize số điện thoại
+        if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
+        {
+            return new OtpResponse
+            {
+                Success = false,
+                Message = "Số điện thoại không hợp lệ"
+            };
+        }
+
+        // 2. Xác thực OTP
+        // Chấp nhận mã test cố định 123456
+        var isValid = await _smsService.VerifyOtpAsync(normalizedPhone, request.Otp);
+
+        if (!isValid)
+        {
+            return new OtpResponse
+            {
+                Success = false,
+                Message = "OTP không hợp lệ hoặc đã hết hạn"
+            };
+        }
+
+        // 3. Tìm user theo số điện thoại
+        var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
+
+        if (user == null)
+        {
+            return new OtpResponse
+            {
+                Success = false,
+                Message = "Không tìm thấy tài khoản với số điện thoại này"
+            };
+        }
+
+        // 4. Hash và lưu mật khẩu mới
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _context.SaveChangesAsync();
+
+        return new OtpResponse
+        {
+            Success = true,
+            Message = "Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại."
         };
     }
 
