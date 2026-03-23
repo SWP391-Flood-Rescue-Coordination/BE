@@ -1,39 +1,18 @@
-using System.ComponentModel.DataAnnotations;
-
-    namespace Flood_Rescue_Coordination.API.DTOs;
+namespace Flood_Rescue_Coordination.API.DTOs;
 
 /// <summary>
 /// DTO để Rescue Team cập nhật trạng thái nhiệm vụ
-/// newStatus chấp nhận: "COMPLETED" hoặc "FAILED"
+/// newStatus chấp nhận: "COMPLETED", "CANCELLED" hoặc "CANCELED"
 /// </summary>
-public class UpdateMissionStatusDto : IValidatableObject
+public class UpdateMissionStatusDto
 {
+    /// <summary>
+    /// Trạng thái mới của nhiệm vụ: "COMPLETED", "CANCELLED" hoặc "CANCELED"
+    /// </summary>
     public string NewStatus { get; set; } = string.Empty;
+
+    /// <summary>Lý do hủy nhiệm vụ (không bắt buộc)</summary>
     public string? Reason { get; set; }
-
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-        if (string.IsNullOrWhiteSpace(NewStatus))
-        {
-            yield return new ValidationResult("NewStatus là bắt buộc.", [nameof(NewStatus)]);
-            yield break;
-        }
-
-        var key = NewStatus.Trim().ToUpperInvariant();
-        if (key != "COMPLETED" && key != "FAILED")
-        {
-            yield return new ValidationResult(
-                "NewStatus không hợp lệ. Chỉ chấp nhận: COMPLETED hoặc FAILED.",
-                [nameof(NewStatus)]);
-        }
-
-        if (key == "FAILED" && string.IsNullOrWhiteSpace(Reason))
-        {
-            yield return new ValidationResult(
-                "Reason là bắt buộc khi NewStatus = FAILED.",
-                [nameof(Reason)]);
-        }
-    }
 }
 
 public class MissionStatusResponseDto

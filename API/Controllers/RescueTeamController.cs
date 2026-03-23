@@ -27,35 +27,41 @@ public class RescueTeamController : ControllerBase
     /// Cập nhật trạng thái nhiệm vụ (operation) của đội cứu hộ.
     /// 
     /// Trạng thái hợp lệ (Operation Status):
-    ///   - "In Progress" : Đội đã bắt đầu thực hiện.
-    ///   - "Completed"   : Đội đã hoàn thành, request chuyển thẳng Completed.
-    ///   - "Failed"      : Nhiệm vụ thất bại, request quay về Verified để điều phối lại.
-    /// 
-    /// Khi Completed/Failed, team và vehicle sẽ được trả về trạng thái AVAILABLE.
+    ///   - "Completed" : Đội đã hoàn thành, request chuyển thẳng sang Completed.
+    ///   - "Cancelled" : Hủy nhiệm vụ, request chuyển thẳng sang Cancelled.
+    ///
+    /// Khi Completed hoặc Cancelled, team và vehicle sẽ được trả về AVAILABLE.
     /// </summary>
     [HttpPut("operations/{operationId}/status")]
     public async Task<IActionResult> UpdateMissionStatus(
         int operationId,
         [FromBody] UpdateMissionStatusDto dto)
     {
+        if (dto == null || string.IsNullOrWhiteSpace(dto.NewStatus))
+            return BadRequest(new { Success = false, Message = "Trạng thái mới là bắt buộc." });
+
         // ── 1. Lấy userId từ JWT token ────────────────────────────────────────
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out int userId))
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
 
         // ── 2. Validate newStatus ─────────────────────────────────────────────
-        string targetStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
-        string targetStatus = targetStatusKey == "COMPLETED" ? "Completed"
-            : targetStatusKey == "FAILED" ? "Failed"
-            : string.Empty;
-
-        if (string.IsNullOrEmpty(targetStatus))
-            return BadRequest(new { Success = false, Message = "Trạng thái không hợp lệ. Chỉ chấp nhận: COMPLETED, FAILED." });
-
-        if (targetStatus == "Failed" && string.IsNullOrWhiteSpace(dto.Reason))
+        var newStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
+        var targetStatus = newStatusKey switch
         {
-            return BadRequest(new { Success = false, Message = "Bắt buộc phải nhập lý do khi cập nhật trạng thái FAILED." });
-        }
+            "COMPLETED" => "Completed",
+            "CANCELLED" => "Cancelled",
+            "CANCELED" => "Cancelled",
+            _ => string.Empty
+        };
+
+        var allowedStatuses = new[] { "Completed", "Cancelled" };
+        if (!allowedStatuses.Contains(targetStatus))
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Trạng thái không hợp lệ. Chỉ chấp nhận: {string.Join(", ", allowedStatuses)}"
+            });
 
         // ── 3. Tải operation + request ───────────────────────────────────────
         var operation = await _context.RescueOperations
@@ -79,7 +85,9 @@ public class RescueTeamController : ControllerBase
             return Forbid(); // 403
 
         // ── 5. Kiểm tra rescue_operation.status hợp lệ ────────────────────────
-        if (operation.Status != "Assigned")
+        var allowedFrom = new[] { "Assigned" };
+
+        if (!allowedFrom.Contains(operation.Status))
             return BadRequest(new
             {
                 Success = false,
@@ -90,11 +98,14 @@ public class RescueTeamController : ControllerBase
 
         // ── 7. Cập nhật rescue_operations ───────────────────────────────────
         operation.Status = targetStatus;
-        operation.StartedAt ??= now;
+        if (operation.StartedAt == null)
+        {
+            operation.StartedAt = now;
+        }
         operation.CompletedAt = now;
 
         // ── 8. Cập nhật rescue_requests.status ───────────────────────────────
-        request.Status = targetStatus == "Failed" ? "Verified" : "Completed";
+        request.Status = targetStatus;
         request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
@@ -102,33 +113,39 @@ public class RescueTeamController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = request.Status,
-            Notes = targetStatus == "Failed"
-                ? $"Nhiệm vụ thất bại. Lý do: {dto.Reason}"
+            Notes = targetStatus == "Cancelled"
+                ? (string.IsNullOrWhiteSpace(dto.Reason)
+                    ? "Đội cứu hộ hủy nhiệm vụ, yêu cầu chuyển trực tiếp sang Cancelled."
+                    : $"Đội cứu hộ hủy nhiệm vụ. Lý do: {dto.Reason}")
                 : "Đội cứu hộ hoàn tất nhiệm vụ, yêu cầu chuyển trực tiếp sang Completed.",
             UpdatedBy = userId,
             UpdatedAt = now
         });
 
-        // ── 10. Nếu Completed hoặc Failed: trả team + vehicle về AVAILABLE
-        var team = operation.Team;
-        if (team != null)
-            team.Status = "AVAILABLE";
-
-        var vehicleIds = await _context.RescueOperationVehicles
-            .Where(ov => ov.OperationId == operation.OperationId)
-            .Select(ov => ov.VehicleId)
-            .ToListAsync();
-
-        if (vehicleIds.Any())
+        // ── 10. Khi nhiệm vụ kết thúc: trả team + vehicle về AVAILABLE.
+        if (targetStatus == "Completed" || targetStatus == "Cancelled")
         {
-            var vehicles = await _context.Vehicles
-                .Where(v => vehicleIds.Contains(v.VehicleId))
+            var team = operation.Team;
+            if (team != null)
+                team.Status = "AVAILABLE";
+
+            var vehicleIds = await _context.RescueOperationVehicles
+                .Where(ov => ov.OperationId == operation.OperationId)
+                .Select(ov => ov.VehicleId)
+                .Distinct()
                 .ToListAsync();
 
-            foreach (var vehicle in vehicles)
+            if (vehicleIds.Any())
             {
-                vehicle.Status = "AVAILABLE";
-                vehicle.UpdatedAt = now;
+                var vehicles = await _context.Vehicles
+                    .Where(v => vehicleIds.Contains(v.VehicleId))
+                    .ToListAsync();
+
+                foreach (var vehicle in vehicles)
+                {
+                    vehicle.Status = "AVAILABLE";
+                    vehicle.UpdatedAt = now;
+                }
             }
         }
 
@@ -140,6 +157,15 @@ public class RescueTeamController : ControllerBase
         {
             return Conflict(new { Success = false, Message = "Dữ liệu đã bị thay đổi bởi người khác." });
         }
+        catch (DbUpdateException ex)
+        {
+            return StatusCode(500, new
+            {
+                Success = false,
+                Message = "Không thể lưu cập nhật trạng thái nhiệm vụ vào cơ sở dữ liệu.",
+                Detail = ex.InnerException?.Message ?? ex.Message
+            });
+        }
 
         return Ok(new
         {
@@ -150,64 +176,111 @@ public class RescueTeamController : ControllerBase
             RequestStatus = request.Status,
             StartedAt = operation.StartedAt,
             CompletedAt = operation.CompletedAt,
-            Message = targetStatus == "Failed"
-                ? "Cập nhật nhiệm vụ thất bại thành công. Yêu cầu đã quay lại Verified."
-                : "Hoàn tất nhiệm vụ thành công. Yêu cầu đã chuyển trực tiếp sang Completed."
+            Message = targetStatus switch
+            {
+                "Completed" => "Hoàn tất nhiệm vụ thành công. Yêu cầu đã chuyển trực tiếp sang Completed.",
+                "Cancelled" => "Hủy nhiệm vụ thành công. Yêu cầu đã chuyển trực tiếp sang Cancelled.",
+                _ => "Cập nhật trạng thái nhiệm vụ thành công."
+            }
         });
     }
 
     /// <summary>
     /// Xem danh sách các nhiệm vụ được phân công cho đội của mình.
-    /// Chỉ hiển thị nhiệm vụ Assigned hoặc In Progress.
+    /// Chỉ hiển thị nhiệm vụ Assigned.
     /// </summary>
     [HttpGet("my-operations")]
     public async Task<IActionResult> GetMyOperations()
     {
-        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdStr, out int userId))
-            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        try
+        {
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
 
-        // Tìm team(s) mà user đang là thành viên active
-        var myTeamIds = await _context.RescueTeamMembers
-            .Where(m => m.UserId == userId && m.IsActive)
-            .Select(m => m.TeamId)
-            .ToListAsync();
+            var myTeamIds = await _context.RescueTeamMembers
+                .AsNoTracking()
+                .Where(m => m.UserId == userId && m.IsActive)
+                .Select(m => m.TeamId)
+                .ToListAsync();
 
-        if (!myTeamIds.Any())
-            return Ok(new { Success = true, Message = "Bạn chưa thuộc đội cứu hộ nào.", Data = new List<object>() });
+            if (!myTeamIds.Any())
+                return Ok(new { Success = true, Message = "Bạn chưa thuộc đội cứu hộ nào.", Data = new List<object>() });
 
-        var operations = await _context.RescueOperations
-            .Include(o => o.Request)
-            .Include(o => o.Team)
-            .Where(o => myTeamIds.Contains(o.TeamId) && o.Status == "Assigned")
-            .OrderBy(o => o.AssignedAt)
-            .Select(o => new
+            var operations = await _context.RescueOperations
+                .AsNoTracking()
+                .Where(o => myTeamIds.Contains(o.TeamId) && o.Status == "Assigned")
+                .OrderBy(o => o.AssignedAt)
+                .Select(o => new
+                {
+                    o.OperationId,
+                    o.RequestId,
+                    RequestTitle = o.Request != null ? o.Request.Title : null,
+                    RequestStatus = o.Request != null ? o.Request.Status : null,
+                    RequestAddress = o.Request != null ? o.Request.Address : null,
+                    RequestDescription = o.Request != null ? o.Request.Description : null,
+                    RequestPhone = o.Request != null ? o.Request.Phone : null,
+                    PriorityName = o.Request != null ? (o.Request.PriorityLevelId == 1 ? "CAO" :
+                                                        o.Request.PriorityLevelId == 2 ? "TRUNG BÌNH" :
+                                                        o.Request.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG") : null,
+                    RequestLatitude = o.Request != null ? o.Request.Latitude : (decimal?)null,
+                    RequestLongitude = o.Request != null ? o.Request.Longitude : (decimal?)null,
+                    TeamName = o.Team != null ? o.Team.TeamName : null,
+                    o.Status,
+                    o.AssignedAt,
+                    o.StartedAt
+                })
+                .ToListAsync();
+
+            var operationIds = operations.Select(o => o.OperationId).ToList();
+
+            var vehicleLookup = operationIds.Any()
+                ? await _context.RescueOperationVehicles
+                    .AsNoTracking()
+                    .Where(ov => operationIds.Contains(ov.OperationId))
+                    .Join(
+                        _context.Vehicles.AsNoTracking(),
+                        ov => ov.VehicleId,
+                        v => v.VehicleId,
+                        (ov, v) => new { ov.OperationId, v.VehicleName })
+                    .GroupBy(x => x.OperationId)
+                    .ToDictionaryAsync(
+                        g => g.Key,
+                        g => g.Select(x => x.VehicleName ?? string.Empty).ToList())
+                : new Dictionary<int, List<string>>();
+
+            var result = operations.Select(o => new
             {
                 o.OperationId,
                 o.RequestId,
-                RequestTitle = o.Request != null ? o.Request.Title : null,
-                RequestStatus = o.Request != null ? o.Request.Status : null,
-                RequestAddress = o.Request != null ? o.Request.Address : null,
-                RequestDescription = o.Request != null ? o.Request.Description : null,
-                RequestPhone = o.Request != null ? o.Request.Phone : null,
-                PriorityName = o.Request != null ? (o.Request.PriorityLevelId == 1 ? "CAO" :
-                                                    o.Request.PriorityLevelId == 2 ? "TRUNG BÌNH" :
-                                                    o.Request.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG") : null,
-                RequestLatitude = o.Request != null ? o.Request.Latitude : (decimal?)null,
-                RequestLongitude = o.Request != null ? o.Request.Longitude : (decimal?)null,
-                TeamName = o.Team != null ? o.Team.TeamName : null,
+                o.RequestTitle,
+                o.RequestStatus,
+                o.RequestAddress,
+                o.RequestDescription,
+                o.RequestPhone,
+                o.PriorityName,
+                o.RequestLatitude,
+                o.RequestLongitude,
+                o.TeamName,
                 o.Status,
                 o.AssignedAt,
                 o.StartedAt,
-                o.CompletedAt,
-                Vehicles = _context.RescueOperationVehicles
-                            .Where(ov => ov.OperationId == o.OperationId)
-                            .Join(_context.Vehicles, ov => ov.VehicleId, v => v.VehicleId, (ov, v) => v.VehicleName)
-                            .ToList()
-            })
-            .ToListAsync();
+                Vehicles = vehicleLookup.TryGetValue(o.OperationId, out var vehicles)
+                    ? vehicles
+                    : new List<string>()
+            }).ToList();
 
-        return Ok(new { Success = true, Total = operations.Count, Data = operations });
+            return Ok(new { Success = true, Total = result.Count, Data = result });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                Success = false,
+                Message = "Không thể tải danh sách nhiệm vụ.",
+                Detail = ex.Message
+            });
+        }
     }
 
     /// <summary>
@@ -286,8 +359,6 @@ public class RescueTeamController : ControllerBase
                 t.TeamId,
                 t.TeamName,
                 t.Status,
-                t.BaseLatitude,
-                t.BaseLongitude,
                 t.CreatedAt
             })
             .ToListAsync();
