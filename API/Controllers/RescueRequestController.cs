@@ -43,6 +43,7 @@ public class RescueRequestController : ControllerBase
             AdultCount            = dto.AdultCount,
             ElderlyCount          = dto.ElderlyCount,
             ChildrenCount         = dto.ChildrenCount,
+            NumberOfAffectedPeople = dto.NumberOfAffectedPeople,
             Status                = "Pending",
             CreatedAt             = DateTime.UtcNow
         };
@@ -103,6 +104,7 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -146,6 +148,7 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -192,6 +195,7 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -250,6 +254,7 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -279,6 +284,7 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 Address                = r.Address,
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
@@ -314,12 +320,13 @@ public class RescueRequestController : ControllerBase
         request.Latitude               = dto.Latitude ?? request.Latitude;
         request.Longitude              = dto.Longitude ?? request.Longitude;
         
-        bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue;
+        bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue || dto.NumberOfAffectedPeople.HasValue;
         if (hasAnyCountUpdate)
         {
             request.AdultCount = dto.AdultCount ?? request.AdultCount;
             request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
             request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+            request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? request.NumberOfAffectedPeople;
         }
 
         request.UpdatedAt              = DateTime.UtcNow;
@@ -366,12 +373,13 @@ public class RescueRequestController : ControllerBase
         request.Latitude               = dto.Latitude ?? request.Latitude;
         request.Longitude              = dto.Longitude ?? request.Longitude;
         
-        bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue;
+        bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue || dto.NumberOfAffectedPeople.HasValue;
         if (hasAnyCountUpdate)
         {
             request.AdultCount = dto.AdultCount ?? request.AdultCount;
             request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
             request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+            request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? request.NumberOfAffectedPeople;
         }
 
         request.UpdatedAt              = DateTime.UtcNow;

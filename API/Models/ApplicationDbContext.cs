@@ -62,6 +62,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.AdultCount).HasColumnName("adult_count");
             entity.Property(e => e.ElderlyCount).HasColumnName("elderly_count");
             entity.Property(e => e.ChildrenCount).HasColumnName("children_count");
+            entity.Property(e => e.NumberOfAffectedPeople).HasColumnName("number_of_affected_people");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");

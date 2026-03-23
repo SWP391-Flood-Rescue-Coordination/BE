@@ -29,6 +29,7 @@ public class RescueRequest
     public int? AdultCount { get; set; }
     public int? ElderlyCount { get; set; }
     public int? ChildrenCount { get; set; }
+    public int? NumberOfAffectedPeople { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
