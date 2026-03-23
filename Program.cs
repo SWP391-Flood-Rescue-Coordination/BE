@@ -113,6 +113,14 @@ builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(cli
     client.DefaultRequestHeaders.UserAgent.ParseAdd("FloodRescueCoordination/1.0 (support@floodrescue.vn)");
 });
 
+// Memory Cache – dùng cho OTP (quên mật khẩu)
+builder.Services.AddMemoryCache();
+
+// SMS Service – OTP quên mật khẩu
+// OTP sinh ngẫu nhiên, log ra console, hết hạn sau 3 phút, chỉ dùng 1 lần
+builder.Services.AddScoped<ISmsService, MockSmsService>();
+
+
 // =============================================
 // CẤU HÌNH JWT AUTHENTICATION
 // =============================================
