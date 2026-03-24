@@ -750,11 +750,7 @@ REFERENCES [dbo].[rescue_requests] ([request_id])
 GO
 ALTER TABLE [dbo].[rescue_request_status_history] CHECK CONSTRAINT [FK_rrsh_request]
 GO
-ALTER TABLE [dbo].[rescue_request_status_history]  WITH CHECK ADD  CONSTRAINT [FK_rrsh_updated_by] FOREIGN KEY([updated_by])
-REFERENCES [dbo].[users] ([user_id])
-GO
-ALTER TABLE [dbo].[rescue_request_status_history] CHECK CONSTRAINT [FK_rrsh_updated_by]
-GO
+-- FK_rrsh_updated_by đã bị xóa. Cột updated_by giữ nguyên là int, giá trị -1 = Guest/System (không có tài khoản).
 ALTER TABLE [dbo].[rescue_requests]  WITH CHECK ADD  CONSTRAINT [FK_rescue_requests_citizen] FOREIGN KEY([citizen_id])
 REFERENCES [dbo].[users] ([user_id])
 GO
@@ -765,11 +761,7 @@ REFERENCES [dbo].[priority_levels] ([priority_id])
 GO
 ALTER TABLE [dbo].[rescue_requests] CHECK CONSTRAINT [FK_rescue_requests_priority]
 GO
-ALTER TABLE [dbo].[rescue_requests]  WITH CHECK ADD  CONSTRAINT [FK_rescue_requests_updated_by] FOREIGN KEY([updated_by])
-REFERENCES [dbo].[users] ([user_id])
-GO
-ALTER TABLE [dbo].[rescue_requests] CHECK CONSTRAINT [FK_rescue_requests_updated_by]
-GO
+-- FK_rescue_requests_updated_by đã bị xóa. Cột updated_by giữ nguyên là int NULL, giá trị -1 = Guest/System (không có tài khoản).
 ALTER TABLE [dbo].[rescue_team_members]  WITH CHECK ADD  CONSTRAINT [FK_rescue_team_members_team] FOREIGN KEY([team_id])
 REFERENCES [dbo].[rescue_teams] ([team_id])
 GO

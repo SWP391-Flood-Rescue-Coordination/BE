@@ -454,7 +454,7 @@ public class RescueRequestController : ControllerBase
         }
 
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var userId = userIdString != null ? int.Parse(userIdString) : 0;
+        var userId = userIdString != null ? int.Parse(userIdString) : -1;
 
         request.Status = dto.Status;
         request.UpdatedAt = DateTime.UtcNow;
@@ -495,7 +495,7 @@ public class RescueRequestController : ControllerBase
         }
 
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var userId = userIdString != null ? int.Parse(userIdString) : 0;
+        var userId = userIdString != null ? int.Parse(userIdString) : -1;
 
         request.Status = "Verified";
         request.UpdatedAt = DateTime.UtcNow;
@@ -630,14 +630,14 @@ public class RescueRequestController : ControllerBase
         var now = DateTime.UtcNow;
         request.Status = "Completed";
         request.UpdatedAt = now;
-        request.UpdatedBy = 0;
+        request.UpdatedBy = -1; // -1 = Guest không có tài khoản
 
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
             Status = "Completed",
             Notes = "Khach vang lai da bao an toan sau khi doi cuu ho xac nhan hoan tat.",
-            UpdatedBy = 0,
+            UpdatedBy = -1, // -1 = Guest không có tài khoản
             UpdatedAt = now
         });
 
