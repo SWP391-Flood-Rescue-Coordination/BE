@@ -17,9 +17,6 @@ public class CreateRescueRequestDto
 
     [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng trẻ em không được là số âm")]
     public int? ChildrenCount { get; set; }
-
-    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng người bị ảnh hưởng không được là số âm")]
-    public int? NumberOfAffectedPeople { get; set; }
 }
 
 public class UpdateRescueRequestDto
@@ -38,9 +35,6 @@ public class UpdateRescueRequestDto
 
     [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng trẻ em không được là số âm")]
     public int? ChildrenCount { get; set; }
-
-    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng người bị ảnh hưởng không được là số âm")]
-    public int? NumberOfAffectedPeople { get; set; }
 }
 
 public class RescueRequestResponseDto
@@ -59,7 +53,7 @@ public class RescueRequestResponseDto
     public int? AdultCount { get; set; }
     public int? ElderlyCount { get; set; }
     public int? ChildrenCount { get; set; }
-    public int? NumberOfAffectedPeople { get; set; }
+    public bool CanReportSafe { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -108,7 +102,7 @@ public class LatestRescueRequestDto
     public int? AdultCount { get; set; }
     public int? ElderlyCount { get; set; }
     public int? ChildrenCount { get; set; }
-    public int? NumberOfAffectedPeople { get; set; }
+    public bool CanReportSafe { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

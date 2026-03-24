@@ -113,6 +113,14 @@ builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(cli
     client.DefaultRequestHeaders.UserAgent.ParseAdd("FloodRescueCoordination/1.0 (support@floodrescue.vn)");
 });
 
+// Memory Cache – dùng cho OTP (quên mật khẩu)
+builder.Services.AddMemoryCache();
+
+// SMS Service – OTP quên mật khẩu
+// OTP sinh ngẫu nhiên, log ra console, hết hạn sau 3 phút, chỉ dùng 1 lần
+builder.Services.AddScoped<ISmsService, MockSmsService>();
+
+
 // =============================================
 // CẤU HÌNH JWT AUTHENTICATION
 // =============================================
@@ -170,11 +178,18 @@ var app = builder.Build();
 // =============================================
 // TỰ ĐỘNG TẠO BẢNG CÒN THIẾU
 // =============================================
-using (var scope = app.Services.CreateScope())
+var skipStartupDatabaseSql = string.Equals(
+    Environment.GetEnvironmentVariable("SKIP_DB_STARTUP_SQL"),
+    "1",
+    StringComparison.Ordinal);
+
+if (!skipStartupDatabaseSql)
 {
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    try
+    using (var scope = app.Services.CreateScope())
     {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        try
+        {
         // Tạo bảng refresh_tokens nếu chưa tồn tại
         await context.Database.ExecuteSqlRawAsync(@"
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'refresh_tokens')
@@ -308,12 +323,17 @@ using (var scope = app.Services.CreateScope())
             END
         ");
 
-        Console.WriteLine("Database tables verified/created successfully.");
+            Console.WriteLine("Database tables verified/created successfully.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating tables: {ex.Message}");
+        }
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error creating tables: {ex.Message}");
-    }
+}
+else
+{
+    Console.WriteLine("Skipping startup database SQL because SKIP_DB_STARTUP_SQL=1.");
 }
 
 // =============================================

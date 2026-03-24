@@ -110,4 +110,47 @@ public class AuthController : ControllerBase
             }
         });
     }
+
+    // =============================================
+    // QUÊN MẬT KHẨU – OTP
+    // =============================================
+
+    /// <summary>
+    /// Bước 1: Gửi OTP xác thực tới số điện thoại đã đăng ký
+    /// </summary>
+    /// <remarks>
+    /// Flow: Nhập số điện thoại → Backend kiểm tra tồn tại → Giả định gửi OTP
+    /// Mã OTP test mặc định: 123456
+    /// </remarks>
+    [HttpPost("forgot-password/send-otp")]
+    public async Task<IActionResult> SendForgotPasswordOtp([FromBody] SendOtpRequest request)
+    {
+        var response = await _authService.SendForgotPasswordOtpAsync(request);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Bước 2: Xác thực OTP và đặt lại mật khẩu mới
+    /// </summary>
+    /// <remarks>
+    /// Flow: Nhập số điện thoại + OTP + mật khẩu mới → Xác thực OTP → Cập nhật mật khẩu
+    /// </remarks>
+    [HttpPost("forgot-password/reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var response = await _authService.ResetPasswordWithOtpAsync(request);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
 }
