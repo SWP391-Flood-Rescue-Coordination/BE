@@ -24,6 +24,11 @@ public class RescueTeamController : ControllerBase
         int operationId,
         [FromBody] UpdateMissionStatusDto dto)
     {
+        if (dto == null)
+        {
+            return BadRequest(new { Success = false, Message = "Du lieu gui len khong hop le." });
+        }
+
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var userId))
         {
@@ -89,6 +94,15 @@ public class RescueTeamController : ControllerBase
             });
         }
 
+        if (NormalizeStatusKey(request.Status) != "ASSIGNED")
+        {
+            return Conflict(new
+            {
+                Success = false,
+                Message = $"Yeu cau lien ket dang o trang thai '{request.Status}', khong phu hop de doi cuu ho hoan tat nhiem vu."
+            });
+        }
+
         var now = DateTime.UtcNow;
 
         operation.Status = targetStatus;
@@ -103,16 +117,15 @@ public class RescueTeamController : ControllerBase
         request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
-        _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
+        if (targetStatus == "Failed")
         {
-            RequestId = request.RequestId,
-            Status = request.Status,
-            Notes = targetStatus == "Failed"
-                ? $"Nhiem vu that bai. Ly do: {dto.Reason}"
-                : "Doi cuu ho da xac nhan hoan tat. Dang cho nguoi dan bao an toan de dong yeu cau.",
-            UpdatedBy = userId,
-            UpdatedAt = now
-        });
+            await UpsertRequestStatusHistoryAsync(
+                request.RequestId,
+                "Verified",
+                $"Nhiem vu that bai. Ly do: {dto.Reason}",
+                userId,
+                now);
+        }
 
         if (operation.Team != null)
         {
@@ -145,6 +158,22 @@ public class RescueTeamController : ControllerBase
         {
             return Conflict(new { Success = false, Message = "Du lieu da bi thay doi boi nguoi khac." });
         }
+        catch (DbUpdateException ex) when (IsDuplicateRequestStatusHistoryError(ex))
+        {
+            return Conflict(new
+            {
+                Success = false,
+                Message = "Lich su trang thai cua yeu cau da ton tai cho trang thai nay. Vui long tai lai du lieu va thu lai."
+            });
+        }
+        catch (DbUpdateException)
+        {
+            return StatusCode(500, new
+            {
+                Success = false,
+                Message = "Khong the luu thay doi nhiem vu vao co so du lieu."
+            });
+        }
 
         return Ok(new
         {
@@ -157,7 +186,7 @@ public class RescueTeamController : ControllerBase
             CompletedAt = operation.CompletedAt,
             Message = targetStatus == "Failed"
                 ? "Cap nhat nhiem vu that bai thanh cong. Yeu cau da quay lai Verified."
-                : "Da ghi nhan doi cuu ho hoan tat. Nguoi dan co the bao an toan de chuyen yeu cau sang Completed."
+                : "Da ghi nhan doi cuu ho hoan tat. Yeu cau van o Assigned va nguoi dan co the bao an toan de chuyen sang Completed."
         });
     }
 
@@ -301,5 +330,45 @@ public class RescueTeamController : ControllerBase
             .ToListAsync();
 
         return Ok(new { Success = true, Count = teams.Count, Data = teams });
+    }
+
+    private async Task UpsertRequestStatusHistoryAsync(
+        int requestId,
+        string status,
+        string notes,
+        int updatedBy,
+        DateTime updatedAt)
+    {
+        var existingHistory = await _context.RescueRequestStatusHistories
+            .FirstOrDefaultAsync(history => history.RequestId == requestId && history.Status == status);
+
+        if (existingHistory == null)
+        {
+            _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
+            {
+                RequestId = requestId,
+                Status = status,
+                Notes = notes,
+                UpdatedBy = updatedBy,
+                UpdatedAt = updatedAt
+            });
+            return;
+        }
+
+        existingHistory.Notes = notes;
+        existingHistory.UpdatedBy = updatedBy;
+        existingHistory.UpdatedAt = updatedAt;
+    }
+
+    private static bool IsDuplicateRequestStatusHistoryError(DbUpdateException exception)
+    {
+        return exception.InnerException?.Message?.Contains("UX_rrsh_request_status", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string NormalizeStatusKey(string? status)
+    {
+        return string.IsNullOrWhiteSpace(status)
+            ? string.Empty
+            : status.Trim().ToUpperInvariant().Replace(" ", "_");
     }
 }

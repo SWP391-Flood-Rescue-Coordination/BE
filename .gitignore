@@ -484,3 +484,7 @@ $RECYCLE.BIN/
 *.swp
 build_error.txt
 build_output.txt
+_build_verify/appsettings.json
+_build_verify/Azure.Core.dll
+appsettings.json
+Flood Rescue Coordination.csproj.user
