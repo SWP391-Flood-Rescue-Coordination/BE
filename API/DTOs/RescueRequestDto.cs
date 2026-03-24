@@ -35,6 +35,9 @@ public class UpdateRescueRequestDto
 
     [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng trẻ em không được là số âm")]
     public int? ChildrenCount { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng người bị ảnh hưởng không được là số âm")]
+    public int? NumberOfAffectedPeople { get; set; }
 }
 
 public class RescueRequestResponseDto
