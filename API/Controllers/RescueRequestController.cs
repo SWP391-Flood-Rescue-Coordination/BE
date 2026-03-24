@@ -72,11 +72,27 @@ public class RescueRequestController : ControllerBase
         var children = dto.ChildrenCount ?? 0;
         var priorityScore = 1.5 * elderly + 1.8 * children;
 
-        if (v >= 6)
+        // Cộng điểm thêm dựa trên từ khóa trong Description
+        var desc = (dto.Description ?? string.Empty).ToLower();
+        var keywordScores = new (string Keyword, double Score)[]
+        {
+            ("hết nhu yếu phẩm", 1.0),
+            ("sập nhà",          3.0),
+            ("cần điều trị y tế", 3.5),
+            ("ngập dưới 1m",     1.5),
+            ("ngập trên 1m",     2.5),
+        };
+        foreach (var (keyword, score) in keywordScores)
+        {
+            if (desc.Contains(keyword))
+                priorityScore += score;
+        }
+
+        if (priorityScore >= 8)
         {
             request.PriorityLevelId = 1; // High
         }
-        else if (v >= 3)
+        else if (priorityScore >= 4)
         {
             request.PriorityLevelId = 2; // Medium
         }
