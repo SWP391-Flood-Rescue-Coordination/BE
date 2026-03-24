@@ -118,7 +118,7 @@ public class RescueRequestController : ControllerBase
         return Ok(new
         {
             Success = true,
-            Message = "Tao yeu cau cuu ho thanh cong",
+            Message = "Tạo yêu cầu cứu hộ thành công",
             RequestId = request.RequestId
         });
     }
@@ -199,7 +199,7 @@ public class RescueRequestController : ControllerBase
 
         if (latestRequest == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho nao." });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ nào." });
         }
 
         await ApplyCanReportSafeAsync(latestRequest);
@@ -303,7 +303,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         await ApplyCanReportSafeAsync(request);
@@ -333,7 +333,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         await ApplyCanReportSafeAsync(request);
@@ -349,7 +349,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         if (request.Status != "Pending" && request.Status != "Verified")
@@ -357,7 +357,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Khong the chinh sua yeu cau khi dang o trang thai: {request.Status}"
+                Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
             });
         }
 
@@ -381,7 +381,7 @@ public class RescueRequestController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
+        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
     }
 
     [HttpPut("{id}/update")]
@@ -404,7 +404,7 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Khong tim thay yeu cau cuu ho hoac ban khong co quyen chinh sua yeu cau nay."
+                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền chỉnh sửa yêu cầu này."
             });
         }
 
@@ -413,7 +413,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Khong the chinh sua yeu cau khi dang o trang thai: {request.Status}"
+                Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
             });
         }
 
@@ -439,7 +439,7 @@ public class RescueRequestController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
+        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
     }
 
     [HttpPut("{id}/status")]
@@ -450,7 +450,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -464,14 +464,14 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = dto.Status,
-            Notes = "Trang thai cap nhat boi he thong quan ly",
+            Notes = "Trạng thái được cập nhật bởi hệ thống quản lý",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cap nhat trang thai thanh cong" });
+        return Ok(new { Success = true, Message = "Cập nhật trạng thái thành công" });
     }
 
     [HttpPut("{id}/verify")]
@@ -482,7 +482,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         if (request.Status != "Pending")
@@ -490,7 +490,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Yeu cau cuu ho phai o trang thai Pending (hien tai: {request.Status})"
+                Message = $"Yêu cầu cứu hộ phải ở trạng thái Pending (hiện tại: {request.Status})"
             });
         }
 
@@ -505,14 +505,14 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = "Verified",
-            Notes = $"Coordinator xac minh yeu cau (uu tien hien tai: {request.PriorityLevelId})",
+            Notes = $"Điều phối viên xác minh yêu cầu (ưu tiên hiện tại: {request.PriorityLevelId})",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Xac minh yeu cau thanh cong" });
+        return Ok(new { Success = true, Message = "Xác minh yêu cầu thành công" });
     }
 
     [HttpPut("{id}/confirm-rescued")]
@@ -535,7 +535,7 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Khong tim thay yeu cau cuu ho hoac ban khong co quyen bao an toan cho yeu cau nay."
+                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền báo an toàn cho yêu cầu này."
             });
         }
 
@@ -544,7 +544,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chi co the bao an toan khi yeu cau dang o trang thai 'Assigned'. Trang thai hien tai: '{request.Status}'."
+                Message = $"Chỉ có thể báo an toàn khi yêu cầu đang ở trạng thái 'Assigned'. Trạng thái hiện tại: '{request.Status}'."
             });
         }
 
@@ -554,7 +554,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "Doi cuu ho chua xac nhan hoan tat, ban chua the bao an toan."
+                Message = "Đội cứu hộ chưa xác nhận hoàn tất, bạn chưa thể báo an toàn."
             });
         }
 
@@ -567,7 +567,7 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = "Completed",
-            Notes = "Cong dan da bao an toan sau khi doi cuu ho xac nhan hoan tat.",
+            Notes = "Công dân đã báo an toàn sau khi đội cứu hộ xác nhận hoàn tất.",
             UpdatedBy = userId,
             UpdatedAt = now
         });
@@ -579,7 +579,7 @@ public class RescueRequestController : ControllerBase
             Success = true,
             RequestId = request.RequestId,
             Status = request.Status,
-            Message = "Bao an toan thanh cong. Yeu cau da duoc chuyen sang Completed."
+            Message = "Báo an toàn thành công. Yêu cầu đã được chuyển sang Completed."
         });
     }
 
@@ -587,6 +587,15 @@ public class RescueRequestController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
     {
+        if (dto == null || string.IsNullOrWhiteSpace(dto.Phone))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Số điện thoại là bắt buộc để báo an toàn."
+            });
+        }
+
         var request = await _context.RescueRequests
             .FirstOrDefaultAsync(r => r.RequestId == id);
 
@@ -595,7 +604,7 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Khong tim thay yeu cau cuu ho."
+                Message = "Không tìm thấy yêu cầu cứu hộ."
             });
         }
 
@@ -604,7 +613,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "So dien thoai khong khop voi yeu cau da dang ky."
+                Message = "Số điện thoại không khớp với yêu cầu đã đăng ký."
             });
         }
 
@@ -613,7 +622,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chi co the bao an toan khi yeu cau dang o trang thai 'Assigned'. Trang thai hien tai: '{request.Status}'."
+                Message = $"Chỉ có thể báo an toàn khi yêu cầu đang ở trạng thái 'Assigned'. Trạng thái hiện tại: '{request.Status}'."
             });
         }
 
@@ -623,7 +632,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "Doi cuu ho chua xac nhan hoan tat, ban chua the bao an toan."
+                Message = "Đội cứu hộ chưa xác nhận hoàn tất, bạn chưa thể báo an toàn."
             });
         }
 
@@ -636,19 +645,30 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = "Completed",
-            Notes = "Khach vang lai da bao an toan sau khi doi cuu ho xac nhan hoan tat.",
+            Notes = "Khách vãng lai đã báo an toàn sau khi đội cứu hộ xác nhận hoàn tất.",
             UpdatedBy = -1, // -1 = Guest không có tài khoản
             UpdatedAt = now
         });
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUpdatedByForeignKeyError(ex))
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                Success = false,
+                Message = "updated_by đang được gán = -1 cho Guest/System nhưng database hiện tại vẫn còn FK tới users. Hãy chạy script drop_updated_by_fk.sql trên đúng database đang kết nối."
+            });
+        }
 
         return Ok(new
         {
             Success = true,
             RequestId = request.RequestId,
             Status = request.Status,
-            Message = "Bao an toan thanh cong. Yeu cau da duoc chuyen sang Completed."
+            Message = "Báo an toàn thành công. Yêu cầu đã được chuyển sang Completed."
         });
     }
 
@@ -739,6 +759,13 @@ public class RescueRequestController : ControllerBase
     {
         return await _context.RescueOperations
             .AnyAsync(o => o.RequestId == requestId && o.Status == "Completed");
+    }
+
+    private static bool IsUpdatedByForeignKeyError(DbUpdateException exception)
+    {
+        var message = exception.InnerException?.Message ?? exception.Message;
+        return message.Contains("FK_rrsh_updated_by", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("FK_rescue_requests_updated_by", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string NormalizeStatusKey(string? status)
