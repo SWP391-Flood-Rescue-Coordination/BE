@@ -217,7 +217,7 @@ public class RescueOperationController : ControllerBase
                     .FirstOrDefault(),
                 Latitude = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Latitude).FirstOrDefault(),
                 Longitude = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Longitude).FirstOrDefault(),
-                OperationStatus = op.Status,
+                OperationStatus = op.Status ?? string.Empty,
                 AssignedAt = op.AssignedAt,
                 StartedAt = op.StartedAt,
                 CompletedAt = op.CompletedAt,
@@ -283,7 +283,7 @@ public class RescueOperationController : ControllerBase
                                         .Where(r => r.RequestId == op.RequestId)
                                         .Select(r => r.Longitude)
                                         .FirstOrDefault(),
-                OperationStatus    = op.Status,
+                OperationStatus    = op.Status ?? string.Empty,
                 AssignedAt         = op.AssignedAt,
                 StartedAt          = op.StartedAt,
                 CompletedAt        = op.CompletedAt,
