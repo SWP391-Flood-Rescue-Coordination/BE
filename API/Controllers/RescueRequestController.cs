@@ -29,23 +29,46 @@ public class RescueRequestController : ControllerBase
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         int? userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : null;
 
+        // =============================================
+        // KIỂM TRA DUPLICATE: cùng SĐT + cùng địa chỉ trong vòng 15 phút
+        // Áp dụng cho cả Guest và Citizen đã đăng nhập
+        // =============================================
+        bool isDuplicate = false;
+        string? checkPhone = dto.ContactPhone;
+
+        if (!string.IsNullOrWhiteSpace(checkPhone) && !string.IsNullOrWhiteSpace(dto.Address))
+        {
+            var windowStart = DateTime.UtcNow.AddMinutes(-15);
+            var normalizedAddress = dto.Address.Trim().ToLower();
+
+            isDuplicate = await _context.RescueRequests
+                .AnyAsync(r =>
+                    r.CreatedAt >= windowStart &&
+                    r.Status != "Completed" &&
+                    r.Status != "Cancelled" &&
+                    r.Status != "Duplicate" &&
+                    (r.Phone == checkPhone || r.ContactPhone == checkPhone) &&
+                    r.Address != null &&
+                    r.Address.Trim().ToLower() == normalizedAddress);
+        }
+
         var request = new RescueRequest
         {
-            CitizenId             = userId,
-            ContactName           = userId == null ? dto.ContactName : null,
-            ContactPhone          = dto.ContactPhone,
-            Title                 = dto.Title,
-            Phone                 = dto.ContactPhone,
-            Description           = dto.Description,
-            Latitude              = dto.Latitude,
-            Longitude             = dto.Longitude,
-            Address               = dto.Address,
-            AdultCount            = dto.AdultCount,
-            ElderlyCount          = dto.ElderlyCount,
-            ChildrenCount         = dto.ChildrenCount,
+            CitizenId              = userId,
+            ContactName            = userId == null ? dto.ContactName : null,
+            ContactPhone           = dto.ContactPhone,
+            Title                  = dto.Title,
+            Phone                  = dto.ContactPhone,
+            Description            = dto.Description,
+            Latitude               = dto.Latitude,
+            Longitude              = dto.Longitude,
+            Address                = dto.Address,
+            AdultCount             = dto.AdultCount,
+            ElderlyCount           = dto.ElderlyCount,
+            ChildrenCount          = dto.ChildrenCount,
             NumberOfAffectedPeople = dto.NumberOfAffectedPeople,
-            Status                = "Pending",
-            CreatedAt             = DateTime.UtcNow
+            Status                 = isDuplicate ? "Duplicate" : "Pending",
+            CreatedAt              = DateTime.UtcNow
         };
 
         // Auto-calculate Priority Level: E = ElderlyCount, C = ChildrenCount
@@ -55,20 +78,25 @@ public class RescueRequestController : ControllerBase
         double v = 1.5 * elderly + 1.8 * children;
 
         if (v >= 6)
-        {
             request.PriorityLevelId = 1; // High
-        }
         else if (v >= 3)
-        {
             request.PriorityLevelId = 2; // Medium
-        }
         else
-        {
             request.PriorityLevelId = 3; // Low
-        }
 
         _context.RescueRequests.Add(request);
         await _context.SaveChangesAsync();
+
+        if (isDuplicate)
+        {
+            return Ok(new
+            {
+                Success   = true,
+                Duplicate = true,
+                Message   = "Yêu cầu cứu hộ đã được ghi nhận nhưng có thể trùng với yêu cầu trước đó tại cùng địa chỉ (trong vòng 15 phút). Yêu cầu được đánh dấu là Duplicate.",
+                RequestId = request.RequestId
+            });
+        }
 
         return Ok(new { Success = true, Message = "Tạo yêu cầu cứu hộ thành công", RequestId = request.RequestId });
     }

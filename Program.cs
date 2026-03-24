@@ -225,18 +225,14 @@ using (var scope = app.Services.CreateScope())
                 END
                 
 
-                -- 1. Xóa index cũ trước nếu có (để có thể alter cột)
+                -- Xóa giới hạn 1 request đang mở per citizen (nếu index còn tồn tại)
                 IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'UX_rescue_requests_one_open_per_citizen' AND object_id = OBJECT_ID('rescue_requests'))
                 BEGIN
                     DROP INDEX UX_rescue_requests_one_open_per_citizen ON rescue_requests;
                 END
 
-                -- 2. Làm cho citizen_id có thể NULL
+                -- Làm cho citizen_id có thể NULL (hỗ trợ Guest)
                 ALTER TABLE rescue_requests ALTER COLUMN citizen_id INT NULL;
-
-                -- 3. Tạo lại index mới hỗ trợ khách vãng lai (citizen_id IS NULL)
-                CREATE UNIQUE NONCLUSTERED INDEX UX_rescue_requests_one_open_per_citizen ON rescue_requests(citizen_id)
-                WHERE ([status]<>'Completed' AND [status]<>'Cancelled' AND [status]<>'Duplicate' AND [citizen_id] IS NOT NULL);
             END
         ");
 
