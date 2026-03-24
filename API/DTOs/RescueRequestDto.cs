@@ -9,7 +9,14 @@ public class CreateRescueRequestDto
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     public string? Address { get; set; }
-    public int? NumberOfPeople { get; set; }
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng người lớn không được là số âm")]
+    public int? AdultCount { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng người cao tuổi không được là số âm")]
+    public int? ElderlyCount { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng trẻ em không được là số âm")]
+    public int? ChildrenCount { get; set; }
 }
 
 public class UpdateRescueRequestDto
@@ -20,7 +27,14 @@ public class UpdateRescueRequestDto
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     public string? Address { get; set; }
-    public int? NumberOfPeople { get; set; }
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng người lớn không được là số âm")]
+    public int? AdultCount { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng người cao tuổi không được là số âm")]
+    public int? ElderlyCount { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng trẻ em không được là số âm")]
+    public int? ChildrenCount { get; set; }
 }
 
 public class RescueRequestResponseDto
@@ -36,7 +50,10 @@ public class RescueRequestResponseDto
     public string? Address { get; set; }
     public int? PriorityLevelId { get; set; }
     public string Status { get; set; } = string.Empty;
-    public int? NumberOfAffectedPeople { get; set; }
+    public int? AdultCount { get; set; }
+    public int? ElderlyCount { get; set; }
+    public int? ChildrenCount { get; set; }
+    public bool CanReportSafe { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -46,10 +63,6 @@ public class UpdateStatusDto
     public string Status { get; set; } = string.Empty;
 }
 
-public class UpdatePriorityDto
-{
-    public int PriorityLevelId { get; set; }
-}
 
 public class UpdateRequestFromCoordinatorDto
 {
@@ -57,11 +70,6 @@ public class UpdateRequestFromCoordinatorDto
     public int? PriorityLevelId { get; set; }
 }
 
-public class SetPriorityAndVerifyDto
-{
-    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "PriorityLevelId là bắt buộc")]
-    public int PriorityLevelId { get; set; }
-}
 
 public class DashboardStatisticsDto
 {
@@ -91,7 +99,10 @@ public class LatestRescueRequestDto
     public string? Description { get; set; }
     public string? Address { get; set; }
     public string Status { get; set; } = string.Empty;
-    public int? NumberOfAffectedPeople { get; set; }
+    public int? AdultCount { get; set; }
+    public int? ElderlyCount { get; set; }
+    public int? ChildrenCount { get; set; }
+    public bool CanReportSafe { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

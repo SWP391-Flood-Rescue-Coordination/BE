@@ -100,6 +100,18 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // =============================================
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddHttpClient<IDistanceService, OsrmDistanceService>(client =>
+{
+    client.BaseAddress = new Uri("https://router.project-osrm.org/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(client =>
+{
+    client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("FloodRescueCoordination/1.0 (support@floodrescue.vn)");
+});
 
 // Memory Cache – dùng cho OTP (quên mật khẩu)
 builder.Services.AddMemoryCache();
@@ -244,6 +256,67 @@ using (var scope = app.Services.CreateScope())
                 BEGIN
                     ALTER TABLE relief_items ADD min_quantity INT NOT NULL DEFAULT 0;
                 END
+            END
+        ");
+
+        // Thêm cột tọa độ cho rescue_teams nếu chưa có
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'rescue_teams')
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'rescue_teams') AND name = 'base_latitude')
+                BEGIN
+                    ALTER TABLE rescue_teams ADD base_latitude DECIMAL(9,6) NULL;
+                END
+
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'rescue_teams') AND name = 'base_longitude')
+                BEGIN
+                    ALTER TABLE rescue_teams ADD base_longitude DECIMAL(9,6) NULL;
+                END
+            END
+        ");
+
+        // Chuẩn hóa dữ liệu trạng thái cũ + cập nhật constraint theo state machine mới
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'rescue_requests')
+            BEGIN
+                -- Normalize dữ liệu cũ
+                UPDATE rescue_requests
+                SET status = 'Assigned'
+                WHERE status IN ('In Progress', 'IN_PROGRESS');
+
+                UPDATE rescue_requests
+                SET status = 'Completed'
+                WHERE status IN ('Confirmed', 'CONFIRMED', 'CitizenConfirmed');
+
+                -- Cập nhật CHECK constraint
+                IF EXISTS (SELECT * FROM sys.check_constraints WHERE name = 'CK_rescue_requests_status_allowed')
+                BEGIN
+                    ALTER TABLE rescue_requests DROP CONSTRAINT CK_rescue_requests_status_allowed;
+                END
+
+                ALTER TABLE rescue_requests WITH CHECK ADD CONSTRAINT CK_rescue_requests_status_allowed
+                CHECK ([status] IN ('Pending', 'Verified', 'Assigned', 'Completed', 'Cancelled', 'Duplicate'));
+            END
+
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'rescue_operations')
+            BEGIN
+                -- Normalize dữ liệu cũ
+                UPDATE rescue_operations
+                SET status = 'Assigned'
+                WHERE status IN ('In Progress', 'IN_PROGRESS', 'Pending', 'Verified');
+
+                UPDATE rescue_operations
+                SET status = 'Completed'
+                WHERE status IN ('Confirmed', 'CONFIRMED', 'CitizenConfirmed');
+
+                -- Cập nhật CHECK constraint
+                IF EXISTS (SELECT * FROM sys.check_constraints WHERE name = 'CK_rescue_operations_status_allowed')
+                BEGIN
+                    ALTER TABLE rescue_operations DROP CONSTRAINT CK_rescue_operations_status_allowed;
+                END
+
+                ALTER TABLE rescue_operations WITH CHECK ADD CONSTRAINT CK_rescue_operations_status_allowed
+                CHECK ([status] IN ('Assigned', 'Completed', 'Failed'));
             END
         ");
 

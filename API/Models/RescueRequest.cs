@@ -25,7 +25,10 @@ public class RescueRequest
     public string Status { get; set; } = "Pending";
     
     // In SQL script
-    public int? NumberOfAffectedPeople { get; set; }
+    
+    public int? AdultCount { get; set; }
+    public int? ElderlyCount { get; set; }
+    public int? ChildrenCount { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

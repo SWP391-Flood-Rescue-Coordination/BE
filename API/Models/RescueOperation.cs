@@ -9,9 +9,9 @@ public class RescueOperation
     public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
-    public string Status { get; set; } = "Assigned";
+    public string? Status { get; set; } // Pending, Scheduled, In Progress, Completed, Cancelled
     public int? NumberOfAffectedPeople { get; set; }
-    public int? EstimatedTime { get; set; }
+    public int? EstimatedTime { get; set; } // Minutes
 
     // Navigation properties
     public virtual RescueRequest? Request { get; set; }
