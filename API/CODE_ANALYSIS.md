@@ -209,12 +209,11 @@ var items = await _context.ReliefItems.Where(i => i.Quantity <= n)
 
 ### 7.1 `GetAllVehicles`, `GetVehicleById`, `UpdateVehicle`
 ```csharp
-var manualValidStatuses = new[] { "AVAILABLE", "MAINTENANCE" };
-if (!manualValidStatuses.Contains(newStatus)) return BadRequest(...);
-if (currentStatus == "INUSE" && currentStatus != newStatus) return BadRequest(...);
+// Null-safe status filter
+query = query.Where(v => (v.Status ?? string.Empty).ToUpper() == statusUpper);
 ```
-* **Khóa trạng thái (Status Lock)**: Một bản cập nhật mới cấm Admin gõ trạng thái bậy bạ. Việc gán trạng thái `INUSE` bị cấm thủ công vì nó phải do `RescueOperation` điều phối bằng `Transaction`. 
-* **Theo dõi vị trí (Coordinates)**: Mở thêm biến `Latitude` và `Longitude` vào hàm để vẽ tọa độ trực thăng/cano lên bản đồ.
+* **Khóa trạng thái (Status Lock)**: Việc gán trạng thái `INUSE` bị cấm thủ công vì nó phải do phần `RescueOperation` điều phối bằng `Transaction`. 
+* **Tối ưu Danh sách (Performance & Null-Safety)**: Hàm `GetAllVehicles` đã được điều chỉnh. Lượt bỏ kết xuất `Latitude`/`Longitude` để bảng Dashboard chạy nhẹ và không ngốn băng thông vô ích. Dữ liệu xe cũng được bọc an toàn (Null-safe) `v.Status ?? string.Empty` chống sụp đổ ứng dụng nếu Data có dòng bị lưu `NULL`.
 * **Xử lý FK**: Trong logic update, trả về JSON `Include(v => v.VehicleType)` để truy xuất rõ tên loại xe.
 
 ### 7.2 `CreateVehicle` & `DeleteVehicle` (Mới Cập Nhật)

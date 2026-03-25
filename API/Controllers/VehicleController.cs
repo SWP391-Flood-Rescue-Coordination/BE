@@ -21,7 +21,10 @@ public class VehicleController : ControllerBase
         _context = context;
     }
 
-    // Map sau khi truy vấn xong để dữ liệu list ổn định ngay cả khi navigation/null value không đồng nhất.
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Map dữ liệu từ Entity Vehicle sang VehicleResponseDto.
+    /// Giúp code đảm bảo Null-safety, phân giải các biến rỗng thành chuỗi trống, chống văng màn hình giao diện.
+    /// </summary>
     private static VehicleResponseDto ToVehicleResponseDto(Vehicle vehicle)
     {
         return new VehicleResponseDto
