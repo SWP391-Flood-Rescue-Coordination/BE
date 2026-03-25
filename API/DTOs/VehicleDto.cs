@@ -23,6 +23,9 @@ public class UpdateVehicleStatusDto
 
 public class UpdateVehicleDto
 {
+    public string? LicensePlate { get; set; }
+
+    // Không cho sửa VehicleCode vì đây là mã nội bộ và cần giữ ổn định sau khi tạo.
     public int? VehicleTypeId { get; set; }
     public string? VehicleName { get; set; }
     public int? Capacity { get; set; }
@@ -35,7 +38,7 @@ public class UpdateVehicleDto
 
 public class CreateVehicleDto
 {
-    public string VehicleCode { get; set; } = string.Empty;
+    // VehicleCode được backend tự sinh nên FE chỉ cần gửi các trường nghiệp vụ.
     public string? VehicleName { get; set; }
     public int VehicleTypeId { get; set; }
     public string LicensePlate { get; set; } = string.Empty;
