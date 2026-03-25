@@ -214,6 +214,11 @@ public class RescueRequestController : ControllerBase
             .Include(r => r.Citizen)
             .AsQueryable();
 
+        if (User.IsInRole("COORDINATOR"))
+        {
+            query = query.Where(r => r.Status != "ReliefPending");
+        }
+
         if (!string.IsNullOrEmpty(status))
         {
             query = query.Where(r => r.Status == status);
@@ -953,7 +958,7 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = "ReliefPending",
-            Notes = "Yeu cau vat tu duoc tao moi.",
+            Notes = "Nguoi dan xac nhan da nhan vat tu.",
             UpdatedBy = userId ?? -1,
             UpdatedAt = DateTime.UtcNow
         });
@@ -963,7 +968,7 @@ public class RescueRequestController : ControllerBase
         return Ok(new
         {
             Success = true,
-            Message = "Tao yeu cau vat tu thanh cong",
+            Message = "Xac nhan da nhan vat tu thanh cong",
             RequestId = request.RequestId,
             Status = request.Status
         });
