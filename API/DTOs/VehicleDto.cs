@@ -10,6 +10,8 @@ public class VehicleResponseDto
     public int? Capacity { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? CurrentLocation { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public DateTime? LastMaintenance { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -26,5 +28,21 @@ public class UpdateVehicleDto
     public int? Capacity { get; set; }
     public string? Status { get; set; }
     public string? CurrentLocation { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public DateTime? LastMaintenance { get; set; }
+}
+
+public class CreateVehicleDto
+{
+    public string VehicleCode { get; set; } = string.Empty;
+    public string? VehicleName { get; set; }
+    public int VehicleTypeId { get; set; }
+    public string LicensePlate { get; set; } = string.Empty;
+    public int? Capacity { get; set; }
+    public string? Status { get; set; }
+    public string? CurrentLocation { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public DateTime? LastMaintenance { get; set; }
 }

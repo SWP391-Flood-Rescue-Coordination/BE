@@ -69,6 +69,43 @@ Manager có trách nhiệm quản lý hệ thống phân phối và lưu kho, ba
   - `type` (string, optional): Lọc theo loại (chỉ nhận "IN" hoặc "OUT"). Truyền `type=IN` nếu muốn xem danh sách các đợt nhập kho vật tư.
 - **Mô tả**: Trả về danh sách lịch sử lưu kho theo trình tự từ mới nhất đến cũ nhất. Lịch sử nhập lô hàng cũng phản ánh rõ khối lượng, loại mặt hàng, nhà tài trợ đã tạo từ lệnh POST trên.
 
+
+## API Endpoints: Quản lý Phương tiện (Vehicle Management)
+
+### 1. Thêm mới phương tiện
+- **Endpoint**: `POST /api/Vehicle`
+- **Quyền hạn**: `Roles = "MANAGER, ADMIN"`
+- **Mô tả**: Cho phép Manager thêm mới một phương tiện vào hệ thống để phục vụ công tác cứu hộ.
+- **Body (JSON)**:
+    ```json
+    {
+      "vehicleCode": "CANO-001",
+      "vehicleName": "Cano Cứu Hộ Phường 1",
+      "vehicleTypeId": 1,
+      "licensePlate": "29-C1 12345",
+      "capacity": 10,
+      "status": "AVAILABLE",
+      "currentLocation": "Bến tàu Phường 1",
+      "latitude": 10.762622,
+      "longitude": 106.660172
+    }
+    ```
+
+### 2. Cập nhật thông tin phương tiện
+- **Endpoint**: `PUT /api/Vehicle/{id}`
+- **Quyền hạn**: `Roles = "MANAGER, ADMIN"`
+- **Mô tả**: Cập nhật các thông tin chi tiết của phương tiện như trạng thái, vị trí hiện tại, hoặc ngày bảo trì.
+
+### 3. Xóa phương tiện
+- **Endpoint**: `DELETE /api/Vehicle/{id}`
+- **Quyền hạn**: `Roles = "MANAGER, ADMIN"`
+- **Mô tả**: Xóa phương tiện khỏi hệ thống. Lưu ý: Không thể xóa phương tiện đã có lịch sử tham gia các nhiệm vụ cứu hộ.
+
+### 4. Xem danh sách phương tiện
+- **Endpoint**: `GET /api/Vehicle`
+- **Quyền hạn**: `Roles = "MANAGER, ADMIN, COORDINATOR"`
+- **Lưu ý**: Danh sách được sắp xếp theo thời gian cập nhật mới nhất.
+
 ## Luồng hoạt động tiêu chuẩn khi trực tiếp nhận hàng cứu trợ
 1. **Manager** đăng nhập vào API và nhận token với quyền MANAGER.
 2. Khi tiếp nhận lô hàng, **Manager** truy cập Swagger, vào mục `StockHistory` và mở `POST /api/StockHistory/import`.

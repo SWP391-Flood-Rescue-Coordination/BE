@@ -12,6 +12,8 @@ public class Vehicle
     public int? Capacity { get; set; }
     public string Status { get; set; } = "AVAILABLE";
     public string? CurrentLocation { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public DateTime? LastMaintenance { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
