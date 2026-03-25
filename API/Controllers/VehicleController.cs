@@ -21,6 +21,26 @@ public class VehicleController : ControllerBase
         _context = context;
     }
 
+    // Map sau khi truy vấn xong để dữ liệu list ổn định ngay cả khi navigation/null value không đồng nhất.
+    private static VehicleResponseDto ToVehicleResponseDto(Vehicle vehicle)
+    {
+        return new VehicleResponseDto
+        {
+            VehicleId = vehicle.VehicleId,
+            VehicleCode = vehicle.VehicleCode ?? string.Empty,
+            VehicleName = vehicle.VehicleName,
+            VehicleTypeName = vehicle.VehicleType?.TypeName ?? string.Empty,
+            LicensePlate = vehicle.LicensePlate ?? string.Empty,
+            Capacity = vehicle.Capacity,
+            Status = vehicle.Status ?? string.Empty,
+            CurrentLocation = vehicle.CurrentLocation,
+            Latitude = vehicle.Latitude,
+            Longitude = vehicle.Longitude,
+            LastMaintenance = vehicle.LastMaintenance,
+            UpdatedAt = vehicle.UpdatedAt
+        };
+    }
+
     /// <summary>
     /// Manager/Admin - Xem danh sách tất cả phương tiện
     /// </summary>
@@ -30,9 +50,7 @@ public class VehicleController : ControllerBase
     {
         var validStatuses = new[] { "AVAILABLE", "INUSE", "MAINTENANCE" };
 
-        var query = _context.Vehicles
-            .Include(v => v.VehicleType)
-            .AsQueryable();
+        var query = _context.Vehicles.AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
         {
@@ -45,23 +63,24 @@ public class VehicleController : ControllerBase
                     Message = $"Trạng thái '{status}' không hợp lệ. Các trạng thái hợp lệ là: {string.Join(", ", validStatuses)}" 
                 });
             }
-            query = query.Where(v => v.Status.ToUpper() == statusUpper);
+            // Null-safe để việc lọc trạng thái không vỡ nếu có bản ghi thiếu status.
+            query = query.Where(v => (v.Status ?? string.Empty).ToUpper() == statusUpper);
         }
 
+        // Danh sách xe hiện chỉ cần các trường hiển thị trên dashboard/bảng tổng hợp.
+        // Không kéo thêm các cột tọa độ để tránh phụ thuộc vào schema mở rộng chưa có ở một số môi trường.
         var vehicles = await query
             .OrderByDescending(v => v.UpdatedAt)
             .Select(v => new VehicleResponseDto
             {
                 VehicleId = v.VehicleId,
-                VehicleCode = v.VehicleCode,
+                VehicleCode = v.VehicleCode ?? string.Empty,
                 VehicleName = v.VehicleName,
                 VehicleTypeName = v.VehicleType != null ? v.VehicleType.TypeName : "",
-                LicensePlate = v.LicensePlate,
+                LicensePlate = v.LicensePlate ?? string.Empty,
                 Capacity = v.Capacity,
-                Status = v.Status,
+                Status = v.Status ?? string.Empty,
                 CurrentLocation = v.CurrentLocation,
-                Latitude = v.Latitude,
-                Longitude = v.Longitude,
                 LastMaintenance = v.LastMaintenance,
                 UpdatedAt = v.UpdatedAt
             })
