@@ -886,4 +886,38 @@ public class RescueRequestController : ControllerBase
 
         return value;
     }
+    [HttpGet("status-history")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> GetAllRequestStatusHistories()
+    {
+        var histories = await _context.RescueRequestStatusHistories
+            .OrderByDescending(h => h.UpdatedAt)
+            .Select(h => new RescueRequestStatusHistoryDto
+            {
+                StatusId = h.StatusId,
+                RequestId = h.RequestId,
+                RequestTitle = _context.RescueRequests
+                    .Where(r => r.RequestId == h.RequestId)
+                    .Select(r => r.Title)
+                    .FirstOrDefault(),
+                Status = h.Status,
+                Notes = h.Notes,
+                UpdatedBy = h.UpdatedBy,
+                UpdatedByName = h.UpdatedBy == -1
+                    ? "GUEST"
+                    : _context.Users
+                        .Where(u => u.UserId == h.UpdatedBy)
+                        .Select(u => u.FullName ?? u.Username)
+                        .FirstOrDefault(),
+                UpdatedAt = h.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            Success = true,
+            Total = histories.Count,
+            Data = histories
+        });
+    }
 }
