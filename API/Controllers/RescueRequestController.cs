@@ -352,7 +352,7 @@ public class RescueRequestController : ControllerBase
             return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
         }
 
-        if (request.Status != "Pending" && request.Status != "Verified")
+        if (request.Status != "Pending" && request.Status != "Verified" && request.Status != "Duplicate")
         {
             return BadRequest(new
             {
@@ -361,25 +361,86 @@ public class RescueRequestController : ControllerBase
             });
         }
 
-        request.Title                  = dto.Title ?? request.Title;
-        request.Description            = dto.Description ?? request.Description;
-        request.Phone                  = dto.ContactPhone ?? request.Phone;
-        request.Address                = dto.Address ?? request.Address;
-        request.Latitude               = dto.Latitude ?? request.Latitude;
-        request.Longitude              = dto.Longitude ?? request.Longitude;
-        
+        // Apply fields (dùng giá trị mới nếu có, giữ cũ nếu không)
+        request.Title       = dto.Title ?? request.Title;
+        request.Description = dto.Description ?? request.Description;
+        request.Phone       = dto.ContactPhone ?? request.Phone;
+        request.Address     = dto.Address ?? request.Address;
+        request.Latitude    = dto.Latitude ?? request.Latitude;
+        request.Longitude   = dto.Longitude ?? request.Longitude;
+
         bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue;
         if (hasAnyCountUpdate)
         {
-            request.AdultCount = dto.AdultCount ?? request.AdultCount;
-            request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
-            request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+            request.AdultCount             = dto.AdultCount ?? request.AdultCount;
+            request.ElderlyCount           = dto.ElderlyCount ?? request.ElderlyCount;
+            request.ChildrenCount          = dto.ChildrenCount ?? request.ChildrenCount;
             request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? request.NumberOfAffectedPeople;
         }
+
+        // =============================================
+        // KIỂM TRA DUPLICATE: cùng SĐT + cùng địa chỉ trong vòng 15 phút
+        // Loại trừ chính request đang được chỉnh sửa
+        // =============================================
+        bool isDuplicate = false;
+        string? checkPhone = request.Phone ?? request.ContactPhone;
+
+        if (!string.IsNullOrWhiteSpace(checkPhone) && !string.IsNullOrWhiteSpace(request.Address))
+        {
+            var windowStart = DateTime.UtcNow.AddMinutes(-15);
+            var normalizedAddress = request.Address.Trim().ToLower();
+
+            isDuplicate = await _context.RescueRequests
+                .AnyAsync(r =>
+                    r.RequestId != id &&
+                    r.CreatedAt >= windowStart &&
+                    r.Status != "Completed" &&
+                    r.Status != "Cancelled" &&
+                    r.Status != "Duplicate" &&
+                    (r.Phone == checkPhone || r.ContactPhone == checkPhone) &&
+                    r.Address != null &&
+                    r.Address.Trim().ToLower() == normalizedAddress);
+        }
+
+        request.Status = isDuplicate ? "Duplicate" : (request.Status == "Duplicate" ? "Pending" : request.Status);
+
+        // =============================================
+        // TÁI TÍNH PRIORITY dựa trên count + keyword description
+        // =============================================
+        var elderly = request.ElderlyCount ?? 0;
+        var children = request.ChildrenCount ?? 0;
+        var priorityScore = 1.5 * elderly + 1.8 * children;
+
+        var desc = (request.Description ?? string.Empty).ToLower();
+        var keywordScores = new (string Keyword, double Score)[]
+        {
+            ("hết nhu yếu phẩm", 1.0),
+            ("sập nhà",          3.0),
+            ("cần điều trị y tế", 3.5),
+            ("ngập dưới 1m",     1.5),
+            ("ngập trên 1m",     2.5),
+        };
+        foreach (var (keyword, score) in keywordScores)
+        {
+            if (desc.Contains(keyword))
+                priorityScore += score;
+        }
+
+        request.PriorityLevelId = priorityScore >= 8 ? 1 : priorityScore >= 4 ? 2 : 3;
 
         request.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        if (isDuplicate)
+        {
+            return Ok(new
+            {
+                Success   = true,
+                Duplicate = true,
+                Message   = "Cap nhat thanh cong nhung yeu cau co the trung voi yeu cau khac tai cung dia chi (trong vong 15 phut). Yeu cau duoc danh dau la Duplicate.",
+            });
+        }
 
         return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
     }
@@ -408,7 +469,7 @@ public class RescueRequestController : ControllerBase
             });
         }
 
-        if (request.Status != "Pending" && request.Status != "Verified")
+        if (request.Status != "Pending" && request.Status != "Verified" && request.Status != "Duplicate")
         {
             return BadRequest(new
             {
@@ -417,27 +478,88 @@ public class RescueRequestController : ControllerBase
             });
         }
 
-        request.Title                  = dto.Title ?? request.Title;
-        request.Description            = dto.Description ?? request.Description;
-        request.Phone                  = dto.ContactPhone ?? request.Phone;
-        request.ContactPhone           = dto.ContactPhone ?? request.ContactPhone;
-        request.Address                = dto.Address ?? request.Address;
-        request.Latitude               = dto.Latitude ?? request.Latitude;
-        request.Longitude              = dto.Longitude ?? request.Longitude;
-        
+        // Apply fields (dùng giá trị mới nếu có, giữ cũ nếu không)
+        request.Title       = dto.Title ?? request.Title;
+        request.Description = dto.Description ?? request.Description;
+        request.Phone       = dto.ContactPhone ?? request.Phone;
+        request.ContactPhone = dto.ContactPhone ?? request.ContactPhone;
+        request.Address     = dto.Address ?? request.Address;
+        request.Latitude    = dto.Latitude ?? request.Latitude;
+        request.Longitude   = dto.Longitude ?? request.Longitude;
+
         bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue;
         if (hasAnyCountUpdate)
         {
-            request.AdultCount = dto.AdultCount ?? request.AdultCount;
-            request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
-            request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+            request.AdultCount             = dto.AdultCount ?? request.AdultCount;
+            request.ElderlyCount           = dto.ElderlyCount ?? request.ElderlyCount;
+            request.ChildrenCount          = dto.ChildrenCount ?? request.ChildrenCount;
             request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? request.NumberOfAffectedPeople;
         }
+
+        // =============================================
+        // KIỂM TRA DUPLICATE: cùng SĐT + cùng địa chỉ trong vòng 15 phút
+        // Loại trừ chính request đang được chỉnh sửa
+        // =============================================
+        bool isDuplicate = false;
+        string? checkPhone = request.ContactPhone ?? request.Phone;
+
+        if (!string.IsNullOrWhiteSpace(checkPhone) && !string.IsNullOrWhiteSpace(request.Address))
+        {
+            var windowStart = DateTime.UtcNow.AddMinutes(-15);
+            var normalizedAddress = request.Address.Trim().ToLower();
+
+            isDuplicate = await _context.RescueRequests
+                .AnyAsync(r =>
+                    r.RequestId != id &&
+                    r.CreatedAt >= windowStart &&
+                    r.Status != "Completed" &&
+                    r.Status != "Cancelled" &&
+                    r.Status != "Duplicate" &&
+                    (r.Phone == checkPhone || r.ContactPhone == checkPhone) &&
+                    r.Address != null &&
+                    r.Address.Trim().ToLower() == normalizedAddress);
+        }
+
+        request.Status = isDuplicate ? "Duplicate" : (request.Status == "Duplicate" ? "Pending" : request.Status);
+
+        // =============================================
+        // TÁI TÍNH PRIORITY dựa trên count + keyword description
+        // =============================================
+        var elderly = request.ElderlyCount ?? 0;
+        var children = request.ChildrenCount ?? 0;
+        var priorityScore = 1.5 * elderly + 1.8 * children;
+
+        var desc = (request.Description ?? string.Empty).ToLower();
+        var keywordScores = new (string Keyword, double Score)[]
+        {
+            ("hết nhu yếu phẩm", 1.0),
+            ("sập nhà",          3.0),
+            ("cần điều trị y tế", 3.5),
+            ("ngập dưới 1m",     1.5),
+            ("ngập trên 1m",     2.5),
+        };
+        foreach (var (keyword, score) in keywordScores)
+        {
+            if (desc.Contains(keyword))
+                priorityScore += score;
+        }
+
+        request.PriorityLevelId = priorityScore >= 8 ? 1 : priorityScore >= 4 ? 2 : 3;
 
         request.UpdatedAt = DateTime.UtcNow;
         request.UpdatedBy = userId;
 
         await _context.SaveChangesAsync();
+
+        if (isDuplicate)
+        {
+            return Ok(new
+            {
+                Success   = true,
+                Duplicate = true,
+                Message   = "Cap nhat thanh cong nhung yeu cau co the trung voi yeu cau khac tai cung dia chi (trong vong 15 phut). Yeu cau duoc danh dau la Duplicate.",
+            });
+        }
 
         return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
     }
