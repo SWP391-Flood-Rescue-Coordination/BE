@@ -61,13 +61,25 @@ var priorityScore = 1.5 * elderly + 1.8 * children;
 
 ### 2.2 `GetMyRequests`, `GetMyLatestRequest`, `GetAllRequests`
 ```csharp
+if (!string.IsNullOrEmpty(searchTerm))
+{
+    var term = searchTerm.Trim().ToLower();
+    query = query.Where(r => r.Title.ToLower().Contains(term) || r.Address.ToLower().Contains(term) ... );
+}
 requests = requests
     .OrderByDescending(r => r.Status == "Pending" || r.Status == "Verified")
     .ThenBy(r => GetWardFromAddress(r.Address))
     .ThenByDescending(r => r.CreatedAt).ToList();
 ```
+* **Full-text Search Mềm (`searchTerm`)**: Mới được cập nhật để cho phép Admin gõ tìm kiếm quét qua mọi trường văn bản (Tên, SĐT, Địa chỉ, ID).
 * **Phân quyền truy xuất**: Dân thường chỉ lấy ID theo Token `User.FindFirst`. Admin được lấy danh sách toàn bộ bằng `.AsQueryable()`.
 * **Sắp xếp Đa Tầng (Multi-tier Sort)**: Ưu tiên nhồi các cụm đang chờ (`Pending/Verified`) lên cao nhất -> Gom các khu vực phường xã vùng gần nhau (`GetWardFromAddress`) -> Mới nhất xếp trên cùng.
+
+### 2.9 `GetAllRequestStatusHistories` (Mới Cập Nhật)
+```csharp
+UpdatedByName = h.UpdatedBy == -1 ? "GUEST" : _context.Users...
+```
+* **Nhật ký Admin**: Trả về toàn bộ lịch sử chuyển đổi trạng thái của yêu cầu. Xử lý triệt để Identity bằng cách gán cứng `-1` dịch ra thành chữ `GUEST` để hiển thị Dashboard.
 
 ### 2.3 `GetWardFromAddress` (Helper)
 ```csharp
@@ -196,7 +208,23 @@ var items = await _context.ReliefItems.Where(i => i.Quantity <= n)
 ## 7. VehicleController (Quản lý xe và trực thăng)
 
 ### 7.1 `GetAllVehicles`, `GetVehicleById`, `UpdateVehicle`
-* **Xử lý FK**: Trong logic update, hệ thống sẽ `Include(v => v.VehicleType)` để truy xuất rõ tên loại xe. Kiểm tra xem người dùng có gán sai ID loại xe không qua lệnh `.AnyAsync()` trước khi lưu xuống.
+```csharp
+var manualValidStatuses = new[] { "AVAILABLE", "MAINTENANCE" };
+if (!manualValidStatuses.Contains(newStatus)) return BadRequest(...);
+if (currentStatus == "INUSE" && currentStatus != newStatus) return BadRequest(...);
+```
+* **Khóa trạng thái (Status Lock)**: Một bản cập nhật mới cấm Admin gõ trạng thái bậy bạ. Việc gán trạng thái `INUSE` bị cấm thủ công vì nó phải do `RescueOperation` điều phối bằng `Transaction`. 
+* **Theo dõi vị trí (Coordinates)**: Mở thêm biến `Latitude` và `Longitude` vào hàm để vẽ tọa độ trực thăng/cano lên bản đồ.
+* **Xử lý FK**: Trong logic update, trả về JSON `Include(v => v.VehicleType)` để truy xuất rõ tên loại xe.
+
+### 7.2 `CreateVehicle` & `DeleteVehicle` (Mới Cập Nhật)
+```csharp
+if (vehicle.Status.ToUpper() == "INUSE") return BadRequest("Không thể xóa phương tiện khi đang làm nhiệm vụ...");
+var historyRecords = _context.RescueOperationVehicles.Where(rov => rov.VehicleId == id);
+_context.RescueOperationVehicles.RemoveRange(historyRecords);
+```
+* **Cơ chế Soft-block**: Tuyệt đối cấm thao tác xóa xe khỏi DB nếu xe này đang chở lính đi làm nhiệm vụ (`INUSE`). 
+* **Dọn dẹp mồ côi (Cascade Delete)**: Trước khi xóa `vehicle`, hệ thống dọn dẹp các Record tham chiếu ở bảng `RescueOperationVehicles` nhằm tránh văng lỗi khóa ngoại (Data Integrity).
 
 ---
 
