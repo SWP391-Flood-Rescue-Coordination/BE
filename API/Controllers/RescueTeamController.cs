@@ -14,11 +14,18 @@ public class RescueTeamController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
+    /// <summary>
+    /// Constructor khởi tạo RescueTeamController với DbContext.
+    /// </summary>
     public RescueTeamController(ApplicationDbContext context)
     {
         _context = context;
     }
 
+    /// <summary>
+    /// Đội cứu hộ - Cập nhật trạng thái nhiệm vụ cứu hộ (COMPLETED hoặc FAILED), bao gồm kèm cả lý do nếu thất bại.
+    /// Ghi nhận thay đổi vào lịch sử yêu cầu và giải phóng phương tiện nếu hoàn tất hoặc thất bại.
+    /// </summary>
     [HttpPut("operations/{operationId}/status")]
     public async Task<IActionResult> UpdateMissionStatus(
         int operationId,
@@ -190,6 +197,10 @@ public class RescueTeamController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Đội cứu hộ - Lấy danh sách các nhiệm vụ đang được phân công (Status = Assigned) 
+    /// cho các đội cứu hộ mà user hiện tại đang tham gia (IsActive = true).
+    /// </summary>
     [HttpGet("my-operations")]
     public async Task<IActionResult> GetMyOperations()
     {
@@ -243,6 +254,10 @@ public class RescueTeamController : ControllerBase
         return Ok(new { Success = true, Total = operations.Count, Data = operations });
     }
 
+    /// <summary>
+    /// Lấy chi tiết một nhiệm vụ (operation) cụ thể dựa vào ID. 
+    /// Phương thức có phân quyền, chỉ lấy nếu thuộc quyền quản lý của đội mà user đó tham gia.
+    /// </summary>
     [HttpGet("operations/{operationId:int}")]
     public async Task<IActionResult> GetMissionDetails(int operationId)
     {
@@ -305,6 +320,10 @@ public class RescueTeamController : ControllerBase
         return Ok(new { Success = true, Data = operation });
     }
 
+    /// <summary>
+    /// Quản lý (COORDINATOR, ADMIN, MANAGER) - Lấy danh sách thông tin và vị trí của các đội cứu hộ trên bản đồ. 
+    /// Hỗ trợ lọc theo trạng thái (AVAILABLE, BUSY...).
+    /// </summary>
     [HttpGet("status")]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
     public async Task<IActionResult> GetTeamsWithStatus([FromQuery] string? status = null)
@@ -332,6 +351,9 @@ public class RescueTeamController : ControllerBase
         return Ok(new { Success = true, Count = teams.Count, Data = teams });
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Thêm mới hoặc cập nhật bản ghi lịch sử trạng thái của yêu cầu cứu hộ nhằm tránh ghi đúp (duplicate conflict).
+    /// </summary>
     private async Task UpsertRequestStatusHistoryAsync(
         int requestId,
         string status,
@@ -360,11 +382,17 @@ public class RescueTeamController : ControllerBase
         existingHistory.UpdatedAt = updatedAt;
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Kiểm tra lỗi khi ghi lịch sử trạng thái bị trùng lặp thời gian hoặc record (bắt DbUpdateException).
+    /// </summary>
     private static bool IsDuplicateRequestStatusHistoryError(DbUpdateException exception)
     {
         return exception.InnerException?.Message?.Contains("UX_rrsh_request_status", StringComparison.OrdinalIgnoreCase) == true;
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Chuẩn hóa chuỗi trạng thái (in hoa, thay khoảng trắng thành gạch dưới) để so sánh.
+    /// </summary>
     private static string NormalizeStatusKey(string? status)
     {
         return string.IsNullOrWhiteSpace(status)

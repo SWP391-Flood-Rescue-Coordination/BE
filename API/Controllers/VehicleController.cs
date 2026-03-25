@@ -13,6 +13,9 @@ public class VehicleController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
+    /// <summary>
+    /// Constructor khởi tạo VehicleController với DbContext.
+    /// </summary>
     public VehicleController(ApplicationDbContext context)
     {
         _context = context;

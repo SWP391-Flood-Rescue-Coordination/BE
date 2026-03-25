@@ -13,6 +13,9 @@ public class UserInfoController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
+    /// <summary>
+    /// Constructor khởi tạo UserInfoController với DbContext.
+    /// </summary>
     public UserInfoController(ApplicationDbContext context)
     {
         _context = context;

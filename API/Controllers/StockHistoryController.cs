@@ -12,6 +12,9 @@ public class StockHistoryController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
+    /// <summary>
+    /// Constructor khởi tạo StockHistoryController với DbContext.
+    /// </summary>
     public StockHistoryController(ApplicationDbContext context)
     {
         _context = context;

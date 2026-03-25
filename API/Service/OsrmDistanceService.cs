@@ -1,8 +1,11 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Net.Http.Json;
 
 namespace Flood_Rescue_Coordination.API.Services;
 
+/// <summary>
+/// Dịch vụ tính toán khoảng cách đường bộ thông qua OSRM (Open Source Routing Machine l).
+/// </summary>
 public class OsrmDistanceService : IDistanceService
 {
     private readonly HttpClient _httpClient;
@@ -12,6 +15,9 @@ public class OsrmDistanceService : IDistanceService
         _httpClient = httpClient;
     }
 
+    /// <summary>
+    /// Tính toán và lấy về khoảng cách theo đường bộ thông qua API OSRM (đổi mét sang KM).
+    /// </summary>
     public async Task<double> GetRoadDistanceKmAsync(
         double lat1,
         double lon1,

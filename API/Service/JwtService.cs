@@ -7,6 +7,10 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Flood_Rescue_Coordination.API.Services;
 
+/// <summary>
+/// Service triển khai chức năng liên quan đến Token định danh JWT.
+/// Đảm nhiệm đọc config (secret key, issuer...) để khởi tạo và kiểm chứng Token.
+/// </summary>
 public class JwtService : IJwtService
 {
     private readonly IConfiguration _configuration;
@@ -16,6 +20,9 @@ public class JwtService : IJwtService
         _configuration = configuration;
     }
 
+    /// <summary>
+    /// Lấy định danh user, tạo claims bảo mật, dùng mã hóa ký Symmetric key để sinh Access Token mới.
+    /// </summary>
     public string GenerateAccessToken(User user)
     {
         var secretKey = _configuration["JwtSettings:SecretKey"]!;
@@ -48,6 +55,9 @@ public class JwtService : IJwtService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// <summary>
+    /// Sinh chuỗi bytes ngẫu nhiên chuẩn bảo mật làm Refresh Token (Mã hóa Base64).
+    /// </summary>
     public string GenerateRefreshToken()
     {
         var randomNumber = new byte[32];
@@ -56,6 +66,9 @@ public class JwtService : IJwtService
         return Convert.ToBase64String(randomNumber);
     }
 
+    /// <summary>
+    /// Phân tích Jwt Token mà không cần validate chữ ký, chỉ để lấy về thuộc tính ValidTo (thời hạn).
+    /// </summary>
     public DateTime GetTokenExpiration(string token)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -63,6 +76,9 @@ public class JwtService : IJwtService
         return jwtToken.ValidTo;
     }
 
+    /// <summary>
+    /// Tắt ValidateLifetime trong param cấu hình để có thể decode lấy dữ liệu ClaimsPrincipal từ một Token dù nó đã hết hạn.
+    /// </summary>
     public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
     {
         var secretKey = _configuration["JwtSettings:SecretKey"]!;

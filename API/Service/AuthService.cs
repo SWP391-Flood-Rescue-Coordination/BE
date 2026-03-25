@@ -5,6 +5,10 @@ using System.Text.RegularExpressions;
 
 namespace Flood_Rescue_Coordination.API.Services;
 
+/// <summary>
+/// Service triển khai nghiệp vụ bảo mật và xác thực người dùng.
+/// Xử lý Login, Register (đăng ký), Refresh Token, đăng xuất và tích hợp SMS phục vụ khôi phục mật khẩu.
+/// </summary>
 public class AuthService : IAuthService
 {
     private readonly ApplicationDbContext _context;
@@ -24,6 +28,9 @@ public class AuthService : IAuthService
         _smsService = smsService;
     }
 
+    /// <summary>
+    /// Nghiệp vụ Đăng nhập: Chuẩn hóa SĐT, kiểm tra trong DB, so khớp hash mật khẩu bằng BCrypt, trả về JWT Token cấp quyền.
+    /// </summary>
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
@@ -94,6 +101,9 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Nghiệp vụ Đăng ký tài khoản cho công dân. Đảm bảo username, email, số điện thoại không trùng, tạo record và tự động đăng nhập.
+    /// </summary>
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
         if (await _context.Users.AnyAsync(u => u.Username == request.Username))
@@ -162,6 +172,9 @@ public class AuthService : IAuthService
         return loginResponse;
     }
 
+    /// <summary>
+    /// Nghiệp vụ Cấp mới Token: Nếu RefreshToken còn hạn và chưa bị thu hồi, hệ thống sinh ra bộ Token mới cho user và thu hồi mã cũ.
+    /// </summary>
     public async Task<AuthResponse> RefreshTokenAsync(string refreshToken)
     {
         var storedToken = await _context.RefreshTokens
@@ -233,6 +246,9 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Nghiệp vụ Đăng xuất: Blacklist Access Token hiện tại (hết hiệu lực ép buộc), và thu hồi (Revoke) Refresh Token để chặn tạo Token mới.
+    /// </summary>
     public async Task<AuthResponse> LogoutAsync(string accessToken, string? refreshToken)
     {
         // Blacklist access token
@@ -374,6 +390,9 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Đưa ra nhiều biến thể của SĐT Việt Nam (+84, 84, 0x) để có dữ liệu so khớp bao phủ trong CSDL.
+    /// </summary>
     private static string[] BuildPhoneCandidates(string normalizedPhone)
     {
         return
@@ -384,6 +403,9 @@ public class AuthService : IAuthService
         ];
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Rà soát và chuẩn hóa SĐT Việt Nam đầu vào (chuyển đầu số 84 thành 0, xóa ký hiệu lạ).
+    /// </summary>
     private static bool TryNormalizeVietnamPhone(string? phone, out string normalizedPhone)
     {
         normalizedPhone = string.Empty;

@@ -11,6 +11,9 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
 
+    /// <summary>
+    /// Constructor khởi tạo AuthController với dịch vụ xác thực.
+    /// </summary>
     public AuthController(IAuthService authService)
     {
         _authService = authService;

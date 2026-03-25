@@ -12,6 +12,9 @@ public class ReliefItemController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
+    /// <summary>
+    /// Constructor khởi tạo ReliefItemController với DbContext.
+    /// </summary>
     public ReliefItemController(ApplicationDbContext context)
     {
         _context = context;

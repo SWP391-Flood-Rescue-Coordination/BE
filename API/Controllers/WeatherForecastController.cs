@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Flood_Rescue_Coordination.Controllers
 {
+    /// <summary>
+    /// Controller mẫu cho thông tin thời tiết.
+    /// </summary>
     [ApiController]
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase
@@ -11,6 +14,9 @@ namespace Flood_Rescue_Coordination.Controllers
             "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
         };
 
+        /// <summary>
+        /// Lấy danh sách dự báo thời tiết giả lập cho 5 ngày tới.
+        /// </summary>
         [HttpGet(Name = "GetWeatherForecast")]
         public IEnumerable<WeatherForecast> Get()
         {

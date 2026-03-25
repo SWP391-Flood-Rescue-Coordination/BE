@@ -15,11 +15,20 @@ public class RescueRequestController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
+    /// <summary>
+    /// Constructor khởi tạo controller với DbContext để tương tác với cơ sở dữ liệu.
+    /// </summary>
     public RescueRequestController(ApplicationDbContext context)
     {
         _context = context;
     }
 
+    /// <summary>
+    /// Tạo yêu cầu cứu hộ mới. 
+    /// Có kiểm tra duplicate (trùng lặp) dựa trên số điện thoại và địa chỉ trong vòng 15 phút.
+    /// Phân loại mức độ ưu tiên dựa trên số lượng người và từ khóa trong mô tả.
+    /// Cho phép cả người dùng chưa đăng nhập (Guest) tạo yêu cầu.
+    /// </summary>
     [HttpPost]
     [AllowAnonymous]
     public async Task<IActionResult> CreateRequest([FromBody] CreateRescueRequestDto dto)
@@ -123,6 +132,10 @@ public class RescueRequestController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Lấy danh sách các yêu cầu cứu hộ do công dân (người đã đăng nhập) tạo.
+    /// Yêu cầu phải có role CITIZEN.
+    /// </summary>
     [HttpGet("my-requests")]
     [Authorize(Roles = "CITIZEN")]
     public async Task<IActionResult> GetMyRequests()
@@ -163,6 +176,10 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Data = requests });
     }
 
+    /// <summary>
+    /// Lấy yêu cầu cứu hộ mới nhất của người dùng hiện tại (nếu đã đăng nhập) 
+    /// hoặc yêu cầu cứu hộ mới nhất do khách vãng lai (Guest) tạo.
+    /// </summary>
     [HttpGet("my-latest-request")]
     [AllowAnonymous]
     public async Task<IActionResult> GetMyLatestRequest()
@@ -206,6 +223,10 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Data = latestRequest });
     }
 
+    /// <summary>
+    /// Lấy danh sách tất cả các yêu cầu cứu hộ trong hệ thống.
+    /// Dành cho chức danh quản lý (COORDINATOR, ADMIN, MANAGER). Hỗ trợ lọc theo trạng thái và độ ưu tiên.
+    /// </summary>
     [HttpGet]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
     public async Task<IActionResult> GetAllRequests([FromQuery] string? status = null, [FromQuery] int? priorityId = null)
@@ -255,6 +276,9 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Data = requests });
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Trích xuất tên phường/xã từ chuỗi địa chỉ đầy đủ để phục vụ việc sắp xếp.
+    /// </summary>
     private string GetWardFromAddress(string? address)
     {
         if (string.IsNullOrWhiteSpace(address)) return string.Empty;
@@ -274,6 +298,9 @@ public class RescueRequestController : ControllerBase
         return address.ToLower();
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết của một yêu cầu cứu hộ cụ thể dựa vào ID.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetRequestById(int id)
     {
@@ -310,6 +337,10 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Data = request });
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết của yêu cầu cứu hộ dành cho khách vãng lai (Guest) dựa trên ID.
+    /// Các thông tin cá nhân của công dân bị hạn chế không hiển thị so với API thông thường.
+    /// </summary>
     [HttpGet("guest/status")]
     [AllowAnonymous]
     public async Task<IActionResult> GetRequestByIdForGuest([FromQuery] int requestId)
@@ -340,6 +371,11 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Data = request });
     }
 
+    /// <summary>
+    /// Cập nhật thông tin yêu cầu cứu hộ do Guest (người chưa đăng nhập) tạo.
+    /// Chỉ thực hiện được khi yêu cầu ở trạng thái Pending, Verified, hoặc Duplicate.
+    /// Hệ thống sẽ kiểm tra trùng lặp và tiến hành tính toán lại độ ưu tiên.
+    /// </summary>
     [HttpPut("guest/update/{id}")]
     [AllowAnonymous]
     public async Task<IActionResult> UpdateRequestByGuest(int id, [FromBody] UpdateRescueRequestDto dto)
@@ -445,6 +481,11 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
     }
 
+    /// <summary>
+    /// Cập nhật thông tin yêu cầu cứu hộ do Citizen (người đã đăng nhập) tạo.
+    /// Tương tự cập nhật của Guest nhưng có kiểm tra bảo mật đảm bảo chỉ người tạo mới được sửa.
+    /// Cập nhật và tính toán lại mức độ ưu tiên, kiểm tra trùng lặp.
+    /// </summary>
     [HttpPut("{id}/update")]
     [Authorize(Roles = "CITIZEN")]
     public async Task<IActionResult> UpdateRequestByCitizen(int id, [FromBody] UpdateRescueRequestDto dto)
@@ -564,6 +605,10 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
     }
 
+    /// <summary>
+    /// Cập nhật trạng thái của yêu cầu cứu hộ (dành cho COORDINATOR, ADMIN, MANAGER).
+    /// Hệ thống sẽ lưu lại lịch sử thay đổi trạng thái (RescueRequestStatusHistory).
+    /// </summary>
     [HttpPut("{id}/status")]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDto dto)
@@ -596,6 +641,10 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Message = "Cap nhat trang thai thanh cong" });
     }
 
+    /// <summary>
+    /// Xác minh (Verify) yêu cầu cứu hộ (chỉ dành cho COORDINATOR).
+    /// Chuyển trạng thái từ Pending sang Verified và ghi vào lịch sử trạng thái.
+    /// </summary>
     [HttpPut("{id}/verify")]
     [Authorize(Roles = "COORDINATOR")]
     public async Task<IActionResult> VerifyRequest(int id)
@@ -637,6 +686,11 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Message = "Xac minh yeu cau thanh cong" });
     }
 
+    /// <summary>
+    /// Chức năng cho Citizen xác nhận đã được cứu an toàn.
+    /// Chỉ được phép thực hiện khi yêu cầu đã được Assigned và thao tác cứu hộ đã được chuyên viên đánh dấu hoàn tất.
+    /// Các yêu cầu báo an toàn thành công sẽ bị chuyển sang trạng thái "Completed".
+    /// </summary>
     [HttpPut("{id}/confirm-rescued")]
     [Authorize(Roles = "CITIZEN")]
     public async Task<IActionResult> ConfirmRescued(int id)
@@ -705,6 +759,10 @@ public class RescueRequestController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Chức năng cho Guest xác nhận đã được cứu an toàn.
+    /// Yêu cầu số điện thoại truyền vào phải khớp với số điện thoại trong hệ thống để xác minh.
+    /// </summary>
     [HttpPut("guest/{id}/confirm-rescued")]
     [AllowAnonymous]
     public async Task<IActionResult> GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
@@ -774,6 +832,10 @@ public class RescueRequestController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Lấy các thông số thống kê tổng quan về yêu cầu cứu hộ để hiển thị cho trang Dashboard.
+    /// Bao gồm số lượng yêu cầu theo các trạng thái khác nhau.
+    /// </summary>
     [HttpGet("statistics")]
     [Authorize(Roles = "MANAGER,ADMIN,COORDINATOR")]
     public async Task<IActionResult> GetStatistics()
@@ -807,6 +869,9 @@ public class RescueRequestController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Áp dụng cờ trạng thái "được phép báo an toàn" (CanReportSafe) cho một danh sách yêu cầu.
+    /// </summary>
     private async Task ApplyCanReportSafeAsync(List<RescueRequestResponseDto> requests)
     {
         if (requests.Count == 0)
@@ -822,6 +887,9 @@ public class RescueRequestController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Áp dụng cờ trạng thái "được phép báo an toàn" (CanReportSafe) cho một yêu cầu duy nhất.
+    /// </summary>
     private async Task ApplyCanReportSafeAsync(RescueRequestResponseDto request)
     {
         var completedRequestIds = await GetCompletedOperationRequestIdsAsync(new[] { request.RequestId });
@@ -829,6 +897,9 @@ public class RescueRequestController : ControllerBase
             && completedRequestIds.Contains(request.RequestId);
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Áp dụng cờ trạng thái "được phép báo an toàn" (CanReportSafe) cho cấu trúc LatestRescueRequestDto.
+    /// </summary>
     private async Task ApplyCanReportSafeAsync(LatestRescueRequestDto request)
     {
         var completedRequestIds = await GetCompletedOperationRequestIdsAsync(new[] { request.RequestId });
@@ -836,6 +907,9 @@ public class RescueRequestController : ControllerBase
             && completedRequestIds.Contains(request.RequestId);
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Lấy về danh sách các ID của yêu cầu cứu hộ đã có chiến dịch thực tế hoàn tất (Completed).
+    /// </summary>
     private async Task<HashSet<int>> GetCompletedOperationRequestIdsAsync(IEnumerable<int> requestIds)
     {
         var ids = requestIds
@@ -857,12 +931,18 @@ public class RescueRequestController : ControllerBase
         return completedIds.ToHashSet();
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Kiểm tra xem một yêu cầu cứu hộ riêng lẻ đã có chiến dịch hoàn thành tương ứng hay chưa.
+    /// </summary>
     private async Task<bool> RequestHasCompletedOperationAsync(int requestId)
     {
         return await _context.RescueOperations
             .AnyAsync(o => o.RequestId == requestId && o.Status == "Completed");
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Chuẩn hóa trạng thái bằng cách viết hoa và thay khoảng trắng thành dấu gạch dưới (VD: "In Progress" -> "IN_PROGRESS") để so sánh đồng nhất.
+    /// </summary>
     private static string NormalizeStatusKey(string? status)
     {
         return string.IsNullOrWhiteSpace(status)
@@ -870,11 +950,17 @@ public class RescueRequestController : ControllerBase
             : status.Trim().ToUpperInvariant().Replace(" ", "_");
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): So sánh sự trùng khớp giữa hai số điện thoại sau khi đã chạy logic chuẩn hóa.
+    /// </summary>
     private static bool PhoneMatches(string? left, string? right)
     {
         return NormalizePhone(left) == NormalizePhone(right);
     }
 
+    /// <summary>
+    /// Phương thức hỗ trợ (Helper): Chuẩn hóa chuỗi số điện thoại. Xóa các ký tự thừa (spaces, dấu +...) và điều chỉnh chuẩn "84" -> "0".
+    /// </summary>
     private static string NormalizePhone(string? phone)
     {
         var value = new string((phone ?? string.Empty).Where(char.IsDigit).ToArray());

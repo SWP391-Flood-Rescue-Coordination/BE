@@ -5,6 +5,9 @@ using System.Text.Json.Serialization;
 
 namespace Flood_Rescue_Coordination.API.Services;
 
+/// <summary>
+/// Dịch vụ Reverse Geocoding giao tiếp với API công khai của Nominatim (OpenStreetMap).
+/// </summary>
 public class NominatimGeocodingService : IGeocodingService
 {
     private readonly HttpClient _httpClient;
@@ -14,6 +17,9 @@ public class NominatimGeocodingService : IGeocodingService
         _httpClient = httpClient;
     }
 
+    /// <summary>
+    /// Truy vấn API format JSON để diễn dịch địa chỉ cụ thể từ tọa độ tương đối.
+    /// </summary>
     public async Task<string?> ReverseGeocodeAsync(decimal latitude, decimal longitude, CancellationToken cancellationToken = default)
     {
         var url = string.Create(

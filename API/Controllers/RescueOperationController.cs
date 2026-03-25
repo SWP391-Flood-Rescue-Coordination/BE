@@ -16,6 +16,9 @@ public class RescueOperationController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IDistanceService _distanceService;
 
+    /// <summary>
+    /// Constructor khởi tạo RescueOperationController với DbContext và dịch vụ tính toán khoảng cách.
+    /// </summary>
     public RescueOperationController(ApplicationDbContext context, IDistanceService distanceService)
     {
         _context = context;
@@ -459,6 +462,10 @@ public class RescueOperationController : ControllerBase
         return result ?? StatusCode(500, new { Success = false, Message = "Lỗi hệ thống khi cập nhật trạng thái" });
     }
 
+    /// <summary>
+    /// COORDINATOR - Tìm kiếm các đội cứu hộ ở gần nhất đối với một yêu cầu cứu hộ cụ thể để tiện bề điều phối.
+    /// Thuật toán lấy tọa độ và tính toán khoảng cách đường bộ bằng thuật toán Haversine hoặc qua Google Matrix (tùy IDistanceService).
+    /// </summary>
     [HttpGet("requests/{requestId:int}/nearest-teams")]
     [Authorize(Roles = "COORDINATOR")]
     public async Task<IActionResult> GetNearestTeamsForRequest(int requestId, CancellationToken cancellationToken)
