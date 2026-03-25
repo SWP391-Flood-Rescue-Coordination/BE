@@ -137,17 +137,31 @@ public class VehicleController : ControllerBase
 
         if (request.Status is not null)
         {
-            var validStatuses = new[] { "AVAILABLE", "INUSE", "MAINTENANCE" };
-            var statusUpper = request.Status.Trim().ToUpper();
-            if (!validStatuses.Contains(statusUpper))
+            var currentStatus = vehicle.Status.Trim().ToUpper();
+            var newStatus = request.Status.Trim().ToUpper();
+            var manualValidStatuses = new[] { "AVAILABLE", "MAINTENANCE" };
+
+            // 1. Kiểm tra nếu trạng thái mới không nằm trong danh sách cho phép cập nhật thủ công
+            if (!manualValidStatuses.Contains(newStatus))
             {
                 return BadRequest(new 
                 { 
                     Success = false, 
-                    Message = $"Trạng thái '{request.Status}' không hợp lệ. Các trạng thái hợp lệ là: {string.Join(", ", validStatuses)}" 
+                    Message = $"Không thể cập nhật thủ công thành trạng thái '{request.Status}'. Chỉ có thể đặt thành: {string.Join(", ", manualValidStatuses)}" 
                 });
             }
-            vehicle.Status = statusUpper;
+
+            // 2. Không cho phép đổi trạng thái nếu hiện tại đang INUSE
+            if (currentStatus == "INUSE" && currentStatus != newStatus)
+            {
+                return BadRequest(new 
+                { 
+                    Success = false, 
+                    Message = "Không thể thay đổi trạng thái khi phương tiện đang trong nhiệm vụ (INUSE)." 
+                });
+            }
+
+            vehicle.Status = newStatus;
         }
 
         if (request.CurrentLocation is not null)
@@ -213,13 +227,13 @@ public class VehicleController : ControllerBase
         }
 
         var statusToSet = string.IsNullOrWhiteSpace(request.Status) ? "AVAILABLE" : request.Status.Trim().ToUpper();
-        var validStatuses = new[] { "AVAILABLE", "INUSE", "MAINTENANCE" };
-        if (!validStatuses.Contains(statusToSet))
+        var manualValidStatuses = new[] { "AVAILABLE", "MAINTENANCE" };
+        if (!manualValidStatuses.Contains(statusToSet))
         {
             return BadRequest(new 
             { 
                 Success = false, 
-                Message = $"Trạng thái '{request.Status}' không hợp lệ. Các trạng thái hợp lệ là: {string.Join(", ", validStatuses)}" 
+                Message = $"Trạng thái '{request.Status}' không hợp lệ cho phương tiện mới. Vui lòng chọn: {string.Join(", ", manualValidStatuses)}" 
             });
         }
 
@@ -278,18 +292,27 @@ public class VehicleController : ControllerBase
             return NotFound(new { Success = false, Message = "Không tìm thấy phương tiện" });
         }
 
-        // Kiểm tra phương tiện có đang trong nhiệm vụ không
-        var isInUse = await _context.RescueOperationVehicles
-            .AnyAsync(rov => rov.VehicleId == id);
-
-        if (isInUse)
+        // 1. Chỉ chặn xóa nếu phương tiện ĐANG trong nhiệm vụ (Status = INUSE)
+        if (vehicle.Status.ToUpper() == "INUSE")
         {
-            return BadRequest(new { Success = false, Message = "Không thể xóa phương tiện đã có lịch sử tham gia nhiệm vụ. Vui lòng chuyển trạng thái sang Disabled nếu không còn dùng nữa." });
+            return BadRequest(new 
+            { 
+                Success = false, 
+                Message = "Không thể xóa phương tiện khi đang trong nhiệm vụ (INUSE). Vui lòng đợi nhiệm vụ hoàn tất hoặc chuyển sang trạng thái khác." 
+            });
         }
 
+        // 2. Xóa các bản ghi liên quan trong lịch sử nhiệm vụ (RescueOperationVehicles) để tránh lỗi khóa ngoại
+        var historyRecords = _context.RescueOperationVehicles.Where(rov => rov.VehicleId == id);
+        if (await historyRecords.AnyAsync())
+        {
+            _context.RescueOperationVehicles.RemoveRange(historyRecords);
+        }
+
+        // 3. Xóa phương tiện
         _context.Vehicles.Remove(vehicle);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Xóa phương tiện thành công" });
+        return Ok(new { Success = true, Message = "Xóa phương tiện và các dữ liệu liên quan thành công" });
     }
 }
