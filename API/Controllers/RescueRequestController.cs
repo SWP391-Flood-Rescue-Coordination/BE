@@ -118,7 +118,7 @@ public class RescueRequestController : ControllerBase
         return Ok(new
         {
             Success = true,
-            Message = "Tạo yêu cầu cứu hộ thành công",
+            Message = "Tao yeu cau cuu ho thanh cong",
             RequestId = request.RequestId
         });
     }
@@ -199,7 +199,7 @@ public class RescueRequestController : ControllerBase
 
         if (latestRequest == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ nào." });
+            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho nao." });
         }
 
         await ApplyCanReportSafeAsync(latestRequest);
@@ -303,7 +303,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
         }
 
         await ApplyCanReportSafeAsync(request);
@@ -333,7 +333,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
         }
 
         await ApplyCanReportSafeAsync(request);
@@ -349,39 +349,100 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
         }
 
-        if (request.Status != "Pending" && request.Status != "Verified")
+        if (request.Status != "Pending" && request.Status != "Verified" && request.Status != "Duplicate")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
+                Message = $"Khong the chinh sua yeu cau khi dang o trang thai: {request.Status}"
             });
         }
 
-        request.Title                  = dto.Title ?? request.Title;
-        request.Description            = dto.Description ?? request.Description;
-        request.Phone                  = dto.ContactPhone ?? request.Phone;
-        request.Address                = dto.Address ?? request.Address;
-        request.Latitude               = dto.Latitude ?? request.Latitude;
-        request.Longitude              = dto.Longitude ?? request.Longitude;
-        
+        // Apply fields (dùng giá trị mới nếu có, giữ cũ nếu không)
+        request.Title       = dto.Title ?? request.Title;
+        request.Description = dto.Description ?? request.Description;
+        request.Phone       = dto.ContactPhone ?? request.Phone;
+        request.Address     = dto.Address ?? request.Address;
+        request.Latitude    = dto.Latitude ?? request.Latitude;
+        request.Longitude   = dto.Longitude ?? request.Longitude;
+
         bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue;
         if (hasAnyCountUpdate)
         {
-            request.AdultCount = dto.AdultCount ?? request.AdultCount;
-            request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
-            request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+            request.AdultCount             = dto.AdultCount ?? request.AdultCount;
+            request.ElderlyCount           = dto.ElderlyCount ?? request.ElderlyCount;
+            request.ChildrenCount          = dto.ChildrenCount ?? request.ChildrenCount;
             request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? request.NumberOfAffectedPeople;
         }
+
+        // =============================================
+        // KIỂM TRA DUPLICATE: cùng SĐT + cùng địa chỉ trong vòng 15 phút
+        // Loại trừ chính request đang được chỉnh sửa
+        // =============================================
+        bool isDuplicate = false;
+        string? checkPhone = request.Phone ?? request.ContactPhone;
+
+        if (!string.IsNullOrWhiteSpace(checkPhone) && !string.IsNullOrWhiteSpace(request.Address))
+        {
+            var windowStart = DateTime.UtcNow.AddMinutes(-15);
+            var normalizedAddress = request.Address.Trim().ToLower();
+
+            isDuplicate = await _context.RescueRequests
+                .AnyAsync(r =>
+                    r.RequestId != id &&
+                    r.CreatedAt >= windowStart &&
+                    r.Status != "Completed" &&
+                    r.Status != "Cancelled" &&
+                    r.Status != "Duplicate" &&
+                    (r.Phone == checkPhone || r.ContactPhone == checkPhone) &&
+                    r.Address != null &&
+                    r.Address.Trim().ToLower() == normalizedAddress);
+        }
+
+        request.Status = isDuplicate ? "Duplicate" : (request.Status == "Duplicate" ? "Pending" : request.Status);
+
+        // =============================================
+        // TÁI TÍNH PRIORITY dựa trên count + keyword description
+        // =============================================
+        var elderly = request.ElderlyCount ?? 0;
+        var children = request.ChildrenCount ?? 0;
+        var priorityScore = 1.5 * elderly + 1.8 * children;
+
+        var desc = (request.Description ?? string.Empty).ToLower();
+        var keywordScores = new (string Keyword, double Score)[]
+        {
+            ("hết nhu yếu phẩm", 1.0),
+            ("sập nhà",          3.0),
+            ("cần điều trị y tế", 3.5),
+            ("ngập dưới 1m",     1.5),
+            ("ngập trên 1m",     2.5),
+        };
+        foreach (var (keyword, score) in keywordScores)
+        {
+            if (desc.Contains(keyword))
+                priorityScore += score;
+        }
+
+        request.PriorityLevelId = priorityScore >= 8 ? 1 : priorityScore >= 4 ? 2 : 3;
 
         request.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
+        if (isDuplicate)
+        {
+            return Ok(new
+            {
+                Success   = true,
+                Duplicate = true,
+                Message   = "Cap nhat thanh cong nhung yeu cau co the trung voi yeu cau khac tai cung dia chi (trong vong 15 phut). Yeu cau duoc danh dau la Duplicate.",
+            });
+        }
+
+        return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
     }
 
     [HttpPut("{id}/update")]
@@ -404,72 +465,104 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền chỉnh sửa yêu cầu này."
+                Message = "Khong tim thay yeu cau cuu ho hoac ban khong co quyen chinh sua yeu cau nay."
             });
         }
 
-        if (request.Status != "Pending" && request.Status != "Verified")
+        if (request.Status != "Pending" && request.Status != "Verified" && request.Status != "Duplicate")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
+                Message = $"Khong the chinh sua yeu cau khi dang o trang thai: {request.Status}"
             });
         }
 
-        request.Title                  = dto.Title ?? request.Title;
-        request.Description            = dto.Description ?? request.Description;
-        request.Phone                  = dto.ContactPhone ?? request.Phone;
-        request.ContactPhone           = dto.ContactPhone ?? request.ContactPhone;
-        request.Address                = dto.Address ?? request.Address;
-        request.Latitude               = dto.Latitude ?? request.Latitude;
-        request.Longitude              = dto.Longitude ?? request.Longitude;
-        
+        // Apply fields (dùng giá trị mới nếu có, giữ cũ nếu không)
+        request.Title       = dto.Title ?? request.Title;
+        request.Description = dto.Description ?? request.Description;
+        request.Phone       = dto.ContactPhone ?? request.Phone;
+        request.ContactPhone = dto.ContactPhone ?? request.ContactPhone;
+        request.Address     = dto.Address ?? request.Address;
+        request.Latitude    = dto.Latitude ?? request.Latitude;
+        request.Longitude   = dto.Longitude ?? request.Longitude;
+
         bool hasAnyCountUpdate = dto.AdultCount.HasValue || dto.ElderlyCount.HasValue || dto.ChildrenCount.HasValue;
         if (hasAnyCountUpdate)
         {
-            request.AdultCount = dto.AdultCount ?? request.AdultCount;
-            request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
-            request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+            request.AdultCount             = dto.AdultCount ?? request.AdultCount;
+            request.ElderlyCount           = dto.ElderlyCount ?? request.ElderlyCount;
+            request.ChildrenCount          = dto.ChildrenCount ?? request.ChildrenCount;
             request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople ?? request.NumberOfAffectedPeople;
         }
+
+        // =============================================
+        // KIỂM TRA DUPLICATE: cùng SĐT + cùng địa chỉ trong vòng 15 phút
+        // Loại trừ chính request đang được chỉnh sửa
+        // =============================================
+        bool isDuplicate = false;
+        string? checkPhone = request.ContactPhone ?? request.Phone;
+
+        if (!string.IsNullOrWhiteSpace(checkPhone) && !string.IsNullOrWhiteSpace(request.Address))
+        {
+            var windowStart = DateTime.UtcNow.AddMinutes(-15);
+            var normalizedAddress = request.Address.Trim().ToLower();
+
+            isDuplicate = await _context.RescueRequests
+                .AnyAsync(r =>
+                    r.RequestId != id &&
+                    r.CreatedAt >= windowStart &&
+                    r.Status != "Completed" &&
+                    r.Status != "Cancelled" &&
+                    r.Status != "Duplicate" &&
+                    (r.Phone == checkPhone || r.ContactPhone == checkPhone) &&
+                    r.Address != null &&
+                    r.Address.Trim().ToLower() == normalizedAddress);
+        }
+
+        request.Status = isDuplicate ? "Duplicate" : (request.Status == "Duplicate" ? "Pending" : request.Status);
+
+        // =============================================
+        // TÁI TÍNH PRIORITY dựa trên count + keyword description
+        // =============================================
+        var elderly = request.ElderlyCount ?? 0;
+        var children = request.ChildrenCount ?? 0;
+        var priorityScore = 1.5 * elderly + 1.8 * children;
+
+        var desc = (request.Description ?? string.Empty).ToLower();
+        var keywordScores = new (string Keyword, double Score)[]
+        {
+            ("hết nhu yếu phẩm", 1.0),
+            ("sập nhà",          3.0),
+            ("cần điều trị y tế", 3.5),
+            ("ngập dưới 1m",     1.5),
+            ("ngập trên 1m",     2.5),
+        };
+        foreach (var (keyword, score) in keywordScores)
+        {
+            if (desc.Contains(keyword))
+                priorityScore += score;
+        }
+
+        request.PriorityLevelId = priorityScore >= 8 ? 1 : priorityScore >= 4 ? 2 : 3;
 
         request.UpdatedAt = DateTime.UtcNow;
         request.UpdatedBy = userId;
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
-    }
-    [HttpGet("citizen-dashboard-statistics")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetCitizenDashboardStatistics()
-    {
-        var supportedStatuses = new[] { "Confirmed", "Completed", "CitizenConfirmed" };
-        var safeStatuses = new[] { "Completed", "CitizenConfirmed" };
-
-        var receivedRequests = await _context.RescueRequests.CountAsync();
-        var supportedRequests = await _context.RescueRequests.CountAsync(r => supportedStatuses.Contains(r.Status));
-        var safeReports = await _context.RescueRequests.CountAsync(r => safeStatuses.Contains(r.Status));
-        var rescuedPeople =
-            await _context.RescueRequests
-                .Where(r => supportedStatuses.Contains(r.Status))
-                .Select(r => (int?)r.NumberOfAffectedPeople)
-                .SumAsync() ?? 0;
-
-        return Ok(new
+        if (isDuplicate)
         {
-            Success = true,
-            Data = new CitizenDashboardStatisticsDto
+            return Ok(new
             {
-                ReceivedRequests = receivedRequests,
-                RescuedPeople = rescuedPeople,
-                SupportedRequests = supportedRequests,
-                SafeReports = safeReports
-            }
-        });
-    }
+                Success   = true,
+                Duplicate = true,
+                Message   = "Cap nhat thanh cong nhung yeu cau co the trung voi yeu cau khac tai cung dia chi (trong vong 15 phut). Yeu cau duoc danh dau la Duplicate.",
+            });
+        }
 
+        return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
+    }
 
     [HttpPut("{id}/status")]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
@@ -479,7 +572,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
         }
 
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -493,14 +586,14 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = dto.Status,
-            Notes = "Trạng thái được cập nhật bởi hệ thống quản lý",
+            Notes = "Trang thai cap nhat boi he thong quan ly",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cập nhật trạng thái thành công" });
+        return Ok(new { Success = true, Message = "Cap nhat trang thai thanh cong" });
     }
 
     [HttpPut("{id}/verify")]
@@ -511,7 +604,7 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
+            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
         }
 
         if (request.Status != "Pending")
@@ -519,7 +612,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Yêu cầu cứu hộ phải ở trạng thái Pending (hiện tại: {request.Status})"
+                Message = $"Yeu cau cuu ho phai o trang thai Pending (hien tai: {request.Status})"
             });
         }
 
@@ -534,14 +627,14 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = "Verified",
-            Notes = $"Điều phối viên xác minh yêu cầu (ưu tiên hiện tại: {request.PriorityLevelId})",
+            Notes = $"Coordinator xac minh yeu cau (uu tien hien tai: {request.PriorityLevelId})",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Xác minh yêu cầu thành công" });
+        return Ok(new { Success = true, Message = "Xac minh yeu cau thanh cong" });
     }
 
     [HttpPut("{id}/confirm-rescued")]
@@ -564,7 +657,7 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền báo an toàn cho yêu cầu này."
+                Message = "Khong tim thay yeu cau cuu ho hoac ban khong co quyen bao an toan cho yeu cau nay."
             });
         }
 
@@ -573,7 +666,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chỉ có thể báo an toàn khi yêu cầu đang ở trạng thái 'Assigned'. Trạng thái hiện tại: '{request.Status}'."
+                Message = $"Chi co the bao an toan khi yeu cau dang o trang thai 'Assigned'. Trang thai hien tai: '{request.Status}'."
             });
         }
 
@@ -583,7 +676,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "Đội cứu hộ chưa xác nhận hoàn tất, bạn chưa thể báo an toàn."
+                Message = "Doi cuu ho chua xac nhan hoan tat, ban chua the bao an toan."
             });
         }
 
@@ -596,7 +689,7 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = "Completed",
-            Notes = "Công dân đã báo an toàn sau khi đội cứu hộ xác nhận hoàn tất.",
+            Notes = "Cong dan da bao an toan sau khi doi cuu ho xac nhan hoan tat.",
             UpdatedBy = userId,
             UpdatedAt = now
         });
@@ -608,7 +701,7 @@ public class RescueRequestController : ControllerBase
             Success = true,
             RequestId = request.RequestId,
             Status = request.Status,
-            Message = "Báo an toàn thành công. Yêu cầu đã được chuyển sang Completed."
+            Message = "Bao an toan thanh cong. Yeu cau da duoc chuyen sang Completed."
         });
     }
 
@@ -616,15 +709,6 @@ public class RescueRequestController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
     {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.Phone))
-        {
-            return BadRequest(new
-            {
-                Success = false,
-                Message = "Số điện thoại là bắt buộc để báo an toàn."
-            });
-        }
-
         var request = await _context.RescueRequests
             .FirstOrDefaultAsync(r => r.RequestId == id);
 
@@ -633,7 +717,7 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Không tìm thấy yêu cầu cứu hộ."
+                Message = "Khong tim thay yeu cau cuu ho."
             });
         }
 
@@ -642,7 +726,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "Số điện thoại không khớp với yêu cầu đã đăng ký."
+                Message = "So dien thoai khong khop voi yeu cau da dang ky."
             });
         }
 
@@ -651,7 +735,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chỉ có thể báo an toàn khi yêu cầu đang ở trạng thái 'Assigned'. Trạng thái hiện tại: '{request.Status}'."
+                Message = $"Chi co the bao an toan khi yeu cau dang o trang thai 'Assigned'. Trang thai hien tai: '{request.Status}'."
             });
         }
 
@@ -661,7 +745,7 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "Đội cứu hộ chưa xác nhận hoàn tất, bạn chưa thể báo an toàn."
+                Message = "Doi cuu ho chua xac nhan hoan tat, ban chua the bao an toan."
             });
         }
 
@@ -674,30 +758,19 @@ public class RescueRequestController : ControllerBase
         {
             RequestId = request.RequestId,
             Status = "Completed",
-            Notes = "Khách vãng lai đã báo an toàn sau khi đội cứu hộ xác nhận hoàn tất.",
+            Notes = "Khach vang lai da bao an toan sau khi doi cuu ho xac nhan hoan tat.",
             UpdatedBy = -1, // -1 = Guest không có tài khoản
             UpdatedAt = now
         });
 
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateException ex) when (IsUpdatedByForeignKeyError(ex))
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                Success = false,
-                Message = "updated_by đang được gán = -1 cho Guest/System nhưng database hiện tại vẫn còn FK tới users. Hãy chạy script drop_updated_by_fk.sql trên đúng database đang kết nối."
-            });
-        }
+        await _context.SaveChangesAsync();
 
         return Ok(new
         {
             Success = true,
             RequestId = request.RequestId,
             Status = request.Status,
-            Message = "Báo an toàn thành công. Yêu cầu đã được chuyển sang Completed."
+            Message = "Bao an toan thanh cong. Yeu cau da duoc chuyen sang Completed."
         });
     }
 
@@ -788,13 +861,6 @@ public class RescueRequestController : ControllerBase
     {
         return await _context.RescueOperations
             .AnyAsync(o => o.RequestId == requestId && o.Status == "Completed");
-    }
-
-    private static bool IsUpdatedByForeignKeyError(DbUpdateException exception)
-    {
-        var message = exception.InnerException?.Message ?? exception.Message;
-        return message.Contains("FK_rrsh_updated_by", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("FK_rescue_requests_updated_by", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string NormalizeStatusKey(string? status)
