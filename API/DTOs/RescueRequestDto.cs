@@ -120,3 +120,15 @@ public class GuestConfirmRescuedDto
     [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Số điện thoại là bắt buộc")]
     public string Phone { get; set; } = string.Empty;
 }
+
+public class RescueRequestStatusHistoryDto
+{
+    public int StatusId { get; set; }
+    public int RequestId { get; set; }
+    public string? RequestTitle { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+    public int UpdatedBy { get; set; }
+    public string? UpdatedByName { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}

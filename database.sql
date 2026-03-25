@@ -923,6 +923,120 @@ VALUES
 
 SET IDENTITY_INSERT [dbo].[relief_items] OFF;
 GO
+SET XACT_ABORT ON;
+BEGIN TRY
+    BEGIN TRAN;
 
+    -- 1) Kiểm tra bảng/cột tồn tại
+    IF OBJECT_ID(N'dbo.users', N'U') IS NULL
+        THROW 50001, N'Bảng dbo.users không tồn tại.', 1;
+
+    IF COL_LENGTH(N'dbo.users', N'username') IS NULL
+        THROW 50002, N'Cột username không tồn tại trong dbo.users.', 1;
+
+    -- 2) Drop unique index cũ (nếu có)
+    IF EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE name = N'IX_users_username'
+          AND object_id = OBJECT_ID(N'dbo.users')
+    )
+    BEGIN
+        DROP INDEX IX_users_username ON dbo.users;
+    END
+
+    -- 3) Nếu có unique constraint trên username thì drop luôn
+    DECLARE @uqName sysname;
+    SELECT @uqName = kc.name
+    FROM sys.key_constraints kc
+    INNER JOIN sys.index_columns ic
+        ON ic.object_id = kc.parent_object_id
+       AND ic.index_id = kc.unique_index_id
+    INNER JOIN sys.columns c
+        ON c.object_id = ic.object_id
+       AND c.column_id = ic.column_id
+    WHERE kc.parent_object_id = OBJECT_ID(N'dbo.users')
+      AND kc.type = 'UQ'
+      AND c.name = N'username';
+
+    IF @uqName IS NOT NULL
+    BEGIN
+        EXEC(N'ALTER TABLE dbo.users DROP CONSTRAINT [' + @uqName + N']');
+    END
+
+    -- 4) Đổi cột username thành nullable
+    ALTER TABLE dbo.users
+    ALTER COLUMN username NVARCHAR(50) NULL;
+
+    -- 5) Tạo filtered unique index (cho phép nhiều NULL, nhưng username khác NULL thì phải unique)
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE name = N'IX_users_username_not_null'
+          AND object_id = OBJECT_ID(N'dbo.users')
+    )
+    BEGIN
+        CREATE UNIQUE NONCLUSTERED INDEX IX_users_username_not_null
+            ON dbo.users(username)
+            WHERE username IS NOT NULL;
+    END
+
+    COMMIT TRAN;
+    PRINT N'Đã cập nhật username -> NULL thành công.';
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0
+        ROLLBACK TRAN;
+
+    THROW;
+END CATCH;
+USE [DisasterRescueReliefDB];
+GO
+
+-- =====================================================
+-- Xóa FK constraint: updated_by -> users.user_id
+-- Lý do: updated_by = -1 cho Guest/System (không có tài khoản)
+-- =====================================================
+
+-- 1. Bảng rescue_request_status_history
+IF EXISTS (
+    SELECT 1 FROM sys.foreign_keys
+    WHERE name = 'FK_rrsh_updated_by'
+      AND parent_object_id = OBJECT_ID('dbo.rescue_request_status_history')
+)
+BEGIN
+    ALTER TABLE [dbo].[rescue_request_status_history]
+        DROP CONSTRAINT [FK_rrsh_updated_by];
+    PRINT 'Dropped FK_rrsh_updated_by';
+END
+ELSE
+    PRINT 'FK_rrsh_updated_by not found (already dropped or never existed)';
+GO
+
+-- 2. Bảng rescue_requests
+IF EXISTS (
+    SELECT 1 FROM sys.foreign_keys
+    WHERE name = 'FK_rescue_requests_updated_by'
+      AND parent_object_id = OBJECT_ID('dbo.rescue_requests')
+)
+BEGIN
+    ALTER TABLE [dbo].[rescue_requests]
+        DROP CONSTRAINT [FK_rescue_requests_updated_by];
+    PRINT 'Dropped FK_rescue_requests_updated_by';
+END
+ELSE
+    PRINT 'FK_rescue_requests_updated_by not found (already dropped or never existed)';
+GO
+
+PRINT 'Done. Gia tri -1 trong updated_by = Guest/System khong co tai khoan.';
+GO
+ALTER TABLE [dbo].[vehicles]
+DROP COLUMN current_location;
+
+ALTER TABLE [dbo].[vehicles]
+ADD 
+    latitude FLOAT NULL,
+    longitude FLOAT NULL,
+    current_location NVARCHAR(255) NULL;
 
 

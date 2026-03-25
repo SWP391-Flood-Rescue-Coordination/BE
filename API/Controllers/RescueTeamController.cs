@@ -33,13 +33,13 @@ public class RescueTeamController : ControllerBase
     {
         if (dto == null)
         {
-            return BadRequest(new { Success = false, Message = "Du lieu gui len khong hop le." });
+            return BadRequest(new { Success = false, Message = "Dữ liệu gửi lên không hợp lệ." });
         }
 
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var userId))
         {
-            return Unauthorized(new { Success = false, Message = "Token khong hop le." });
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
         }
 
         var targetStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
@@ -54,7 +54,7 @@ public class RescueTeamController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "Trang thai khong hop le. Chi chap nhan: COMPLETED, FAILED."
+                Message = "Trạng thái không hợp lệ. Chỉ chấp nhận: COMPLETED, FAILED."
             });
         }
 
@@ -63,7 +63,7 @@ public class RescueTeamController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "Bat buoc phai nhap ly do khi cap nhat trang thai FAILED."
+                Message = "Bắt buộc phải nhập lý do khi cập nhật trạng thái FAILED."
             });
         }
 
@@ -74,13 +74,13 @@ public class RescueTeamController : ControllerBase
 
         if (operation == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay nhiem vu." });
+            return NotFound(new { Success = false, Message = "Không tìm thấy nhiệm vụ." });
         }
 
         var request = operation.Request;
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho lien ket." });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ liên kết." });
         }
 
         var isMember = await _context.RescueTeamMembers
@@ -97,7 +97,7 @@ public class RescueTeamController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Nhiem vu dang o trang thai '{operation.Status}', khong the chuyen sang '{targetStatus}'."
+                Message = $"Nhiệm vụ đang ở trạng thái '{operation.Status}', không thể chuyển sang '{targetStatus}'."
             });
         }
 
@@ -106,7 +106,7 @@ public class RescueTeamController : ControllerBase
             return Conflict(new
             {
                 Success = false,
-                Message = $"Yeu cau lien ket dang o trang thai '{request.Status}', khong phu hop de doi cuu ho hoan tat nhiem vu."
+                Message = $"Yêu cầu liên kết đang ở trạng thái '{request.Status}', không phù hợp để đội cứu hộ hoàn tất nhiệm vụ."
             });
         }
 
@@ -129,7 +129,7 @@ public class RescueTeamController : ControllerBase
             await UpsertRequestStatusHistoryAsync(
                 request.RequestId,
                 "Verified",
-                $"Nhiem vu that bai. Ly do: {dto.Reason}",
+                $"Nhiệm vụ thất bại. Lý do: {dto.Reason}",
                 userId,
                 now);
         }
@@ -163,14 +163,14 @@ public class RescueTeamController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Conflict(new { Success = false, Message = "Du lieu da bi thay doi boi nguoi khac." });
+            return Conflict(new { Success = false, Message = "Dữ liệu đã bị thay đổi bởi người khác." });
         }
         catch (DbUpdateException ex) when (IsDuplicateRequestStatusHistoryError(ex))
         {
             return Conflict(new
             {
                 Success = false,
-                Message = "Lich su trang thai cua yeu cau da ton tai cho trang thai nay. Vui long tai lai du lieu va thu lai."
+                Message = "Lịch sử trạng thái của yêu cầu đã tồn tại cho trạng thái này. Vui lòng tải lại dữ liệu và thử lại."
             });
         }
         catch (DbUpdateException)
@@ -178,7 +178,7 @@ public class RescueTeamController : ControllerBase
             return StatusCode(500, new
             {
                 Success = false,
-                Message = "Khong the luu thay doi nhiem vu vao co so du lieu."
+                Message = "Không thể lưu thay đổi nhiệm vụ vào cơ sở dữ liệu."
             });
         }
 
@@ -192,8 +192,8 @@ public class RescueTeamController : ControllerBase
             StartedAt = operation.StartedAt,
             CompletedAt = operation.CompletedAt,
             Message = targetStatus == "Failed"
-                ? "Cap nhat nhiem vu that bai thanh cong. Yeu cau da quay lai Verified."
-                : "Da ghi nhan doi cuu ho hoan tat. Yeu cau van o Assigned va nguoi dan co the bao an toan de chuyen sang Completed."
+                ? "Cập nhật nhiệm vụ thất bại thành công. Yêu cầu đã quay lại Verified."
+                : "Đã ghi nhận đội cứu hộ hoàn tất. Yêu cầu vẫn ở Assigned và người dân có thể báo an toàn để chuyển sang Completed."
         });
     }
 
@@ -207,7 +207,7 @@ public class RescueTeamController : ControllerBase
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var userId))
         {
-            return Unauthorized(new { Success = false, Message = "Token khong hop le." });
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
         }
 
         var myTeamIds = await _context.RescueTeamMembers
@@ -217,7 +217,7 @@ public class RescueTeamController : ControllerBase
 
         if (!myTeamIds.Any())
         {
-            return Ok(new { Success = true, Message = "Ban chua thuoc doi cuu ho nao.", Data = new List<object>() });
+            return Ok(new { Success = true, Message = "Bạn chưa thuộc đội cứu hộ nào.", Data = new List<object>() });
         }
 
         var operations = await _context.RescueOperations
@@ -264,7 +264,7 @@ public class RescueTeamController : ControllerBase
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var userId))
         {
-            return Unauthorized(new { Success = false, Message = "Token khong hop le." });
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
         }
 
         var operation = await _context.RescueOperations
@@ -299,7 +299,7 @@ public class RescueTeamController : ControllerBase
 
         if (operation == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay nhiem vu." });
+            return NotFound(new { Success = false, Message = "Không tìm thấy nhiệm vụ." });
         }
 
         var teamId = await _context.RescueOperations
