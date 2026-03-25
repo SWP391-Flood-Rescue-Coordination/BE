@@ -64,7 +64,7 @@ public class RescueRequestController : ControllerBase
             AdultCount            = dto.AdultCount,
             ElderlyCount          = dto.ElderlyCount,
             ChildrenCount         = dto.ChildrenCount,
-            Status                = "Pending",
+            Status                = isDuplicate ? "Duplicate" : "Pending",
             CreatedAt             = DateTime.UtcNow
         };
 
