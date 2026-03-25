@@ -158,11 +158,26 @@ public class RescueRequestController : ControllerBase
 
     [HttpGet]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
-    public async Task<IActionResult> GetAllRequests([FromQuery] string? status = null, [FromQuery] int? priorityId = null)
+    public async Task<IActionResult> GetAllRequests([FromQuery] string? status = null, [FromQuery] int? priorityId = null, [FromQuery] string? searchTerm = null)
     {
         var query = _context.RescueRequests
             .Include(r => r.Citizen)
             .AsQueryable();
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLower();
+            query = query.Where(r => 
+                r.RequestId.ToString() == term || 
+                r.Title.ToLower().Contains(term) || 
+                r.Description.ToLower().Contains(term) ||
+                r.Address.ToLower().Contains(term) ||
+                r.Phone.Contains(term) ||
+                r.ContactPhone.Contains(term) ||
+                (r.Citizen != null && r.Citizen.FullName.ToLower().Contains(term)) ||
+                (r.ContactName != null && r.ContactName.ToLower().Contains(term))
+            );
+        }
 
         if (!string.IsNullOrEmpty(status))
         {
