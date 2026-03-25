@@ -920,4 +920,88 @@ public class RescueRequestController : ControllerBase
             Data = histories
         });
     }
+    [HttpPost("relief-request")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CreateReliefRequest([FromBody] CreateRescueRequestDto dto)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        int? userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : null;
+
+        var request = new RescueRequest
+        {
+            CitizenId = userId,
+            ContactName = userId == null ? dto.ContactName : null,
+            ContactPhone = dto.ContactPhone,
+            Title = dto.Title,
+            Phone = dto.ContactPhone,
+            Description = dto.Description,
+            Latitude = dto.Latitude,
+            Longitude = dto.Longitude,
+            Address = dto.Address,
+            AdultCount = dto.AdultCount,
+            ElderlyCount = dto.ElderlyCount,
+            ChildrenCount = dto.ChildrenCount,
+            Status = "ReliefPending",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.RescueRequests.Add(request);
+
+        await _context.SaveChangesAsync();
+
+        _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
+        {
+            RequestId = request.RequestId,
+            Status = "ReliefPending",
+            Notes = "Yeu cau vat tu duoc tao moi.",
+            UpdatedBy = userId ?? -1,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Tao yeu cau vat tu thanh cong",
+            RequestId = request.RequestId,
+            Status = request.Status
+        });
+    }
+
+    [HttpGet("manager/relief-requests")]
+    [Authorize(Roles = "MANAGER")]
+    public async Task<IActionResult> GetReliefRequestsForManager()
+    {
+        var requests = await _context.RescueRequests
+            .Where(r => r.Status == "ReliefPending")
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new RescueRequestResponseDto
+            {
+                RequestId = r.RequestId,
+                CitizenId = r.CitizenId,
+                CitizenName = r.Citizen != null ? (r.Citizen.FullName ?? "") : (r.ContactName ?? ""),
+                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
+                Title = r.Title,
+                Description = r.Description,
+                Latitude = r.Latitude,
+                Longitude = r.Longitude,
+                Address = r.Address,
+                PriorityLevelId = r.PriorityLevelId,
+                Status = r.Status ?? "ReliefPending",
+                AdultCount = r.AdultCount,
+                ElderlyCount = r.ElderlyCount,
+                ChildrenCount = r.ChildrenCount,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            Success = true,
+            Total = requests.Count,
+            Data = requests
+        });
+    }
 }

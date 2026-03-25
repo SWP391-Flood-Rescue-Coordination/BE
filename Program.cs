@@ -298,7 +298,7 @@ if (!skipStartupDatabaseSql)
                 END
 
                 ALTER TABLE rescue_requests WITH CHECK ADD CONSTRAINT CK_rescue_requests_status_allowed
-                CHECK ([status] IN ('Pending', 'Verified', 'Assigned', 'Completed', 'Cancelled', 'Duplicate'));
+                CHECK ([status] IN ('Pending', 'Verified', 'Assigned', 'Completed', 'Cancelled', 'Duplicate', 'ReliefPending'));
             END
 
             IF EXISTS (SELECT * FROM sys.tables WHERE name = 'rescue_operations')
