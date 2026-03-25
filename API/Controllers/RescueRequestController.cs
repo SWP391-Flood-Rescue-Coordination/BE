@@ -441,6 +441,35 @@ public class RescueRequestController : ControllerBase
 
         return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
     }
+    [HttpGet("citizen-dashboard-statistics")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCitizenDashboardStatistics()
+    {
+        var supportedStatuses = new[] { "Confirmed", "Completed", "CitizenConfirmed" };
+        var safeStatuses = new[] { "Completed", "CitizenConfirmed" };
+
+        var receivedRequests = await _context.RescueRequests.CountAsync();
+        var supportedRequests = await _context.RescueRequests.CountAsync(r => supportedStatuses.Contains(r.Status));
+        var safeReports = await _context.RescueRequests.CountAsync(r => safeStatuses.Contains(r.Status));
+        var rescuedPeople =
+            await _context.RescueRequests
+                .Where(r => supportedStatuses.Contains(r.Status))
+                .Select(r => (int?)r.NumberOfAffectedPeople)
+                .SumAsync() ?? 0;
+
+        return Ok(new
+        {
+            Success = true,
+            Data = new CitizenDashboardStatisticsDto
+            {
+                ReceivedRequests = receivedRequests,
+                RescuedPeople = rescuedPeople,
+                SupportedRequests = supportedRequests,
+                SafeReports = safeReports
+            }
+        });
+    }
+
 
     [HttpPut("{id}/status")]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
