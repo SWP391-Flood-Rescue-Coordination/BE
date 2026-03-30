@@ -161,6 +161,11 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                EstimatedTime          = _context.RescueOperations
+                    .Where(o => o.RequestId == r.RequestId)
+                    .OrderByDescending(o => o.AssignedAt)
+                    .Select(o => o.EstimatedTime)
+                    .FirstOrDefault(),
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -202,6 +207,11 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                EstimatedTime          = _context.RescueOperations
+                    .Where(o => o.RequestId == r.RequestId)
+                    .OrderByDescending(o => o.AssignedAt)
+                    .Select(o => o.EstimatedTime)
+                    .FirstOrDefault(),
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -270,6 +280,11 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                EstimatedTime          = _context.RescueOperations
+                    .Where(o => o.RequestId == r.RequestId)
+                    .OrderByDescending(o => o.AssignedAt)
+                    .Select(o => o.EstimatedTime)
+                    .FirstOrDefault(),
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -331,6 +346,11 @@ public class RescueRequestController : ControllerBase
                 AdultCount             = r.AdultCount,
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
+                EstimatedTime          = _context.RescueOperations
+                    .Where(o => o.RequestId == r.RequestId)
+                    .OrderByDescending(o => o.AssignedAt)
+                    .Select(o => o.EstimatedTime)
+                    .FirstOrDefault(),
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })
@@ -364,6 +384,11 @@ public class RescueRequestController : ControllerBase
                 ElderlyCount           = r.ElderlyCount,
                 ChildrenCount          = r.ChildrenCount,
                 Address                = r.Address,
+                EstimatedTime          = _context.RescueOperations
+                    .Where(o => o.RequestId == r.RequestId)
+                    .OrderByDescending(o => o.AssignedAt)
+                    .Select(o => o.EstimatedTime)
+                    .FirstOrDefault(),
                 CreatedAt              = r.CreatedAt,
                 UpdatedAt              = r.UpdatedAt
             })

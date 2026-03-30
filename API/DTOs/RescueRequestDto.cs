@@ -57,6 +57,8 @@ public class RescueRequestResponseDto
     public int? ElderlyCount { get; set; }
     public int? ChildrenCount { get; set; }
     public bool CanReportSafe { get; set; }
+    /// <summary>Thời gian ước tính hoàn thành (phút) từ operation mới nhất được phân công.</summary>
+    public int? EstimatedTime { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
@@ -106,6 +108,8 @@ public class LatestRescueRequestDto
     public int? ElderlyCount { get; set; }
     public int? ChildrenCount { get; set; }
     public bool CanReportSafe { get; set; }
+    /// <summary>Thời gian ước tính hoàn thành (phút) từ operation mới nhất được phân công.</summary>
+    public int? EstimatedTime { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
