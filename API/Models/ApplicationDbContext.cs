@@ -244,7 +244,12 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<StockUnit>(entity =>
         {
-            entity.ToTable("stock_units");
+            entity.ToTable("stock_units", tableBuilder =>
+            {
+                tableBuilder.HasTrigger("TRG_stock_units_updated_at");
+                tableBuilder.UseSqlOutputClause(false);
+            });
+
             entity.HasKey(e => e.StockUnitId);
 
             entity.Property(e => e.StockUnitId).HasColumnName("stock_unit_id");
