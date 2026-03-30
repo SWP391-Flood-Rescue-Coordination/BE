@@ -1,108 +1,93 @@
-# 📱 Quên Mật Khẩu – Xác thực mã OTP (Mock SMS)
+# 📧 Quên Mật Khẩu – Xác thực mã OTP qua Email (Resend.com)
 
-Tài liệu này mô tả tính năng **Quên mật khẩu** sử dụng mã xác thực OTP giả lập (Mock), phù hợp để test local và deploy trên các nền tảng serverless như Vercel.
-
----
-
-## 🏗️ Kiến trúc
-
-```
-FE (người dùng)
-    │
-    ├─ POST /api/auth/forgot-password/send-otp       ← Bước 1: Gửi yêu cầu
-    └─ POST /api/auth/forgot-password/reset-password ← Bước 2: Nhập OTP + pass mới
-         │
-         ▼
-    AuthController
-         │
-         ▼
-    AuthService
-         │
-         ├─ Kiểm tra SĐT tồn tại trong DB
-         └─ MockSmsService (Xác thực mã 123456)
-```
-
-### Tại sao dùng Mock OTP cố định (123456)?
-Hệ thống sử dụng mã OTP cố định để hỗ trợ việc test và demo nhanh chóng mà không cần tích hợp nhà mạng (SMS gateway) tốn phí. Đặc biệt giúp tránh lỗi mất bộ nhớ khi deploy trên **Vercel** (Stateless environment).
+Hệ thống cung cấp luồng phục hồi mật khẩu an toàn thông qua mã xác thực (OTP) gửi trực tiếp tới Email của người dùng nhờ dịch vụ **Resend.com**.
 
 ---
 
-## 📡 API Reference
+## 🏗️ Kiến trúc & Luồng xử lý (Workflow)
 
-### 1. `POST /api/auth/forgot-password/send-otp`
+```mermaid
+sequenceDiagram
+    participant User as 👤 Người dùng (FE)
+    participant Auth as 🔌 AuthController
+    participant Service as ⚙️ AuthService
+    participant Cache as 💾 MemoryCache
+    participant Email as ✉️ EmailService (Resend)
 
-**Mô tả:** Gửi yêu cầu xác thực quên mật khẩu.
-
-**Authentication:** Không yêu cầu
-
-#### Request Body
-```json
-{
-  "phone": "0912345678"
-}
+    User->>Auth: 1. Gửi SĐT (POST /send-otp)
+    Auth->>Service: Gọi SendForgotPasswordOtpAsync
+    Service->>Service: Tìm Email từ SĐT trong DB
+    Service->>Cache: Lưu OTP (6 số ngẫu nhiên, 10p)
+    Service->>Email: Gọi SendOtpEmailAsync
+    Email-->>User: Gửi Email chứa mã OTP
+    User->>Auth: 2. Nhập OTP + Pass mới (POST /reset-password)
+    Auth->>Service: Gọi ResetPasswordWithOtpAsync
+    Service->>Cache: Kiểm tra & Xóa OTP
+    Service-->>User: Thông báo thành công (200 OK)
 ```
 
-#### Response – Thành công `200 OK`
+---
+
+## ⚙️ Cấu hình Backend
+
+Để hệ thống hoạt động, bạn cần cấu hình mã API của Resend trong file `appsettings.json`:
+
 ```json
-{
-  "success": true,
-  "message": "OTP đã được gửi tới số điện thoại của bạn. (Mã test: 123456)"
+"ResendSettings": {
+  "ApiKey": "re_your_api_key_here",
+  "FromEmail": "onboarding@resend.dev"
 }
 ```
 
 ---
 
-### 2. `POST /api/auth/forgot-password/reset-password`
+## 📡 Danh sách API
 
-**Mô tả:** Xác thực OTP và đặt lại mật khẩu mới.
+### 1. Yêu cầu gửi mã OTP
+**Endpoint:** `POST /api/Auth/forgot-password/send-otp`  
+**Mô tả:** Hệ thống tự động tìm Email liên kết với SĐT và gửi mã.
 
-**Authentication:** Không yêu cầu
+- **Request Body:**
+  ```json
+  { "phone": "0987654321" }
+  ```
+- **Phản hồi thành công:**
+  ```json
+  {
+    "success": true,
+    "message": "Mã OTP đã được gửi về email của bạn (hoan****@gmail.com). Mã có hiệu lực trong 10 phút."
+  }
+  ```
 
-#### Request Body
-```json
-{
-  "phone": "0912345678",
-  "otp": "123456",
-  "newPassword": "matkhaumoi123"
-}
-```
+### 2. Xác thực OTP & Đổi mật khẩu
+**Endpoint:** `POST /api/Auth/forgot-password/reset-password`  
+**Mô tả:** Kiểm tra mã trong bộ nhớ tạm và cập nhật mật khẩu mới (BCrypt Hash).
 
-| Field | Type | Mô tả |
-|-------|------|-------|
-| `phone` | string | Số điện thoại đã đăng ký |
-| `otp` | string | Nhập mã xác thực cố định: **123456** |
-| `newPassword` | string | Mật khẩu mới (tối thiểu 5 ký tự) |
-
-#### Response – Thành công `200 OK`
-```json
-{
-  "success": true,
-  "message": "Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại."
-}
-```
-
----
-
-## 🔄 Flow hoàn chỉnh
-
-1. **Người dùng** nhập số điện thoại.
-2. **Backend** kiểm tra số điện thoại có trong DB không.
-3. **Backend** phản hồi thành công và log ra console thông báo sẵn sàng nhận mã.
-4. **Người dùng** nhập mã OTP mặc định là **123456**.
-5. **Backend** xác thực mã, hash password mới bằng BCrypt và lưu vào DB.
+- **Request Body:**
+  ```json
+  {
+    "phone": "0987654321",
+    "otp": "123456",
+    "newPassword": "MatkhauMoi@2026"
+  }
+  ```
 
 ---
 
-## 🛡️ Bảo mật (Environment)
+## 🛠️ Xử lý lỗi thường gặp (Troubleshooting)
 
-Hệ thống được thiết kế theo Interface `ISmsService`. Trong tương lai, nếu muốn dùng SMS thật (Twilio, Vonage...), bạn chỉ cần tạo một class mới implement interface này mà không cần sửa bất kỳ logic nào trong `AuthService` hay `AuthController`.
+1.  **Lỗi 403 Forbidden (Nghiêm trọng):**
+    *   **Nguyên nhân:** Bạn đang gửi tới mail lạ mà chưa xác thực Domain trên Resend.
+    *   **Khắc phục:** Hãy đảm bảo Email của người dùng trong DB khớp với Email đăng ký tài khoản Resend. Hoặc vào Resend xác thực tên miền riêng.
+2.  **Không nhận được Email:**
+    *   Kiểm tra mục **Spam (Thư rác)** vì `onboarding@resend.dev` hay bị đánh dấu spam.
+3.  **Lỗi OTP không hợp lệ:**
+    *   Mã OTP chỉ có hiệu lực **10 phút**. Sau 10 phút, mã sẽ tự động bị xóa khỏi bộ nhớ hệ thống.
 
 ---
 
-## 📁 Files liên quan
-
-- `API/DTOs/OtpDtos.cs`: Các model request/response.
-- `API/Service/ISmsService.cs`: Interface định nghĩa các phương thức xác thực.
-- `API/Service/MockSmsService.cs`: Logic xử lý mã OTP cố định (123456).
-- `API/Service/AuthService.cs`: Điều phối luồng quên mật khẩu.
-- `API/Controllers/AuthController.cs`: Các endpoint API công khai.
+## 📁 Cấu trúc Code liên quan
+- `API/Service/IEmailService.cs`: Định nghĩa dịch vụ gửi mail.
+- `API/Service/EmailService.cs`: Tích hợp gọi REST API của Resend.
+- `API/Service/AuthService.cs`: Xử lý logic nghiệp vụ, sinh mã ngẫu nhiên & quản lý Cache.
+- `Program.cs`: Đăng ký DI cho `IEmailService`, `HttpClient` và `MemoryCache`.
