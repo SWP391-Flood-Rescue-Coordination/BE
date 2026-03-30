@@ -116,8 +116,13 @@ builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(cli
 // Memory Cache – dùng cho OTP (quên mật khẩu)
 builder.Services.AddMemoryCache();
 
-// SMS Service – OTP quên mật khẩu
-// OTP sinh ngẫu nhiên, log ra console, hết hạn sau 3 phút, chỉ dùng 1 lần
+// HttpClient – dùng gọi các API ngoài như Resend
+builder.Services.AddHttpClient();
+
+// Email Service – OTP quên mật khẩu (Sử dụng Resend.com)
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+// SMS Service – OTP (Vẫn giữ MockSmsService nếu cần tham khảo)
 builder.Services.AddScoped<ISmsService, MockSmsService>();
 
 

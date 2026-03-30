@@ -3,34 +3,35 @@ using Flood_Rescue_Coordination.API.DTOs;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 
+using Microsoft.Extensions.Caching.Memory;
+
 namespace Flood_Rescue_Coordination.API.Services;
 
-/// <summary>
-/// Service triển khai nghiệp vụ bảo mật và xác thực người dùng.
-/// Xử lý Login, Register (đăng ký), Refresh Token, đăng xuất và tích hợp SMS phục vụ khôi phục mật khẩu.
-/// </summary>
 public class AuthService : IAuthService
 {
     private readonly ApplicationDbContext _context;
     private readonly IJwtService _jwtService;
     private readonly IConfiguration _configuration;
     private readonly ISmsService _smsService;
+    private readonly IEmailService _emailService;
+    private readonly IMemoryCache _cache;
 
     public AuthService(
         ApplicationDbContext context,
         IJwtService jwtService,
         IConfiguration configuration,
-        ISmsService smsService)
+        ISmsService smsService,
+        IEmailService emailService,
+        IMemoryCache cache)
     {
         _context = context;
         _jwtService = jwtService;
         _configuration = configuration;
         _smsService = smsService;
+        _emailService = emailService;
+        _cache = cache;
     }
 
-    /// <summary>
-    /// Nghiệp vụ Đăng nhập: Chuẩn hóa SĐT, kiểm tra trong DB, so khớp hash mật khẩu bằng BCrypt, trả về JWT Token cấp quyền.
-    /// </summary>
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
@@ -101,9 +102,6 @@ public class AuthService : IAuthService
         };
     }
 
-    /// <summary>
-    /// Nghiệp vụ Đăng ký tài khoản cho công dân. Đảm bảo username, email, số điện thoại không trùng, tạo record và tự động đăng nhập.
-    /// </summary>
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
         if (await _context.Users.AnyAsync(u => u.Username == request.Username))
@@ -172,9 +170,6 @@ public class AuthService : IAuthService
         return loginResponse;
     }
 
-    /// <summary>
-    /// Nghiệp vụ Cấp mới Token: Nếu RefreshToken còn hạn và chưa bị thu hồi, hệ thống sinh ra bộ Token mới cho user và thu hồi mã cũ.
-    /// </summary>
     public async Task<AuthResponse> RefreshTokenAsync(string refreshToken)
     {
         var storedToken = await _context.RefreshTokens
@@ -246,9 +241,6 @@ public class AuthService : IAuthService
         };
     }
 
-    /// <summary>
-    /// Nghiệp vụ Đăng xuất: Blacklist Access Token hiện tại (hết hiệu lực ép buộc), và thu hồi (Revoke) Refresh Token để chặn tạo Token mới.
-    /// </summary>
     public async Task<AuthResponse> LogoutAsync(string accessToken, string? refreshToken)
     {
         // Blacklist access token
@@ -289,110 +281,98 @@ public class AuthService : IAuthService
     // =============================================
 
     /// <summary>
-    /// Bước 1: Kiểm tra số điện thoại tồn tại, sau đó giả định gửi mã xác thực.
+    /// Bước 1: Kiểm tra số điện thoại tồn tại, tìm email và gửi OTP qua Email.
+    /// OTP sẽ được gửi tới Email của tài khoản tương ứng với số điện thoại.
     /// </summary>
     public async Task<OtpResponse> SendForgotPasswordOtpAsync(SendOtpRequest request)
     {
         // 1. Normalize số điện thoại
         if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
         {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "Số điện thoại không hợp lệ"
-            };
+            return new OtpResponse { Success = false, Message = "Số điện thoại không hợp lệ" };
         }
 
         // 2. Kiểm tra số điện thoại có tồn tại trong hệ thống không
-        var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
-        var userExists = await _context.Users
-            .AnyAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
-
-        if (!userExists)
-        {
-            // Trả lời mơ hồ để tránh lộ thông tin tồn tại của SĐT
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "Số điện thoại không tồn tại trong hệ thống"
-            };
-        }
-
-        // 3. Giả định gửi OTP (Log ra console hoặc dùng mã cố định)
-        var sent = await _smsService.SendOtpAsync(normalizedPhone);
-
-        if (!sent)
-        {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "Không thể gửi OTP. Vui lòng thử lại sau."
-            };
-        }
-
-        return new OtpResponse
-        {
-            Success = true,
-            Message = "OTP đã được gửi tới số điện thoại của bạn. Mã có hiệu lực trong 10 phút."
-        };
-    }
-
-    /// <summary>
-    /// Bước 2: Xác thực mã OTP và cập nhật mật khẩu mới.
-    /// </summary>
-    public async Task<OtpResponse> ResetPasswordWithOtpAsync(ResetPasswordRequest request)
-    {
-        // 1. Normalize số điện thoại
-        if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
-        {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "Số điện thoại không hợp lệ"
-            };
-        }
-
-        // 2. Xác thực OTP
-        // Chấp nhận mã test cố định 123456
-        var isValid = await _smsService.VerifyOtpAsync(normalizedPhone, request.Otp);
-
-        if (!isValid)
-        {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "OTP không hợp lệ hoặc đã hết hạn"
-            };
-        }
-
-        // 3. Tìm user theo số điện thoại
         var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
 
         if (user == null)
         {
-            return new OtpResponse
-            {
-                Success = false,
-                Message = "Không tìm thấy tài khoản với số điện thoại này"
-            };
+            return new OtpResponse { Success = false, Message = "Số điện thoại không tồn tại trong hệ thống" };
         }
 
-        // 4. Hash và lưu mật khẩu mới
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        await _context.SaveChangesAsync();
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            return new OtpResponse { Success = false, Message = "Tài khoản chưa được cập nhật Email để nhận mã OTP." };
+        }
 
+        // 3. Sinh mã OTP ngẫu nhiên (6 chữ số)
+        string otp = new Random().Next(100000, 999999).ToString();
+
+        // 4. Lưu OTP vào Memory Cache (hết hạn sau 10 phút)
+        _cache.Set($"OTP_RESET_{normalizedPhone}", otp, TimeSpan.FromMinutes(10));
+
+        // 5. Gửi mã OTP qua Email bằng Resend
+        var sent = await _emailService.SendOtpEmailAsync(user.Email, user.FullName ?? user.Username, otp);
+
+        if (!sent)
+        {
+            return new OtpResponse { Success = false, Message = "Lỗi kết nối khi gửi Email. Vui lòng thử lại sau." };
+        }
+
+        // Che mờ 1 phần email khi phản hồi (để tăng bảo mật)
+        var hiddenEmail = HideEmail(user.Email);
         return new OtpResponse
         {
             Success = true,
-            Message = "Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại."
+            Message = $"Mã OTP đã được gửi về email của bạn ({hiddenEmail}). Mã có hiệu lực trong 10 phút."
         };
     }
 
+    private static string HideEmail(string email)
+    {
+        var parts = email.Split('@');
+        if (parts[0].Length <= 3) return email;
+        return parts[0][..3] + "****@" + parts[1];
+    }
+
     /// <summary>
-    /// Phương thức hỗ trợ (Helper): Đưa ra nhiều biến thể của SĐT Việt Nam (+84, 84, 0x) để có dữ liệu so khớp bao phủ trong CSDL.
+    /// Bước 2: Xác thực mã OTP từ Memory Cache và cập nhật mật khẩu mới.
     /// </summary>
+    public async Task<OtpResponse> ResetPasswordWithOtpAsync(ResetPasswordRequest request)
+    {
+        // 1. Normalize số điện thoại
+        if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
+        {
+            return new OtpResponse { Success = false, Message = "Số điện thoại không hợp lệ" };
+        }
+
+        // 2. Kiểm tra OTP từ Memory Cache
+        if (!_cache.TryGetValue($"OTP_RESET_{normalizedPhone}", out string? storedOtp) || storedOtp != request.Otp)
+        {
+            return new OtpResponse { Success = false, Message = "Mã OTP không chính xác hoặc đã hết hạn." };
+        }
+
+        // 3. OTP đúng -> Phải xóa OTP đi để không dùng lại lần 2
+        _cache.Remove($"OTP_RESET_{normalizedPhone}");
+
+        // 4. Cập nhật mật khẩu
+        var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
+
+        if (user == null)
+        {
+            return new OtpResponse { Success = false, Message = "Tài khoản không tìm thấy." };
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _context.SaveChangesAsync();
+
+        return new OtpResponse { Success = true, Message = "Mật khẩu đã được cập nhật thành công." };
+    }
+
     private static string[] BuildPhoneCandidates(string normalizedPhone)
     {
         return
@@ -403,9 +383,6 @@ public class AuthService : IAuthService
         ];
     }
 
-    /// <summary>
-    /// Phương thức hỗ trợ (Helper): Rà soát và chuẩn hóa SĐT Việt Nam đầu vào (chuyển đầu số 84 thành 0, xóa ký hiệu lạ).
-    /// </summary>
     private static bool TryNormalizeVietnamPhone(string? phone, out string normalizedPhone)
     {
         normalizedPhone = string.Empty;
