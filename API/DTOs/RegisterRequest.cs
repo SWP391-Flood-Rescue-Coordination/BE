@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations;
 namespace Flood_Rescue_Coordination.API.DTOs;
 public class RegisterRequest
 {
-    [Required(ErrorMessage = "Username là bắt buộc")]
-    [MinLength(3, ErrorMessage = "Username phải có ít nhất 3 ký tự")]
-    public string Username { get; set; } = string.Empty;
     
     [Required(ErrorMessage = "Password là bắt buộc")]
     [MinLength(5, ErrorMessage = "Password phải có ít nhất 5 ký tự")]

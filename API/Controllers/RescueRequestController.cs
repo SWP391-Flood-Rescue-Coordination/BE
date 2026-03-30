@@ -233,12 +233,12 @@ public class RescueRequestController : ControllerBase
             var term = searchTerm.Trim().ToLower();
             query = query.Where(r => 
                 r.RequestId.ToString() == term || 
-                r.Title.ToLower().Contains(term) || 
-                r.Description.ToLower().Contains(term) ||
-                r.Address.ToLower().Contains(term) ||
-                r.Phone.Contains(term) ||
-                r.ContactPhone.Contains(term) ||
-                (r.Citizen != null && r.Citizen.FullName.ToLower().Contains(term)) ||
+                (r.Title != null && r.Title.ToLower().Contains(term)) || 
+                (r.Description != null && r.Description.ToLower().Contains(term)) ||
+                (r.Address != null && r.Address.ToLower().Contains(term)) ||
+                (r.Phone != null && r.Phone.Contains(term)) ||
+                (r.ContactPhone != null && r.ContactPhone.Contains(term)) ||
+                (r.Citizen != null && r.Citizen.FullName != null && r.Citizen.FullName.ToLower().Contains(term)) ||
                 (r.ContactName != null && r.ContactName.ToLower().Contains(term))
             );
         }
