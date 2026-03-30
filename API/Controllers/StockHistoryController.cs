@@ -77,6 +77,16 @@ public class StockHistoryController : ControllerBase
             return BadRequest(new { Success = false, Message = "Danh sách vật tư không được rỗng." });
         }
 
+        var sourceUnitName = await ResolveActiveStockUnitNameAsync(request.Source, forImport: true);
+        if (sourceUnitName == null)
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Nguồn nhập không tồn tại hoặc đã ngưng sử dụng. Vui lòng chọn từ danh sách đơn vị hợp lệ."
+            });
+        }
+
         var strategy = _context.Database.CreateExecutionStrategy();
         
         try
@@ -114,7 +124,7 @@ public class StockHistoryController : ControllerBase
                 {
                     Type = "IN",
                     Date = DateTime.UtcNow,
-                    FromTo = request.Source,
+                    FromTo = sourceUnitName,
                     Body = bodyContent.Length > 500 ? bodyContent.Substring(0, 497) + "..." : bodyContent,
                     Note = request.Note?.Length > 500 ? request.Note.Substring(0, 497) + "..." : request.Note
                 };
@@ -172,9 +182,26 @@ public class StockHistoryController : ControllerBase
                     return Unauthorized(new { Success = false, Message = "Không tìm thấy thông tin Manager." });
 
                 // 1. Địa điểm nhận (Destination)
-                string finalDestination = !string.IsNullOrEmpty(request.Destination) 
-                    ? request.Destination 
-                    : "Chưa xác định";
+                if (string.IsNullOrWhiteSpace(request.Destination))
+                {
+                    return BadRequest(new
+                    {
+                        Success = false,
+                        Message = "Đơn vị nhận hàng là bắt buộc. Vui lòng chọn từ danh sách đơn vị xuất."
+                    });
+                }
+
+                var destinationUnitName = await ResolveActiveStockUnitNameAsync(request.Destination, forImport: false);
+                if (destinationUnitName == null)
+                {
+                    return BadRequest(new
+                    {
+                        Success = false,
+                        Message = "Đơn vị xuất không tồn tại hoặc đã ngưng sử dụng. Vui lòng chọn từ danh sách đơn vị hợp lệ."
+                    });
+                }
+
+                string finalDestination = destinationUnitName;
 
                 // 2. Kiểm tra tồn kho và chuẩn bị Body
                 var exportItemsBodyList = new List<string>();
@@ -233,5 +260,33 @@ public class StockHistoryController : ControllerBase
         {
             return BadRequest(new { Success = false, Message = "Lỗi khi xuất kho: " + ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Helper resolve đơn vị hợp lệ từ bảng stock_units.
+    /// - forImport = true  -> chỉ nhận đơn vị supports_import + is_active
+    /// - forImport = false -> chỉ nhận đơn vị supports_export + is_active
+    /// Cho phép FE gửi theo UnitCode hoặc UnitName.
+    /// </summary>
+    private async Task<string?> ResolveActiveStockUnitNameAsync(string rawValue, bool forImport)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return null;
+        }
+
+        var normalized = rawValue.Trim();
+        var normalizedUpper = normalized.ToUpperInvariant();
+
+        var query = _context.StockUnits
+            .AsNoTracking()
+            .Where(u => u.IsActive && (forImport ? u.SupportsImport : u.SupportsExport));
+
+        var resolvedName = await query
+            .Where(u => u.UnitCode.ToUpper() == normalizedUpper || u.UnitName.ToUpper() == normalizedUpper)
+            .Select(u => u.UnitName)
+            .FirstOrDefaultAsync();
+
+        return resolvedName;
     }
 }

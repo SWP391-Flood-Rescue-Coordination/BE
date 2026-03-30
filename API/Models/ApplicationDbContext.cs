@@ -22,6 +22,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
     public DbSet<ReliefItem> ReliefItems { get; set; }
     public DbSet<StockHistory> StockHistories { get; set; }
+    public DbSet<StockUnit> StockUnits { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -209,7 +211,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Token).HasColumnName("token").HasMaxLength(1000);
             entity.Property(e => e.BlacklistedAt).HasColumnName("blacklisted_at");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
-            
+
             entity.HasIndex(e => e.Token);
         });
 
@@ -238,6 +240,26 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Body).HasColumnName("body");
             entity.Property(e => e.FromTo).HasColumnName("from_to").HasMaxLength(255);
             entity.Property(e => e.Note).HasColumnName("note").HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<StockUnit>(entity =>
+        {
+            entity.ToTable("stock_units");
+            entity.HasKey(e => e.StockUnitId);
+
+            entity.Property(e => e.StockUnitId).HasColumnName("stock_unit_id");
+            entity.Property(e => e.UnitCode).HasColumnName("unit_code").HasMaxLength(50);
+            entity.Property(e => e.UnitName).HasColumnName("unit_name").HasMaxLength(200);
+            entity.Property(e => e.UnitType).HasColumnName("unit_type").HasMaxLength(100);
+            entity.Property(e => e.Region).HasColumnName("region").HasMaxLength(150);
+            entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(300);
+            entity.Property(e => e.SupportsImport).HasColumnName("supports_import");
+            entity.Property(e => e.SupportsExport).HasColumnName("supports_export");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasIndex(e => e.UnitCode).IsUnique();
         });
     }
 
