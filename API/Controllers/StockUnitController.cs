@@ -1,4 +1,4 @@
-using Flood_Rescue_Coordination.API.DTOs;
+﻿using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +6,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Flood_Rescue_Coordination.API.Controllers;
 
+/// <summary>
+/// API quản lý danh mục đơn vị nhập/xuất kho (`stock_units`).
+/// 
+/// Phân quyền:
+/// - `MANAGER, ADMIN`: chỉ xem danh sách đơn vị cho màn hình nhập/xuất.
+/// - `ADMIN`: được tạo/cập nhật và đổi trạng thái hoạt động đơn vị.
+/// 
+/// Luồng FE:
+/// 1) FE màn Nhập kho gọi `GET /api/StockUnit/import-options`.
+/// 2) FE màn Xuất kho gọi `GET /api/StockUnit/export-options`.
+/// 3) FE màn Quản trị (Admin) gọi các API quản trị dữ liệu đơn vị.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "MANAGER,ADMIN")]
@@ -14,21 +26,27 @@ public class StockUnitController : ControllerBase
     private readonly ApplicationDbContext _context;
 
     /// <summary>
-    /// Controller quản lý danh mục đơn vị nhập/xuất kho.
-    /// Luồng chính:
-    /// 1) FE lấy danh sách đơn vị nhập bằng endpoint import-options
-    /// 2) FE lấy danh sách đơn vị xuất bằng endpoint export-options
-    /// 3) Quản trị viên/manager thêm-sửa-ngưng dùng đơn vị tại đây
+    /// Khởi tạo controller danh mục đơn vị kho.
     /// </summary>
+    /// <param name="context">DbContext thao tác dữ liệu `stock_units`.</param>
     public StockUnitController(ApplicationDbContext context)
     {
         _context = context;
     }
 
     /// <summary>
-    /// API cho FE: Lấy danh sách các đơn vị Hợp lệ để hiển thị trong màn hình Nhập kho (Import).
-    /// Lọc: IsActive = true và SupportsImport = true.
+    /// Lấy danh sách đơn vị hợp lệ cho nghiệp vụ Nhập kho.
     /// </summary>
+    /// <remarks>
+    /// Route: `GET /api/StockUnit/import-options`
+    /// 
+    /// Công dụng:
+    /// - Trả về các đơn vị còn hiệu lực (`is_active = true`)
+    /// - Và có hỗ trợ nhập (`supports_import = true`)
+    /// 
+    /// Nơi FE gọi tới:
+    /// - Form tạo phiếu nhập kho (`POST /api/StockHistory/import`)
+    /// </remarks>
     [HttpGet("import-options")]
     public async Task<IActionResult> GetImportOptions()
     {
@@ -43,9 +61,18 @@ public class StockUnitController : ControllerBase
     }
 
     /// <summary>
-    /// API cho FE: Lấy danh sách các đơn vị Hợp lệ để hiển thị trong màn hình Xuất kho (Export).
-    /// Lọc: IsActive = true và SupportsExport = true.
+    /// Lấy danh sách đơn vị hợp lệ cho nghiệp vụ Xuất kho.
     /// </summary>
+    /// <remarks>
+    /// Route: `GET /api/StockUnit/export-options`
+    /// 
+    /// Công dụng:
+    /// - Trả về các đơn vị còn hiệu lực (`is_active = true`)
+    /// - Và có hỗ trợ xuất (`supports_export = true`)
+    /// 
+    /// Nơi FE gọi tới:
+    /// - Form tạo phiếu xuất kho (`POST /api/StockHistory/export`)
+    /// </remarks>
     [HttpGet("export-options")]
     public async Task<IActionResult> GetExportOptions()
     {
@@ -60,31 +87,55 @@ public class StockUnitController : ControllerBase
     }
 
     /// <summary>
-    /// API Quản lý (Manager/Admin): Thêm mới một đơn vị nhập/xuất vào danh mục hệ thống.
-    /// Ví dụ: Thêm một nhà tài trợ mới hoặc một xã/huyện mới nhận hàng cứu trợ.
+    /// Tạo mới một đơn vị trong danh mục `stock_units`.
     /// </summary>
+    /// <remarks>
+    /// Route: `POST /api/StockUnit`
+    /// Phân quyền: `ADMIN`
+    /// 
+    /// Công dụng:
+    /// - Admin thêm đơn vị mới để FE có thể chọn trong import/export.
+    /// - Validate không cho tạo đơn vị có cả 2 cờ `supports_import` và `supports_export` cùng `false`.
+    /// - Validate `unit_code` không trùng.
+    /// 
+    /// Nơi chuyển tiếp:
+    /// - Dữ liệu mới sẽ xuất hiện tại:
+    ///   - `GET /api/StockUnit/import-options` (nếu supports_import = true)
+    ///   - `GET /api/StockUnit/export-options` (nếu supports_export = true)
+    /// </remarks>
     [HttpPost]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> CreateUnit([FromBody] CreateStockUnitRequest request)
     {
-        var code = (request.UnitCode ?? "").Trim();
-        var name = (request.UnitName ?? "").Trim();
+        var code = request.UnitCode.Trim();
+        var name = request.UnitName.Trim();
 
         if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name))
-            return BadRequest(new { Success = false, Message = "Mã và Tên đơn vị là bắt buộc." });
+        {
+            return BadRequest(new { Success = false, Message = "UnitCode và UnitName là bắt buộc." });
+        }
 
         if (!request.SupportsImport && !request.SupportsExport)
-            return BadRequest(new { Success = false, Message = "Đơn vị phải hỗ trợ nhập hoặc xuất hàng." });
+        {
+            return BadRequest(new { Success = false, Message = "Đơn vị phải hỗ trợ ít nhất một nghiệp vụ: nhập hoặc xuất." });
+        }
 
-        if (await _context.StockUnits.AnyAsync(u => u.UnitCode.ToUpper() == code.ToUpperInvariant()))
-            return BadRequest(new { Success = false, Message = "Mã đơn vị (UnitCode) đã tồn tại." });
+        var codeUpper = code.ToUpperInvariant();
+        var duplicatedCode = await _context.StockUnits
+            .AnyAsync(u => u.UnitCode.ToUpper() == codeUpper);
+
+        if (duplicatedCode)
+        {
+            return BadRequest(new { Success = false, Message = "UnitCode đã tồn tại." });
+        }
 
         var entity = new StockUnit
         {
             UnitCode = code,
             UnitName = name,
-            UnitType = request.UnitType?.Trim(),
-            Region = request.Region?.Trim(),
-            Address = request.Address?.Trim(),
+            UnitType = string.IsNullOrWhiteSpace(request.UnitType) ? null : request.UnitType.Trim(),
+            Region = string.IsNullOrWhiteSpace(request.Region) ? null : request.Region.Trim(),
+            Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim(),
             SupportsImport = request.SupportsImport,
             SupportsExport = request.SupportsExport,
             IsActive = true,
@@ -94,62 +145,162 @@ public class StockUnitController : ControllerBase
         _context.StockUnits.Add(entity);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Tạo đơn vị thành công." });
+        return Ok(new
+        {
+            Success = true,
+            Message = "Tạo đơn vị thành công.",
+            Data = new { entity.StockUnitId, entity.UnitCode, entity.UnitName }
+        });
     }
 
     /// <summary>
-    /// API Quản lý (Manager/Admin): Cập nhật thông tin chi tiết của một đơn vị.
+    /// Cập nhật thông tin đơn vị đã tồn tại.
     /// </summary>
+    /// <remarks>
+    /// Route: `PUT /api/StockUnit/{id}`
+    /// Phân quyền: `ADMIN`
+    /// 
+    /// Công dụng:
+    /// - Cho phép Admin sửa thông tin đơn vị (partial update).
+    /// - Có thể đổi cờ phân loại nhập/xuất.
+    /// - Không cho lưu trạng thái cả 2 cờ đều `false`.
+    /// 
+    /// Nơi ảnh hưởng:
+    /// - Kết quả lọc danh sách ở:
+    ///   - `GET /api/StockUnit/import-options`
+    ///   - `GET /api/StockUnit/export-options`
+    /// - Validate của:
+    ///   - `POST /api/StockHistory/import`
+    ///   - `POST /api/StockHistory/export`
+    /// </remarks>
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> UpdateUnit(int id, [FromBody] UpdateStockUnitRequest request)
     {
         var entity = await _context.StockUnits.FirstOrDefaultAsync(u => u.StockUnitId == id);
-        if (entity == null) return NotFound(new { Success = false, Message = "Không tìm thấy đơn vị." });
+        if (entity == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy đơn vị." });
+        }
 
-        // Cập nhật UnitCode (kiểm tra trùng lặp)
         if (request.UnitCode != null)
         {
             var code = request.UnitCode.Trim();
-            if (await _context.StockUnits.AnyAsync(u => u.StockUnitId != id && u.UnitCode.ToUpper() == code.ToUpperInvariant()))
-                return BadRequest(new { Success = false, Message = "Mã đơn vị mới đã tồn tại." });
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                return BadRequest(new { Success = false, Message = "UnitCode không được rỗng." });
+            }
+
+            var codeUpper = code.ToUpperInvariant();
+            var duplicatedCode = await _context.StockUnits
+                .AnyAsync(u => u.StockUnitId != id && u.UnitCode.ToUpper() == codeUpper);
+
+            if (duplicatedCode)
+            {
+                return BadRequest(new { Success = false, Message = "UnitCode đã tồn tại." });
+            }
+
             entity.UnitCode = code;
         }
 
-        if (request.UnitName != null) entity.UnitName = request.UnitName.Trim();
-        if (request.UnitType != null) entity.UnitType = request.UnitType.Trim();
-        if (request.Region != null) entity.Region = request.Region.Trim();
-        if (request.Address != null) entity.Address = request.Address.Trim();
+        if (request.UnitName != null)
+        {
+            var name = request.UnitName.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest(new { Success = false, Message = "UnitName không được rỗng." });
+            }
 
-        if (request.SupportsImport.HasValue) entity.SupportsImport = request.SupportsImport.Value;
-        if (request.SupportsExport.HasValue) entity.SupportsExport = request.SupportsExport.Value;
+            entity.UnitName = name;
+        }
+
+        if (request.UnitType != null)
+        {
+            entity.UnitType = string.IsNullOrWhiteSpace(request.UnitType) ? null : request.UnitType.Trim();
+        }
+
+        if (request.Region != null)
+        {
+            entity.Region = string.IsNullOrWhiteSpace(request.Region) ? null : request.Region.Trim();
+        }
+
+        if (request.Address != null)
+        {
+            entity.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
+        }
+
+        if (request.SupportsImport.HasValue)
+        {
+            entity.SupportsImport = request.SupportsImport.Value;
+        }
+
+        if (request.SupportsExport.HasValue)
+        {
+            entity.SupportsExport = request.SupportsExport.Value;
+        }
 
         if (!entity.SupportsImport && !entity.SupportsExport)
-            return BadRequest(new { Success = false, Message = "Đơn vị phải hỗ trợ ít nhất một nghiệp vụ." });
+        {
+            return BadRequest(new { Success = false, Message = "Đơn vị phải hỗ trợ ít nhất một nghiệp vụ: nhập hoặc xuất." });
+        }
 
-        if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
+        if (request.IsActive.HasValue)
+        {
+            entity.IsActive = request.IsActive.Value;
+        }
 
         entity.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cập nhật thành công." });
+        return Ok(new { Success = true, Message = "Cập nhật đơn vị thành công." });
     }
 
     /// <summary>
-    /// API Quản lý (Manager/Admin): Ngưng sử dụng đơn vị (Soft-delete).
+    /// Cập nhật trạng thái hoạt động của đơn vị (Active/Inactive).
     /// </summary>
-    [HttpPut("{id:int}/deactivate")]
-    public async Task<IActionResult> DeactivateUnit(int id)
+    /// <remarks>
+    /// Route: `PUT /api/StockUnit/{id}/status`
+    /// Phân quyền: `ADMIN`
+    ///
+    /// Công dụng:
+    /// - Cho phép chuyển qua lại giữa Active và Inactive bằng API chuyên biệt.
+    /// - Tạo thêm cách quản lý trạng thái ngoài cách cập nhật qua `PUT /api/StockUnit/{id}`.
+    ///
+    /// Lưu ý:
+    /// - `isActive = true`  => đơn vị có thể xuất hiện lại trong danh sách options (nếu thỏa supports_import/export).
+    /// - `isActive = false` => đơn vị bị ẩn khỏi danh sách options.
+    /// </remarks>
+    [HttpPut("{id:int}/status")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> UpdateUnitStatus(int id, [FromBody] UpdateStockUnitStatusRequest request)
     {
-        var entity = await _context.StockUnits.FirstOrDefaultAsync(u => u.StockUnitId == id);
-        if (entity == null) return NotFound(new { Success = false });
+        if (request.IsActive is null)
+        {
+            return BadRequest(new { Success = false, Message = "isActive là bắt buộc." });
+        }
 
-        entity.IsActive = false;
+        var entity = await _context.StockUnits.FirstOrDefaultAsync(u => u.StockUnitId == id);
+        if (entity == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy đơn vị." });
+        }
+
+        entity.IsActive = request.IsActive.Value;
         entity.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Đã ngưng sử dụng đơn vị này." });
+        return Ok(new
+        {
+            Success = true,
+            Message = entity.IsActive
+                ? "Đã chuyển đơn vị sang trạng thái Active."
+                : "Đã chuyển đơn vị sang trạng thái Inactive."
+        });
     }
 
+    /// <summary>
+    /// Helper map entity `StockUnit` sang DTO trả cho FE.
+    /// </summary>
     private static System.Linq.Expressions.Expression<Func<StockUnit, StockUnitOptionDto>> ToOptionDto()
     {
         return u => new StockUnitOptionDto

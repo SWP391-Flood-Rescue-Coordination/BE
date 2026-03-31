@@ -1,4 +1,4 @@
-using Flood_Rescue_Coordination.API.DTOs;
+﻿using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -116,25 +116,38 @@ public class VehicleController : ControllerBase
     }
 
     /// <summary>
-    /// API Quản lý (Manager/Admin/Coordinator): Lấy danh sách toàn bộ phương tiện cứu hộ.
-    /// Hỗ trợ lọc theo trạng thái: AVAILABLE, INUSE, MAINTENANCE.
+    /// Manager/Admin/Coordinator - Xem danh sách tất cả phương tiện.
     /// </summary>
+    /// <param name="status">Lọc theo trạng thái (Available, InUse, Maintenance).</param>
     [HttpGet]
     public async Task<IActionResult> GetAllVehicles([FromQuery] string? status = null)
     {
         var validStatuses = new[] { "AVAILABLE", "INUSE", "MAINTENANCE" };
-        var query = _context.Vehicles.AsNoTracking().Include(v => v.VehicleType).AsQueryable();
+
+        var query = _context.Vehicles
+            .AsNoTracking()
+            .Include(v => v.VehicleType)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
             var statusUpper = status.Trim().ToUpperInvariant();
             if (!validStatuses.Contains(statusUpper))
-                return BadRequest(new { Success = false, Message = "Trạng thái không hợp lệ." });
-            
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = $"Trạng thái '{status}' không hợp lệ. Các trạng thái hợp lệ là: {string.Join(", ", validStatuses)}"
+                });
+            }
+            // Null-safe để việc lọc trạng thái không vỡ nếu có bản ghi thiếu status.
             query = query.Where(v => (v.Status ?? string.Empty).ToUpper() == statusUpper);
         }
 
-        var vehicles = await query.OrderByDescending(v => v.UpdatedAt).ToListAsync();
+        // Danh sách xe hiện trả cả tọa độ để màn quản lý có thể dùng lại trực tiếp cho bảng và popup bản đồ.
+        var vehicles = await query
+            .OrderByDescending(v => v.UpdatedAt)
+            .ToListAsync();
 
         return Ok(new
         {
@@ -145,137 +158,267 @@ public class VehicleController : ControllerBase
     }
 
     /// <summary>
-    /// API Quản lý (Manager/Admin): Lấy thông tin chi tiết của một phương tiện.
+    /// Manager/Admin - Xem chi tiết một phương tiện
     /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetVehicleById(int id)
     {
-        var vehicle = await _context.Vehicles.AsNoTracking().Include(v => v.VehicleType).FirstOrDefaultAsync(v => v.VehicleId == id);
-        if (vehicle == null) return NotFound(new { Success = false, Message = "Không tìm thấy phương tiện" });
+        var vehicle = await _context.Vehicles
+            .AsNoTracking()
+            .Include(v => v.VehicleType)
+            .FirstOrDefaultAsync(v => v.VehicleId == id);
+
+        if (vehicle == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy phương tiện" });
+        }
 
         return Ok(new { Success = true, Data = ToVehicleResponseDto(vehicle) });
     }
 
     /// <summary>
-    /// API Quản lý (Manager/Admin): Cập nhật thông tin phương tiện.
-    /// Hạn chế: Không thể đổi trạng thái thủ công nếu xe đang bận nhiệm vụ (INUSE).
+    /// Manager/Admin - Cập nhật thông tin phương tiện
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "MANAGER,ADMIN")]
     public async Task<IActionResult> UpdateVehicle(int id, [FromBody] UpdateVehicleDto request)
     {
         var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.VehicleId == id);
-        if (vehicle == null) return NotFound(new { Success = false, Message = "Không tìm thấy phương tiện" });
 
-        // Cập nhật biển số (kiểm tra trùng lặp bản ghi khác)
+        if (vehicle == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy phương tiện" });
+        }
+
+        // Kiểm tra sớm biển số để trả lỗi nghiệp vụ rõ ràng thay vì để DB ném lỗi unique index.
         if (request.LicensePlate is not null)
         {
             var licensePlate = request.LicensePlate.Trim();
-            if (await _context.Vehicles.AnyAsync(v => v.VehicleId != id && v.LicensePlate == licensePlate))
-                return BadRequest(new { Success = false, Message = "Biển số đã tồn tại trên hệ thống." });
+            if (string.IsNullOrWhiteSpace(licensePlate))
+            {
+                return BadRequest(new { Success = false, Message = "Biển số không được để trống" });
+            }
+
+            var duplicatedPlate = await _context.Vehicles
+                .AnyAsync(v => v.VehicleId != id && v.LicensePlate == licensePlate);
+
+            if (duplicatedPlate)
+            {
+                return BadRequest(new { Success = false, Message = "Biển số đã tồn tại" });
+            }
+
             vehicle.LicensePlate = licensePlate;
         }
 
-        // Cập nhật loại xe
         if (request.VehicleTypeId.HasValue)
         {
-            if (!await _context.VehicleTypes.AnyAsync(vt => vt.VehicleTypeId == request.VehicleTypeId.Value))
-                return BadRequest(new { Success = false, Message = "Loại phương tiện không hợp lệ." });
+            var vehicleTypeExists = await _context.VehicleTypes
+                .AnyAsync(vt => vt.VehicleTypeId == request.VehicleTypeId.Value);
+
+            if (!vehicleTypeExists)
+            {
+                return BadRequest(new { Success = false, Message = "Loại phương tiện không tồn tại" });
+            }
+
             vehicle.VehicleTypeId = request.VehicleTypeId.Value;
         }
 
-        if (request.VehicleName is not null) vehicle.VehicleName = request.VehicleName.Trim();
-        if (request.Capacity.HasValue) vehicle.Capacity = request.Capacity.Value;
+        if (request.VehicleName is not null)
+        {
+            vehicle.VehicleName = string.IsNullOrWhiteSpace(request.VehicleName) ? null : request.VehicleName.Trim();
+        }
 
-        // Cập nhật trạng thái thủ công (Chỉ dành cho Available hoặc Maintenance)
+        if (request.Capacity.HasValue)
+        {
+            vehicle.Capacity = request.Capacity.Value;
+        }
+
         if (request.Status is not null)
         {
+            // Chuẩn hóa trạng thái trước khi so sánh để luồng cập nhật thủ công bám đúng nghiệp vụ.
             var currentStatus = (vehicle.Status ?? string.Empty).Trim().ToUpperInvariant();
             var newStatus = request.Status.Trim().ToUpperInvariant();
             var manualValidStatuses = new[] { "AVAILABLE", "MAINTENANCE" };
 
+            // 1. Kiểm tra nếu trạng thái mới không nằm trong danh sách cho phép cập nhật thủ công
             if (!manualValidStatuses.Contains(newStatus))
-                return BadRequest(new { Success = false, Message = "Chỉ có thể cập nhật thủ công thành AVAILABLE hoặc MAINTENANCE." });
-
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = $"Không thể cập nhật thủ công thành trạng thái '{request.Status}'. Chỉ có thể đặt thành: {string.Join(", ", manualValidStatuses)}"
+                });
+            }
+            // 2. Không cho phép đổi trạng thái nếu hiện tại đang INUSE
             if (currentStatus == "INUSE" && currentStatus != newStatus)
-                return BadRequest(new { Success = false, Message = "Phương tiện đang làm nhiệm vụ, không thể đổi trạng thái." });
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = "Không thể thay đổi trạng thái khi phương tiện đang trong nhiệm vụ (INUSE)."
+                });
+            }
 
+            // Nếu vừa chuyển từ trạng thái khác sang Bảo trì thì backend tự chốt ngày bảo trì gần nhất.
             if (currentStatus != "MAINTENANCE" && newStatus == "MAINTENANCE" && !request.LastMaintenance.HasValue)
+            {
                 vehicle.LastMaintenance = DateTime.UtcNow;
+            }
 
             vehicle.Status = newStatus;
         }
 
-        // Cập nhật tọa độ định vị thực tế của xe
-        if (request.CurrentLocation is not null) vehicle.CurrentLocation = request.CurrentLocation.Trim();
-        if (request.Latitude.HasValue) vehicle.Latitude = request.Latitude.Value;
-        if (request.Longitude.HasValue) vehicle.Longitude = request.Longitude.Value;
-        if (request.LastMaintenance.HasValue) vehicle.LastMaintenance = request.LastMaintenance.Value;
+        if (request.CurrentLocation is not null)
+        {
+            vehicle.CurrentLocation = string.IsNullOrWhiteSpace(request.CurrentLocation) ? null : request.CurrentLocation.Trim();
+        }
 
+        if (request.Latitude.HasValue)
+        {
+            vehicle.Latitude = request.Latitude.Value;
+        }
+
+        if (request.Longitude.HasValue)
+        {
+            vehicle.Longitude = request.Longitude.Value;
+        }
+
+        if (request.LastMaintenance.HasValue)
+        {
+            vehicle.LastMaintenance = request.LastMaintenance.Value;
+        }
+
+        // Mọi lần cập nhật thành công đều ghi nhận lại thời điểm cập nhật gần nhất.
         vehicle.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cập nhật thành công." });
+        await _context.SaveChangesAsync();
+        // Trả về thông tin mới nhất sau khi cập nhật
+        var updatedVehicle = await _context.Vehicles
+            .AsNoTracking()
+            .Include(v => v.VehicleType)
+            .FirstAsync(v => v.VehicleId == id);
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Cập nhật phương tiện thành công",
+            Data = ToVehicleResponseDto(updatedVehicle)
+        });
     }
 
     /// <summary>
-    /// API Quản lý (Manager/Admin): Thêm mới phương tiện vào đội.
-    /// Hệ thống tự động sinh mã quản lý (VehicleCode) dựa trên loại xe.
+    /// Manager/Admin - Thêm mới phương tiện
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "MANAGER,ADMIN")]
     public async Task<IActionResult> CreateVehicle([FromBody] CreateVehicleDto request)
     {
-        var licensePlate = (request.LicensePlate ?? "").Trim();
+        var licensePlate = request.LicensePlate.Trim();
+        if (string.IsNullOrWhiteSpace(licensePlate))
+        {
+            return BadRequest(new { Success = false, Message = "Biển số không được để trống" });
+        }
+
+        // Kiểm tra trùng biển số trước khi thêm để tránh phát sinh lỗi ràng buộc từ DB.
         if (await _context.Vehicles.AnyAsync(v => v.LicensePlate == licensePlate))
-            return BadRequest(new { Success = false, Message = "Biển số đã tồn tại." });
+        {
+            return BadRequest(new { Success = false, Message = "Biển số đã tồn tại" });
+        }
 
-        var vehicleType = await _context.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(vt => vt.VehicleTypeId == request.VehicleTypeId);
-        if (vehicleType == null) return BadRequest(new { Success = false, Message = "Loại phương tiện không tồn tại." });
+        // Tải sẵn loại xe để vừa validate vừa dùng luôn cho bước sinh VehicleCode.
+        var vehicleType = await _context.VehicleTypes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(vt => vt.VehicleTypeId == request.VehicleTypeId);
 
-        // Tự động sinh mã xe (Ví dụ: BOAT-001)
+        if (vehicleType == null)
+        {
+            return BadRequest(new { Success = false, Message = "Loại phương tiện không tồn tại" });
+        }
+
+        var statusToSet = string.IsNullOrWhiteSpace(request.Status)
+            ? "AVAILABLE"
+            : request.Status.Trim().ToUpperInvariant();
+
+        var manualValidStatuses = new[] { "AVAILABLE", "MAINTENANCE" };
+        if (!manualValidStatuses.Contains(statusToSet))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Trạng thái '{request.Status}' không hợp lệ cho phương tiện mới. Vui lòng chọn: {string.Join(", ", manualValidStatuses)}"
+            });
+        }
+
+        // VehicleCode được sinh ở backend vì đây là mã nội bộ, không phải dữ liệu người dùng cần nhập.
         var generatedVehicleCode = await GenerateVehicleCodeAsync(request.VehicleTypeId, vehicleType.TypeCode);
 
         var vehicle = new Vehicle
         {
             VehicleCode = generatedVehicleCode,
-            VehicleName = request.VehicleName?.Trim(),
+            VehicleName = string.IsNullOrWhiteSpace(request.VehicleName) ? null : request.VehicleName.Trim(),
             VehicleTypeId = request.VehicleTypeId,
             LicensePlate = licensePlate,
             Capacity = request.Capacity,
-            Status = string.IsNullOrWhiteSpace(request.Status) ? "AVAILABLE" : request.Status.Trim().ToUpperInvariant(),
+            Status = statusToSet,
+            CurrentLocation = string.IsNullOrWhiteSpace(request.CurrentLocation) ? null : request.CurrentLocation.Trim(),
             Latitude = request.Latitude,
             Longitude = request.Longitude,
+            // Ngày bảo trì gần nhất chỉ lưu khi FE gửi lên; xe mới có thể để trống nếu chưa bảo trì lần nào.
+            LastMaintenance = request.LastMaintenance,
             UpdatedAt = DateTime.UtcNow
         };
 
         _context.Vehicles.Add(vehicle);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Thêm mới phương tiện thành công!" });
+        var createdVehicle = await _context.Vehicles
+            .AsNoTracking()
+            .Include(v => v.VehicleType)
+            .FirstAsync(v => v.VehicleId == vehicle.VehicleId);
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Thêm phương tiện thành công!",
+            Data = ToVehicleResponseDto(createdVehicle)
+        });
     }
 
     /// <summary>
-    /// API Quản lý (Manager/Admin): Xoá phương tiện khỏi hệ thống.
-    /// Lưu ý: Chỉ có thể xoá nếu xe KHÔNG đang thực hiện nhiệm vụ.
+    /// Manager/Admin - Xóa phương tiện
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "MANAGER,ADMIN")]
     public async Task<IActionResult> DeleteVehicle(int id)
     {
         var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.VehicleId == id);
-        if (vehicle == null) return NotFound(new { Success = false });
 
-        if ((vehicle.Status ?? "").Trim().ToUpperInvariant() == "INUSE")
-            return BadRequest(new { Success = false, Message = "Phương tiện đang làm nhiệm vụ, không thể xoá." });
+        if (vehicle == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy phương tiện" });
+        }
 
-        // Xoá lịch sử gán xe để tránh lỗi khoá ngoại
-        var history = _context.RescueOperationVehicles.Where(rov => rov.VehicleId == id);
-        _context.RescueOperationVehicles.RemoveRange(history);
+        // 1. Chỉ chặn xóa nếu phương tiện ĐANG trong nhiệm vụ (Status = INUSE)
+        if ((vehicle.Status ?? string.Empty).Trim().ToUpperInvariant() == "INUSE")
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Không thể xóa phương tiện khi đang trong nhiệm vụ (INUSE). Vui lòng đợi nhiệm vụ hoàn tất hoặc chuyển sang trạng thái khác."
+            });
+        }
 
+        // 2. Xóa các bản ghi liên quan trong lịch sử nhiệm vụ (RescueOperationVehicles) để tránh lỗi khóa ngoại
+        var historyRecords = _context.RescueOperationVehicles.Where(rov => rov.VehicleId == id);
+        if (await historyRecords.AnyAsync())
+        {
+            _context.RescueOperationVehicles.RemoveRange(historyRecords);
+        }
+
+        // 3. Xóa phương tiện
         _context.Vehicles.Remove(vehicle);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Đã xoá phương tiện." });
+        return Ok(new { Success = true, Message = "Xóa phương tiện và các dữ liệu liên quan thành công" });
     }
 }
