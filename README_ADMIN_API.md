@@ -56,20 +56,20 @@ Hiển thị các quyền (role) hợp lệ có trong hệ thống để Admin l
 ```
 
 ### 2.3 Cập nhật Role cho người dùng
-Gán quyền truy cập mới cho một người dùng cụ thể.
+Gán quyền truy cập mới cho một người dùng cụ thể. Theo chính sách bảo mật, Admin **không thể** tự cấp quyền `ADMIN` hoặc `MANAGER` cho bất kỳ ai (các quyền này phải do Owner/System xử lý).
 
 - **Endpoint:** `PUT /api/UserInfo/{id}/role`
 - **Request Body:**
 ```json
 {
-  "role": "MANAGER"
+  "role": "COORDINATOR"
 }
 ```
 - **Response thành công (200 OK):**
 ```json
 {
   "success": true,
-  "message": "Đã cập nhật role cho người dùng citizen1 thành MANAGER"
+  "message": "Đã cập nhật role cho người dùng citizen1 thành COORDINATOR"
 }
 ```
 
