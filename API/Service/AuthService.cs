@@ -281,52 +281,60 @@ public class AuthService : IAuthService
     // =============================================
 
     /// <summary>
-    /// Bước 1: Kiểm tra số điện thoại tồn tại, tìm email và gửi OTP qua Email.
-    /// OTP sẽ được gửi tới Email của tài khoản tương ứng với số điện thoại.
+    /// Bước 1: Kiểm tra số điện thoại tồn tại, lấy email và gửi OTP qua Email (Resend.com).
     /// </summary>
-    public async Task<OtpResponse> SendForgotPasswordOtpAsync(SendOtpRequest request)
+    public async Task<AuthResponse> SendForgotPasswordOtpAsync(SendOtpRequest request)
     {
         // 1. Normalize số điện thoại
         if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
         {
-            return new OtpResponse { Success = false, Message = "Số điện thoại không hợp lệ" };
+            return new AuthResponse { Success = false, Message = "Số điện thoại không hợp lệ" };
         }
 
-        // 2. Kiểm tra số điện thoại có tồn tại trong hệ thống không
+        // 2. Tìm User dựa trên SĐT
         var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
 
         if (user == null)
         {
-            return new OtpResponse { Success = false, Message = "Số điện thoại không tồn tại trong hệ thống" };
+            return new AuthResponse { Success = false, Message = "Số điện thoại không tồn tại trong hệ thống" };
         }
 
-        if (string.IsNullOrEmpty(user.Email))
+        return await SendOtpWithCooldownAsync(user, normalizedPhone);
+    }
+
+    /// <summary>
+    /// Hàm dùng chung xử lý sinh OTP, kiểm tra thời gian chờ (Cooldown) và gửi Email.
+    /// </summary>
+    private async Task<AuthResponse> SendOtpWithCooldownAsync(User user, string phone)
+    {
+        string cacheKey = "OTP_RESET_" + phone;
+        string cooldownKey = "COOLDOWN_OTP_" + phone;
+
+        // 1. Kiểm tra Cooldown để chống spam (60s)
+        if (_cache.TryGetValue(cooldownKey, out _))
         {
-            return new OtpResponse { Success = false, Message = "Tài khoản chưa được cập nhật Email để nhận mã OTP." };
+            return new AuthResponse { Success = false, Message = "Vui lòng đợi 60 giây trước khi yêu cầu gửi lại mã mới." };
         }
 
-        // 3. Sinh mã OTP ngẫu nhiên (6 chữ số)
+        // 2. Sinh mã mới
         string otp = new Random().Next(100000, 999999).ToString();
 
-        // 4. Lưu OTP vào Memory Cache (hết hạn sau 10 phút)
-        _cache.Set($"OTP_RESET_{normalizedPhone}", otp, TimeSpan.FromMinutes(10));
+        // 3. Lưu vào Cache (10 phút) và Set Cooldown (60s)
+        _cache.Set(cacheKey, otp, TimeSpan.FromMinutes(10));
+        _cache.Set(cooldownKey, true, TimeSpan.FromSeconds(60));
 
-        // 5. Gửi mã OTP qua Email bằng Resend
-        var sent = await _emailService.SendOtpEmailAsync(user.Email, user.FullName ?? user.Username, otp);
+        // 4. Gửi Mail qua Resend
+        var sent = await _emailService.SendOtpEmailAsync(user.Email!, user.FullName ?? user.Username, otp);
 
-        if (!sent)
-        {
-            return new OtpResponse { Success = false, Message = "Lỗi kết nối khi gửi Email. Vui lòng thử lại sau." };
-        }
+        if (!sent) return new AuthResponse { Success = false, Message = "Lỗi kỹ thuật khi gửi mail. Thử lại sau." };
 
-        // Che mờ 1 phần email khi phản hồi (để tăng bảo mật)
-        var hiddenEmail = HideEmail(user.Email);
-        return new OtpResponse
-        {
-            Success = true,
-            Message = $"Mã OTP đã được gửi về email của bạn ({hiddenEmail}). Mã có hiệu lực trong 10 phút."
+        var obfuscatedEmail = HideEmail(user.Email!);
+        return new AuthResponse 
+        { 
+            Success = true, 
+            Message = $"Mã OTP đã được gửi về {obfuscatedEmail}. Vui lòng kiểm tra hộp thư." 
         };
     }
 
@@ -334,43 +342,37 @@ public class AuthService : IAuthService
     {
         var parts = email.Split('@');
         if (parts[0].Length <= 3) return email;
-        return parts[0][..3] + "****@" + parts[1];
+        return parts[0][..Part0Length(parts[0])] + "****@" + parts[1];
     }
+
+    private static int Part0Length(string s) => s.Length > 3 ? 3 : s.Length;
 
     /// <summary>
     /// Bước 2: Xác thực mã OTP từ Memory Cache và cập nhật mật khẩu mới.
     /// </summary>
-    public async Task<OtpResponse> ResetPasswordWithOtpAsync(ResetPasswordRequest request)
+    public async Task<AuthResponse> ResetPasswordWithOtpAsync(ResetPasswordRequest request)
     {
-        // 1. Normalize số điện thoại
         if (!TryNormalizeVietnamPhone(request.Phone, out var normalizedPhone))
         {
-            return new OtpResponse { Success = false, Message = "Số điện thoại không hợp lệ" };
+            return new AuthResponse { Success = false, Message = "Số điện thoại không hợp lệ" };
         }
 
-        // 2. Kiểm tra OTP từ Memory Cache
         if (!_cache.TryGetValue($"OTP_RESET_{normalizedPhone}", out string? storedOtp) || storedOtp != request.Otp)
         {
-            return new OtpResponse { Success = false, Message = "Mã OTP không chính xác hoặc đã hết hạn." };
+            return new AuthResponse { Success = false, Message = "Mã OTP không chính xác hoặc đã hết hạn." };
         }
 
-        // 3. OTP đúng -> Phải xóa OTP đi để không dùng lại lần 2
         _cache.Remove($"OTP_RESET_{normalizedPhone}");
 
-        // 4. Cập nhật mật khẩu
         var phoneCandidates = BuildPhoneCandidates(normalizedPhone);
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.IsActive && u.Phone != null && phoneCandidates.Contains(u.Phone));
 
-        if (user == null)
-        {
-            return new OtpResponse { Success = false, Message = "Tài khoản không tìm thấy." };
-        }
+        if (user == null) return new AuthResponse { Success = false, Message = "Tài khoản không tồn tại." };
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         await _context.SaveChangesAsync();
 
-        return new OtpResponse { Success = true, Message = "Mật khẩu đã được cập nhật thành công." };
+        return new AuthResponse { Success = true, Message = "Mật khẩu đã được cập nhật thành công. Vui lòng đăng nhập lại." };
     }
 
     private static string[] BuildPhoneCandidates(string normalizedPhone)

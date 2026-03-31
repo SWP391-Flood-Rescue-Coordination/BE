@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Microsoft.AspNetCore.Authorization;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,15 +64,14 @@ builder.Services.AddSwaggerGen(options =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
+
+    // Filt lọc các API [AllowAnonymous] để không hiện chiếc khóa 🔒
+    options.OperationFilter<AuthorizeCheckOperationFilter>();
 
     // Bật XML Comments cho API documentation
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -122,7 +124,8 @@ builder.Services.AddHttpClient();
 // Email Service – OTP quên mật khẩu (Sử dụng Resend.com)
 builder.Services.AddScoped<IEmailService, EmailService>();
 
-// SMS Service – OTP (Vẫn giữ MockSmsService nếu cần tham khảo)
+// SMS Service – OTP quên mật khẩu
+// OTP sinh ngẫu nhiên, log ra console, hết hạn sau 3 phút, chỉ dùng 1 lần
 builder.Services.AddScoped<ISmsService, MockSmsService>();
 
 
@@ -386,3 +389,20 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Class lọc Swagger để ẩn khóa [AllowAnonymous]
+public class AuthorizeCheckOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var hasAuthorize = context.MethodInfo.DeclaringType!.GetCustomAttributes(true).OfType<AuthorizeAttribute>().Any() ||
+                           context.MethodInfo.GetCustomAttributes(true).OfType<AuthorizeAttribute>().Any();
+
+        var allowAnonymous = context.MethodInfo.GetCustomAttributes(true).OfType<AllowAnonymousAttribute>().Any();
+
+        if (allowAnonymous || !hasAuthorize)
+        {
+            operation.Security.Clear();
+        }
+    }
+}
