@@ -22,16 +22,52 @@ public class UserInfoController : ControllerBase
     }
 
     /// <summary>
-    /// Admin - Lấy danh sách người dùng hoặc tìm kiếm theo ID
+    /// Admin - Lấy danh sách người dùng.
+    /// Hỗ trợ chuẩn hóa search: ?searchBy=userId&keyword=123
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetAllUsers([FromQuery] int? userId = null)
+    public async Task<IActionResult> GetAllUsers([FromQuery] string? searchBy = null, [FromQuery] string? keyword = null)
     {
         var query = _context.Users.AsQueryable();
 
-        if (userId.HasValue)
+        // Chuẩn hóa search backend: Mỗi trang chỉ tìm theo 1 field đúng mục đích nghiệp vụ
+        if (!string.IsNullOrWhiteSpace(searchBy))
         {
-            query = query.Where(u => u.UserId == userId.Value);
+            // Whitelist các trường được phép search cho endpoint này
+            var allowedFields = new[] { "userId", "username", "fullName", "email", "phone" };
+            if (!allowedFields.Contains(searchBy))
+            {
+                return BadRequest(new { 
+                    Success = false, 
+                    Message = $"Trường tìm kiếm '{searchBy}' không hợp lệ. Chỉ chấp nhận: {string.Join(", ", allowedFields)}" 
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = keyword.Trim();
+                switch (searchBy)
+                {
+                    case "userId":
+                        if (int.TryParse(keyword, out int id))
+                            query = query.Where(u => u.UserId == id);
+                        else
+                            return BadRequest(new { Success = false, Message = "Id người dùng phải là số." });
+                        break;
+                    case "username":
+                        query = query.Where(u => u.Username.Contains(keyword));
+                        break;
+                    case "fullName":
+                        query = query.Where(u => u.FullName != null && u.FullName.Contains(keyword));
+                        break;
+                    case "email":
+                        query = query.Where(u => u.Email != null && u.Email.Contains(keyword));
+                        break;
+                    case "phone":
+                        query = query.Where(u => u.Phone != null && u.Phone.Contains(keyword));
+                        break;
+                }
+            }
         }
 
         var users = await query

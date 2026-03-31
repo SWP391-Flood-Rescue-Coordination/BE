@@ -22,12 +22,12 @@ public class StockHistoryController : ControllerBase
 
     /// <summary>
     /// Lấy danh sách lịch sử kho theo thứ tự mới nhất đến cũ nhất.
-    /// Nếu truyền type = "IN" hoặc "OUT" thì chỉ lấy các dòng tương ứng.
+    /// Hỗ trợ chuẩn hóa search: ?searchBy=fromTo&keyword=abc
     /// </summary>
     /// <param name="type">Loại giao dịch: IN hoặc OUT (tuỳ chọn)</param>
     [HttpGet]
     [Authorize(Roles = "ADMIN,MANAGER")]
-    public async Task<IActionResult> GetStockHistory([FromQuery] string? type)
+    public async Task<IActionResult> GetStockHistory([FromQuery] string? type, [FromQuery] string? searchBy = null, [FromQuery] string? keyword = null)
     {
         if (type != null)
         {
@@ -39,6 +39,29 @@ public class StockHistoryController : ControllerBase
         }
 
         var query = _context.StockHistories.AsQueryable();
+
+        // Chuẩn hóa search backend: Mỗi trang chỉ tìm theo 1 field đúng mục đích nghiệp vụ
+        if (!string.IsNullOrWhiteSpace(searchBy))
+        {
+            // Whitelist các trường được phép search cho endpoint này: CHỈ tìm theo ID (Mã phiếu)
+            var allowedFields = new[] { "id" };
+            if (!allowedFields.Contains(searchBy))
+            {
+                return BadRequest(new { 
+                    Success = false, 
+                    Message = $"Trường tìm kiếm '{searchBy}' không hợp lệ. Chỉ chấp nhận trường: {string.Join(", ", allowedFields)}" 
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = keyword.Trim();
+                if (searchBy == "id")
+                {
+                    query = query.Where(s => s.Id.ToString() == keyword);
+                }
+            }
+        }
 
         if (!string.IsNullOrEmpty(type))
             query = query.Where(s => s.Type == type);

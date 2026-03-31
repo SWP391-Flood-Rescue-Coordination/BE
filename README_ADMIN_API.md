@@ -11,11 +11,18 @@ Tài liệu này hướng dẫn sử dụng các endpoint dành riêng cho vai t
 
 ## 2. Các API Endpoints
 
-### 2.1 Lấy danh sách người dùng hoặc Tìm kiếm theo ID
-Lấy toàn bộ danh sách người dùng hoặc tìm kiếm một người dùng cụ thể bằng ID.
+### 2.1 Lấy danh sách người dùng & Tìm kiếm chuẩn hóa
+Lấy toàn bộ danh sách người dùng hoặc tìm kiếm tập trung theo một trường cụ thể.
 
 - **Endpoint:** `GET /api/UserInfo`
-- **Query Parameter:** `userId` (int, optional) - Nhập ID để tìm kiếm, để trống để lấy tất cả.
+- **Tham số tìm kiếm (Query Params):**
+    - `searchBy` (string, optional): Trường cần tìm kiếm. Bắt buộc nằm trong whitelist: `userId`, `username`, `fullName`, `email`, `phone`.
+    - `keyword` (string, optional): Từ khóa tìm kiếm (sẽ được tự động trim khoảng trắng).
+- **Quy tắc:** Nếu truyền `searchBy` không hợp lệ, hệ thống trả về `400 BadRequest`. Không hỗ trợ tìm kiếm đa cột cùng lúc để tránh nhiễu kết quả.
+
+- **Ví dụ tìm theo ID:** `GET /api/UserInfo?searchBy=userId&keyword=1`
+- **Ví dụ tìm theo tên:** `GET /api/UserInfo?searchBy=fullName&keyword=Nguyen`
+
 - **Response thành công (200 OK):**
 ```json
 {

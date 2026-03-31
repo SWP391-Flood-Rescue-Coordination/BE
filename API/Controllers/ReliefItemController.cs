@@ -22,12 +22,38 @@ public class ReliefItemController : ControllerBase
 
     /// <summary>
     /// Lấy danh sách tất cả vật phẩm cứu trợ. (Cho Front-end)
+    /// Hỗ trợ chuẩn hóa search: ?searchBy=itemName&keyword=abc
     /// </summary>
     [HttpGet]
     [Authorize(Roles = "ADMIN,MANAGER,COORDINATOR")]
-    public async Task<IActionResult> GetAllReliefItems()
+    public async Task<IActionResult> GetAllReliefItems([FromQuery] string? searchBy = null, [FromQuery] string? keyword = null)
     {
-        var items = await _context.ReliefItems
+        var query = _context.ReliefItems.AsQueryable();
+
+        // Chuẩn hóa search backend: Mỗi trang chỉ tìm theo 1 field đúng mục đích nghiệp vụ
+        if (!string.IsNullOrWhiteSpace(searchBy))
+        {
+            // Whitelist các trường được phép search cho endpoint này
+            var allowedFields = new[] { "itemName" };
+            if (!allowedFields.Contains(searchBy))
+            {
+                return BadRequest(new { 
+                    Success = false, 
+                    Message = $"Trường tìm kiếm '{searchBy}' không hợp lệ. Chỉ chấp nhận: {string.Join(", ", allowedFields)}" 
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = keyword.Trim();
+                if (searchBy == "itemName")
+                {
+                    query = query.Where(i => i.ItemName.Contains(keyword));
+                }
+            }
+        }
+
+        var items = await query
             .OrderBy(i => i.ItemName)
             .Select(i => new ReliefItemDto
             {
