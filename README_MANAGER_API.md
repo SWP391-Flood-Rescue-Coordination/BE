@@ -62,12 +62,15 @@ Manager có trách nhiệm quản lý hệ thống phân phối và lưu kho, ba
      - Giảm tồn kho (`Quantity`) của vật tư.
      - Lưu lịch sử `StockHistory` loại `OUT`.
 
-### 3. Xem lịch sử nhập/xuất kho
+### 3. Xem lịch sử nhập/xuất kho & Tìm kiếm chuẩn hóa
 - **Endpoint**: `GET /api/StockHistory`
 - **Quyền hạn**: `Roles = "MANAGER, ADMIN"`
 - **Tham số (Query Params)**:
-  - `type` (string, optional): Lọc theo loại (chỉ nhận "IN" hoặc "OUT"). Truyền `type=IN` nếu muốn xem danh sách các đợt nhập kho vật tư.
-- **Mô tả**: Trả về danh sách lịch sử lưu kho theo trình tự từ mới nhất đến cũ nhất. Lịch sử nhập lô hàng cũng phản ánh rõ khối lượng, loại mặt hàng, nhà tài trợ đã tạo từ lệnh POST trên.
+  - `type` (string, optional): Lọc theo loại (`IN` hoặc `OUT`).
+  - `searchBy` (string, optional): Trường cần tìm. Whitelist duy nhất: `id` (Mã phiếu).
+  - `keyword` (string, optional): Số ID mã phiếu cần tìm.
+- **Mô tả**: Trả về danh sách lịch sử lưu kho. Trang này hỗ trợ tìm kiếm chính xác theo Mã phiếu qua tham số `id`.
+- **Ví dụ**: `GET /api/StockHistory?searchBy=id&keyword=12`
 
 
 ## API Endpoints: Quản lý Phương tiện (Vehicle Management)
@@ -111,12 +114,24 @@ Manager có trách nhiệm quản lý hệ thống phân phối và lưu kho, ba
 - **Mô tả**: Xóa hoàn toàn phương tiện khỏi hệ thống.
 - **Ràng buộc quan trọng**: Hệ thống **không** cho phép xóa các phương tiện đã từng tham gia vào bất kỳ nhiệm vụ cứu hộ nào (`RescueOperation`). Trong trường hợp này, hãy chuyển trạng thái phương tiện sang `DISABLED` (nếu có hỗ trợ) hoặc `MAINTENANCE` để ngừng sử dụng.
 
-### 4. Xem danh sách phương tiện
+### 4. Xem danh sách phương tiện & Tìm kiếm chuẩn hóa
 - **Endpoint**: `GET /api/Vehicle`
 - **Quyền hạn**: `Roles = "MANAGER, ADMIN, COORDINATOR"`
 - **Tham số (Query Params)**:
   - `status` (string, optional): Lọc theo trạng thái (ví dụ: `?status=Available`).
-- **Mô tả**: Trả về danh sách phương tiện sắp xếp theo thời gian cập nhật mới nhất.
+  - `searchBy` (string, optional): Tìm theo trường dữ liệu. Whitelist: `vehicleName`, `vehicleCode`, `licensePlate`.
+  - `keyword` (string, optional): Từ khóa tìm kiếm.
+- **Mô tả**: Trả về danh sách phương tiện. Hệ thống đã chuẩn hóa để FE tìm theo đúng nhu cầu (ví dụ: tìm theo biển số xe hoặc tên xe riêng biệt).
+- **Ví dụ**: `GET /api/Vehicle?searchBy=vehicleName&keyword=CANO`
+
+### 5. Quản lý Vật tư cứu trợ
+- **Endpoint**: `GET /api/ReliefItem`
+- **Quyền hạn**: `Roles = "ADMIN, MANAGER, COORDINATOR"`
+- **Tham số (Query Params)**:
+  - `searchBy` (string, optional): Whitelist cho trang này là `itemName`.
+  - `keyword` (string, optional): Từ khóa tên vật tư (ví dụ: gạo, nước, thuốc).
+- **Mô tả**: Dùng cho màn hình nhập/xuất kho hoặc quản lý kho để tìm vật tư theo tên.
+- **Quy tắc**: Mỗi trang search đúng 1 field nghiệp vụ, không quét OR nhiều cột để tránh kết quả nhiễu.
 
 ## Luồng hoạt động tiêu chuẩn (Standard Workflow)
 

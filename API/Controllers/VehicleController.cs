@@ -19,17 +19,49 @@ public class VehicleController : ControllerBase
     }
 
     /// <summary>
-    /// Manager/Admin - Xem danh sách tất cả phương tiện
+    /// Manager/Admin - Xem danh sách tất cả phương tiện.
+    /// Hỗ trợ chuẩn hóa search: ?searchBy=vehicleName&keyword=nuoc
     /// </summary>
-    /// <param name="status">Lọc theo trạng thái (Available, InUse, Maintenance, Disabled)</param>
+    /// <param name="status">Lọc theo trạng thái (Available, InUse, Maintenance)</param>
     [HttpGet]
-    public async Task<IActionResult> GetAllVehicles([FromQuery] string? status = null)
+    public async Task<IActionResult> GetAllVehicles([FromQuery] string? status = null, [FromQuery] string? searchBy = null, [FromQuery] string? keyword = null)
     {
         var validStatuses = new[] { "AVAILABLE", "INUSE", "MAINTENANCE" };
 
         var query = _context.Vehicles
             .Include(v => v.VehicleType)
             .AsQueryable();
+
+        // Chuẩn hóa search backend: Mỗi trang chỉ tìm theo 1 field đúng mục đích nghiệp vụ
+        if (!string.IsNullOrWhiteSpace(searchBy))
+        {
+            // Whitelist các trường được phép search cho endpoint này
+            var allowedFields = new[] { "vehicleName", "vehicleCode", "licensePlate" };
+            if (!allowedFields.Contains(searchBy))
+            {
+                return BadRequest(new { 
+                    Success = false, 
+                    Message = $"Trường tìm kiếm '{searchBy}' không hợp lệ. Chỉ chấp nhận các trường: {string.Join(", ", allowedFields)}" 
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = keyword.Trim();
+                switch (searchBy)
+                {
+                    case "vehicleName":
+                        query = query.Where(v => v.VehicleName.Contains(keyword));
+                        break;
+                    case "vehicleCode":
+                        query = query.Where(v => v.VehicleCode == keyword);
+                        break;
+                    case "licensePlate":
+                        query = query.Where(v => v.LicensePlate != null && v.LicensePlate.Contains(keyword));
+                        break;
+                }
+            }
+        }
 
         if (!string.IsNullOrEmpty(status))
         {

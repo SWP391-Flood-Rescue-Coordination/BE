@@ -158,25 +158,57 @@ public class RescueRequestController : ControllerBase
 
     [HttpGet]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
-    public async Task<IActionResult> GetAllRequests([FromQuery] string? status = null, [FromQuery] int? priorityId = null, [FromQuery] string? searchTerm = null)
+    public async Task<IActionResult> GetAllRequests(
+        [FromQuery] string? status = null, 
+        [FromQuery] int? priorityId = null, 
+        [FromQuery] string? searchBy = null, 
+        [FromQuery] string? keyword = null)
     {
         var query = _context.RescueRequests
             .Include(r => r.Citizen)
             .AsQueryable();
 
-        if (!string.IsNullOrEmpty(searchTerm))
+        // Chuẩn hóa search backend: Mỗi trang chỉ tìm theo 1 field đúng mục đích nghiệp vụ
+        if (!string.IsNullOrWhiteSpace(searchBy))
         {
-            var term = searchTerm.Trim().ToLower();
-            query = query.Where(r => 
-                r.RequestId.ToString() == term || 
-                r.Title.ToLower().Contains(term) || 
-                r.Description.ToLower().Contains(term) ||
-                r.Address.ToLower().Contains(term) ||
-                r.Phone.Contains(term) ||
-                r.ContactPhone.Contains(term) ||
-                (r.Citizen != null && r.Citizen.FullName.ToLower().Contains(term)) ||
-                (r.ContactName != null && r.ContactName.ToLower().Contains(term))
-            );
+            // Whitelist các trường được phép search cho endpoint này
+            var allowedFields = new[] { "requestId", "phone", "contactPhone", "address", "title", "citizenName", "contactName" };
+            if (!allowedFields.Contains(searchBy))
+            {
+                return BadRequest(new { 
+                    Success = false, 
+                    Message = $"Trường tìm kiếm '{searchBy}' không hợp lệ. Chỉ chấp nhận các trường: {string.Join(", ", allowedFields)}" 
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = keyword.Trim().ToLower();
+                switch (searchBy)
+                {
+                    case "requestId":
+                        query = query.Where(r => r.RequestId.ToString() == keyword);
+                        break;
+                    case "phone":
+                        query = query.Where(r => r.Phone.Contains(keyword));
+                        break;
+                    case "contactPhone":
+                        query = query.Where(r => r.ContactPhone.Contains(keyword));
+                        break;
+                    case "address":
+                        query = query.Where(r => r.Address.ToLower().Contains(keyword));
+                        break;
+                    case "title":
+                        query = query.Where(r => r.Title.ToLower().Contains(keyword));
+                        break;
+                    case "citizenName":
+                        query = query.Where(r => r.Citizen != null && r.Citizen.FullName.ToLower().Contains(keyword));
+                        break;
+                    case "contactName":
+                        query = query.Where(r => r.ContactName != null && r.ContactName.ToLower().Contains(keyword));
+                        break;
+                }
+            }
         }
 
         if (!string.IsNullOrEmpty(status))
