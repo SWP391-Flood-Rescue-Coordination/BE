@@ -488,7 +488,7 @@ public class RescueRequestController : ControllerBase
     /// Đồng thời ghi lại lịch sử thay đổi trạng thái.
     /// </summary>
     [HttpPut("{id}/status")]
-    [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
+    [Authorize(Roles = "RESCUE_TEAM,COORDINATOR,ADMIN,MANAGER")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDto dto)
     {
         // 1. Tìm yêu cầu
