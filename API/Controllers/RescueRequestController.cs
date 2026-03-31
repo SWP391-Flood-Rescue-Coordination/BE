@@ -502,20 +502,77 @@ public class RescueRequestController : ControllerBase
         // 2. Lấy định danh người thực hiện cập nhật
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var userId = userIdString != null ? int.Parse(userIdString) : 0;
+        var now = DateTime.UtcNow;
+        var nextStatusKey = NormalizeStatusKey(dto.Status);
 
-        // 3. Cập nhật trạng thái
+        // 3. Nếu chuyển sang Hủy thì giải phóng operation, đội và xe liên quan.
+        if (nextStatusKey == "CANCELLED" || nextStatusKey == "CANCELED")
+        {
+            var activeOperations = (await _context.RescueOperations
+                .Include(o => o.Team)
+                .Where(o => o.RequestId == request.RequestId)
+                .ToListAsync())
+                .Where(o =>
+                {
+                    var operationStatusKey = NormalizeStatusKey(o.Status);
+                    return operationStatusKey == "ASSIGNED"
+                        || operationStatusKey == "IN_PROGRESS"
+                        || operationStatusKey == "SCHEDULED";
+                })
+                .ToList();
+
+            if (activeOperations.Count > 0)
+            {
+                foreach (var operation in activeOperations)
+                {
+                    operation.Status = "Cancelled";
+                    operation.CompletedAt ??= now;
+
+                    if (operation.Team != null)
+                    {
+                        operation.Team.Status = "AVAILABLE";
+                    }
+                }
+
+                var activeOperationIds = activeOperations
+                    .Select(o => o.OperationId)
+                    .Distinct()
+                    .ToList();
+
+                var vehicleIds = await _context.RescueOperationVehicles
+                    .Where(ov => activeOperationIds.Contains(ov.OperationId))
+                    .Select(ov => ov.VehicleId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (vehicleIds.Count > 0)
+                {
+                    var vehicles = await _context.Vehicles
+                        .Where(v => vehicleIds.Contains(v.VehicleId))
+                        .ToListAsync();
+
+                    foreach (var vehicle in vehicles)
+                    {
+                        vehicle.Status = "AVAILABLE";
+                        vehicle.UpdatedAt = now;
+                    }
+                }
+            }
+        }
+
+        // 4. Cập nhật trạng thái request
         request.Status = dto.Status;
-        request.UpdatedAt = DateTime.UtcNow;
+        request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
-        // 4. Lưu vết lịch sử (History)
+        // 5. Lưu vết lịch sử (History)
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
             Status = dto.Status,
             Notes = "Trạng thái cập nhật bởi hệ thống quản lý",
             UpdatedBy = userId,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = now
         });
 
         await _context.SaveChangesAsync();
