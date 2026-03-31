@@ -158,7 +158,7 @@ public class AuthService : IAuthService
         }
 
         // 4. Tự động sinh Username từ Họ tên (không dấu, viết liền)
-        string baseUsername = GenerateUsername(request.FullName.ToLower);
+        string baseUsername = GenerateUsername(request.FullName.ToLower());
         string generatedUsername = baseUsername;
         int counter = 1;
         
