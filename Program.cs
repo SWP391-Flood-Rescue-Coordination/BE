@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Microsoft.AspNetCore.Authorization;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,15 +64,14 @@ builder.Services.AddSwaggerGen(options =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
+
+    // Filt lọc các API [AllowAnonymous] để không hiện chiếc khóa 🔒
+    options.OperationFilter<AuthorizeCheckOperationFilter>();
 
     // Bật XML Comments cho API documentation
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -122,7 +124,8 @@ builder.Services.AddHttpClient();
 // Email Service – OTP quên mật khẩu (Sử dụng Resend.com)
 builder.Services.AddScoped<IEmailService, EmailService>();
 
-// SMS Service – OTP (Vẫn giữ MockSmsService nếu cần tham khảo)
+// SMS Service – OTP quên mật khẩu
+// OTP sinh ngẫu nhiên, log ra console, hết hạn sau 3 phút, chỉ dùng 1 lần
 builder.Services.AddScoped<ISmsService, MockSmsService>();
 
 
@@ -183,18 +186,11 @@ var app = builder.Build();
 // =============================================
 // TỰ ĐỘNG TẠO BẢNG CÒN THIẾU
 // =============================================
-var skipStartupDatabaseSql = string.Equals(
-    Environment.GetEnvironmentVariable("SKIP_DB_STARTUP_SQL"),
-    "1",
-    StringComparison.Ordinal);
-
-if (!skipStartupDatabaseSql)
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
     {
-        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        try
-        {
         // Tạo bảng refresh_tokens nếu chưa tồn tại
         await context.Database.ExecuteSqlRawAsync(@"
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'refresh_tokens')
@@ -245,14 +241,18 @@ if (!skipStartupDatabaseSql)
                 END
                 
 
-                -- Xóa giới hạn 1 request đang mở per citizen (nếu index còn tồn tại)
+                -- 1. Xóa index cũ trước nếu có (để có thể alter cột)
                 IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'UX_rescue_requests_one_open_per_citizen' AND object_id = OBJECT_ID('rescue_requests'))
                 BEGIN
                     DROP INDEX UX_rescue_requests_one_open_per_citizen ON rescue_requests;
                 END
 
-                -- Làm cho citizen_id có thể NULL (hỗ trợ Guest)
+                -- 2. Làm cho citizen_id có thể NULL
                 ALTER TABLE rescue_requests ALTER COLUMN citizen_id INT NULL;
+
+                -- 3. Tạo lại index mới hỗ trợ khách vãng lai (citizen_id IS NULL)
+                CREATE UNIQUE NONCLUSTERED INDEX UX_rescue_requests_one_open_per_citizen ON rescue_requests(citizen_id)
+                WHERE ([status]<>'Completed' AND [status]<>'Cancelled' AND [status]<>'Duplicate' AND [citizen_id] IS NOT NULL);
             END
         ");
 
@@ -328,17 +328,12 @@ if (!skipStartupDatabaseSql)
             END
         ");
 
-            Console.WriteLine("Database tables verified/created successfully.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error creating tables: {ex.Message}");
-        }
+        Console.WriteLine("Database tables verified/created successfully.");
     }
-}
-else
-{
-    Console.WriteLine("Skipping startup database SQL because SKIP_DB_STARTUP_SQL=1.");
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error creating tables: {ex.Message}");
+    }
 }
 
 // =============================================
@@ -394,3 +389,20 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Class lọc Swagger để ẩn khóa [AllowAnonymous]
+public class AuthorizeCheckOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var hasAuthorize = context.MethodInfo.DeclaringType!.GetCustomAttributes(true).OfType<AuthorizeAttribute>().Any() ||
+                           context.MethodInfo.GetCustomAttributes(true).OfType<AuthorizeAttribute>().Any();
+
+        var allowAnonymous = context.MethodInfo.GetCustomAttributes(true).OfType<AllowAnonymousAttribute>().Any();
+
+        if (allowAnonymous || !hasAuthorize)
+        {
+            operation.Security.Clear();
+        }
+    }
+}

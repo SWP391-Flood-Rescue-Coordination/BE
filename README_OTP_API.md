@@ -1,93 +1,57 @@
-# 📧 Quên Mật Khẩu – Xác thực mã OTP qua Email (Resend.com)
+# 📧 Phục hồi Mật khẩu qua Email (OTP - Resend.com)
 
 Hệ thống cung cấp luồng phục hồi mật khẩu an toàn thông qua mã xác thực (OTP) gửi trực tiếp tới Email của người dùng nhờ dịch vụ **Resend.com**.
 
 ---
 
-## 🏗️ Kiến trúc & Luồng xử lý (Workflow)
+## 🏗️ Luồng xử lý (Workflow)
 
-```mermaid
-sequenceDiagram
-    participant User as 👤 Người dùng (FE)
-    participant Auth as 🔌 AuthController
-    participant Service as ⚙️ AuthService
-    participant Cache as 💾 MemoryCache
-    participant Email as ✉️ EmailService (Resend)
-
-    User->>Auth: 1. Gửi SĐT (POST /send-otp)
-    Auth->>Service: Gọi SendForgotPasswordOtpAsync
-    Service->>Service: Tìm Email từ SĐT trong DB
-    Service->>Cache: Lưu OTP (6 số ngẫu nhiên, 10p)
-    Service->>Email: Gọi SendOtpEmailAsync
-    Email-->>User: Gửi Email chứa mã OTP
-    User->>Auth: 2. Nhập OTP + Pass mới (POST /reset-password)
-    Auth->>Service: Gọi ResetPasswordWithOtpAsync
-    Service->>Cache: Kiểm tra & Xóa OTP
-    Service-->>User: Thông báo thành công (200 OK)
-```
-
----
-
-## ⚙️ Cấu hình Backend
-
-Để hệ thống hoạt động, bạn cần cấu hình mã API của Resend trong file `appsettings.json`:
-
-```json
-"ResendSettings": {
-  "ApiKey": "re_your_api_key_here",
-  "FromEmail": "onboarding@resend.dev"
-}
-```
+1. **Yêu cầu mã mã OTP**: Gọi API `/send-otp` với Số điện thoại. Hệ thống sẽ tìm User, sinh mã 6 số ngẫu nhiên, lưu vào Cache (10 phút) và gửi tới Email tương ứng.
+2. **Đặt lại mật khẩu**: Gọi API `/reset-password` với Mã OTP nhận được + Mật khẩu mới. Hệ thống xác thực mã và băm (Hash) mật khẩu mới để lưu vào Database.
 
 ---
 
 ## 📡 Danh sách API
 
-### 1. Yêu cầu gửi mã OTP
+### 1. Gửi mã OTP (Step 1)
 **Endpoint:** `POST /api/Auth/forgot-password/send-otp`  
-**Mô tả:** Hệ thống tự động tìm Email liên kết với SĐT và gửi mã.
+**Quyền truy cập:** Nặc danh (`[AllowAnonymous]`)
 
 - **Request Body:**
   ```json
   { "phone": "0987654321" }
   ```
-- **Phản hồi thành công:**
-  ```json
-  {
-    "success": true,
-    "message": "Mã OTP đã được gửi về email của bạn (hoan****@gmail.com). Mã có hiệu lực trong 10 phút."
-  }
-  ```
+- **Xử lý:** 
+    * Nếu gửi lại quá nhanh (< 60s), hệ thống trả về lỗi Cooldown.
+    * Mã có hiệu lực trong 10 phút.
 
-### 2. Xác thực OTP & Đổi mật khẩu
+### 2. Đặt lại mật khẩu (Step 2)
 **Endpoint:** `POST /api/Auth/forgot-password/reset-password`  
-**Mô tả:** Kiểm tra mã trong bộ nhớ tạm và cập nhật mật khẩu mới (BCrypt Hash).
+**Quyền truy cập:** Nặc danh (`[AllowAnonymous]`)
 
 - **Request Body:**
   ```json
   {
     "phone": "0987654321",
     "otp": "123456",
-    "newPassword": "MatkhauMoi@2026"
+    "newPassword": "MậtKhẩuMới123"
   }
   ```
+- **Xử lý:** Kiểm tra OTP khớp -> Lưu Password mới (BCrypt) -> Xóa OTP khỏi Cache.
 
 ---
 
-## 🛠️ Xử lý lỗi thường gặp (Troubleshooting)
+## 🛠️ Các tính năng bảo mật tích hợp
 
-1.  **Lỗi 403 Forbidden (Nghiêm trọng):**
-    *   **Nguyên nhân:** Bạn đang gửi tới mail lạ mà chưa xác thực Domain trên Resend.
-    *   **Khắc phục:** Hãy đảm bảo Email của người dùng trong DB khớp với Email đăng ký tài khoản Resend. Hoặc vào Resend xác thực tên miền riêng.
-2.  **Không nhận được Email:**
-    *   Kiểm tra mục **Spam (Thư rác)** vì `onboarding@resend.dev` hay bị đánh dấu spam.
-3.  **Lỗi OTP không hợp lệ:**
-    *   Mã OTP chỉ có hiệu lực **10 phút**. Sau 10 phút, mã sẽ tự động bị xóa khỏi bộ nhớ hệ thống.
+1.  **Chống Spam (Cooldown 60s):** Người dùng không thể yêu cầu mã OTP liên tục. Phải chờ 60 giây giữa mỗi lần gửi để tránh tốn tài nguyên Email.
+2.  **Che mờ Email (Privacy):** Khi gửi mã thành công, hệ thống chỉ trả về email đã che mờ (VD: `admi****@gmail.com`) để tránh lộ thông tin người dùng.
+3.  **Tự hủy mã (Auto-expire):** Mã OTP được lưu trong `MemoryCache` và tự động bị hủy sau 10 phút hoặc ngay sau khi xác thực thành công.
+4.  **Swagger Friendly:** Đã cấu hình để 2 API này không hiện dấu khóa 🔒, giúp Frontend dễ dàng thử nghiệm.
 
 ---
 
-## 📁 Cấu trúc Code liên quan
-- `API/Service/IEmailService.cs`: Định nghĩa dịch vụ gửi mail.
-- `API/Service/EmailService.cs`: Tích hợp gọi REST API của Resend.
-- `API/Service/AuthService.cs`: Xử lý logic nghiệp vụ, sinh mã ngẫu nhiên & quản lý Cache.
-- `Program.cs`: Đăng ký DI cho `IEmailService`, `HttpClient` và `MemoryCache`.
+## 📁 File liên quan
+- `API/Service/EmailService.cs`: Tích hợp REST API của Resend.com.
+- `API/Service/AuthService.cs`: Xử lý logic sinh mã, Cooldown và DB.
+- `API/Controllers/AuthController.cs`: Đầu vào của 2 API phục hồi mật khẩu.
+- `appsettings.json`: Chứa `ResendSettings` (ApiKey & FromEmail).
