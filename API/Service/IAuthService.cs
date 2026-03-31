@@ -24,9 +24,9 @@ public interface IAuthService
     /// </summary>
     Task<AuthResponse> LogoutAsync(string accessToken, string? refreshToken);
 
-    /// <summary>Gửi OTP về số điện thoại để xác thực quên mật khẩu.</summary>
-    Task<OtpResponse> SendForgotPasswordOtpAsync(SendOtpRequest request);
+    /// <summary>Gửi mã OTP về email để phục hồi mật khẩu.</summary>
+    Task<AuthResponse> SendForgotPasswordOtpAsync(SendOtpRequest request);
 
-    /// <summary>Xác thực OTP và đặt lại mật khẩu mới.</summary>
-    Task<OtpResponse> ResetPasswordWithOtpAsync(ResetPasswordRequest request);
+    /// <summary>Xác thực OTP và đặt lại mật khẩu mới khi quên.</summary>
+    Task<AuthResponse> ResetPasswordWithOtpAsync(ResetPasswordRequest request);
 }

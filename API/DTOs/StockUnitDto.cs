@@ -41,3 +41,12 @@ public class UpdateStockUnitRequest
     public bool? SupportsExport { get; set; }
     public bool? IsActive { get; set; }
 }
+
+public class UpdateStockUnitStatusRequest
+{
+    /// <summary>
+    /// Trạng thái hoạt động mong muốn của đơn vị:
+    /// true = Active, false = Inactive.
+    /// </summary>
+    public bool? IsActive { get; set; }
+}

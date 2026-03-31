@@ -1,21 +1,24 @@
 using System.ComponentModel.DataAnnotations;
 
 namespace Flood_Rescue_Coordination.API.DTOs;
+
 public class RegisterRequest
 {
-    
-    [Required(ErrorMessage = "Password là bắt buộc")]
-    [MinLength(5, ErrorMessage = "Password phải có ít nhất 5 ký tự")]
+    [Required(ErrorMessage = "Ten dang nhap la bat buoc")]
+    public string Username { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Password la bat buoc")]
+    [MinLength(5, ErrorMessage = "Password phai co it nhat 5 ky tu")]
     public string Password { get; set; } = string.Empty;
-    
-    [Required(ErrorMessage = "Họ tên là bắt buộc")]
+
+    [Required(ErrorMessage = "Ho ten la bat buoc")]
     public string FullName { get; set; } = string.Empty;
-    
-    [Required(ErrorMessage = "Số điện thoại là bắt buộc")]
-    [Phone(ErrorMessage = "Số điện thoại không hợp lệ")]
+
+    [Required(ErrorMessage = "So dien thoai la bat buoc")]
+    [Phone(ErrorMessage = "So dien thoai khong hop le")]
     public string Phone { get; set; } = string.Empty;
-    
-    [Required(ErrorMessage = "Email là bắt buộc")]
-    [EmailAddress(ErrorMessage = "Email không hợp lệ")]
+
+    [Required(ErrorMessage = "Email la bat buoc")]
+    [EmailAddress(ErrorMessage = "Email khong hop le")]
     public string Email { get; set; } = string.Empty;
 }
