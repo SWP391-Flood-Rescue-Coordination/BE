@@ -244,6 +244,7 @@ public class RescueTeamController : ControllerBase
                 o.AssignedAt,
                 o.StartedAt,
                 o.CompletedAt,
+                o.EstimatedTime,
                 Vehicles = _context.RescueOperationVehicles
                     .Where(ov => ov.OperationId == o.OperationId)
                     .Join(_context.Vehicles, ov => ov.VehicleId, v => v.VehicleId, (_, v) => v.VehicleName)
@@ -290,6 +291,7 @@ public class RescueTeamController : ControllerBase
                 o.AssignedAt,
                 o.StartedAt,
                 o.CompletedAt,
+                o.EstimatedTime,
                 Vehicles = _context.RescueOperationVehicles
                     .Where(ov => ov.OperationId == o.OperationId)
                     .Join(_context.Vehicles, ov => ov.VehicleId, v => v.VehicleId, (_, v) => v.VehicleName)
