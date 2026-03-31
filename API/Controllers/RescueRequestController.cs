@@ -8,6 +8,10 @@ using System.Security.Claims;
 
 namespace Flood_Rescue_Coordination.API.Controllers;
 
+/// <summary>
+/// RescueRequestController: Quản lý các yêu cầu cứu hộ từ người dân (Citizen) và khách vãng lai (Guest).
+/// Cung cấp các chức năng tạo mới, cập nhật, xác minh và báo cáo an toàn cho các yêu cầu cứu nạn.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -15,21 +19,33 @@ public class RescueRequestController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
 
+    /// <summary>
+    /// Constructor khởi tạo RescueRequestController.
+    /// </summary>
+    /// <param name="context">DbContext để thao tác dữ liệu.</param>
     public RescueRequestController(ApplicationDbContext context)
     {
         _context = context;
     }
 
+    /// <summary>
+    /// API tạo một yêu cầu cứu hộ mới. 
+    /// Chấp nhận cả người dùng đã đăng nhập (Citizen) và người dùng chưa đăng nhập (Guest).
+    /// </summary>
+    /// <param name="dto">Thông tin yêu cầu cứu hộ (Tiêu đề, Mô tả, Tọa độ, Số lượng người...).</param>
+    /// <returns>ID của yêu cầu vừa tạo thành công.</returns>
     [HttpPost]
     [AllowAnonymous]
     public async Task<IActionResult> CreateRequest([FromBody] CreateRescueRequestDto dto)
     {
+        // 1. Kiểm tra xem người dùng có đang đăng nhập hay không thông qua Claim
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         int? userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : null;
 
+        // 2. Khởi tạo đối tượng RescueRequest từ DTO
         var request = new RescueRequest
         {
-            CitizenId = userId,
+            CitizenId = userId, // Nếu là Guest thì CitizenId sẽ là null
             ContactName = userId == null ? dto.ContactName : null,
             ContactPhone = dto.ContactPhone,
             Title = dto.Title,
@@ -41,42 +57,51 @@ public class RescueRequestController : ControllerBase
             AdultCount = dto.AdultCount,
             ElderlyCount = dto.ElderlyCount,
             ChildrenCount = dto.ChildrenCount,
-            Status = "Pending",
+            Status = "Pending", // Trạng thái mặc định khi mới tạo
             CreatedAt = DateTime.UtcNow
         };
 
+        // 3. Tính toán mức độ ưu tiên (Priority Score) dựa trên thành phần người bị nạn
+        // Người già (Elderly) hệ số 1.5, Trẻ em (Children) hệ số 1.8
         var elderly = dto.ElderlyCount ?? 0;
         var children = dto.ChildrenCount ?? 0;
         var priorityScore = 1.5 * elderly + 1.8 * children;
 
+        // Phân loại Level dựa trên Score
         if (priorityScore >= 6)
         {
-            request.PriorityLevelId = 1;
+            request.PriorityLevelId = 1; // CAO
         }
         else if (priorityScore >= 3)
         {
-            request.PriorityLevelId = 2;
+            request.PriorityLevelId = 2; // TRUNG BÌNH
         }
         else
         {
-            request.PriorityLevelId = 3;
+            request.PriorityLevelId = 3; // THẤP/THÔNG THƯỜNG
         }
 
+        // 4. Lưu vào Database
         _context.RescueRequests.Add(request);
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
             Success = true,
-            Message = "Tao yeu cau cuu ho thanh cong",
+            Message = "Tạo yêu cầu cứu hộ thành công",
             RequestId = request.RequestId
         });
     }
 
+    /// <summary>
+    /// CITIZEN - Lấy danh sách các yêu cầu cứu hộ do chính người dùng hiện tại tạo ra.
+    /// </summary>
+    /// <returns>Danh sách các yêu cầu cứu hộ của cá nhân.</returns>
     [HttpGet("my-requests")]
     [Authorize(Roles = "CITIZEN")]
     public async Task<IActionResult> GetMyRequests()
     {
+        // 1. Trích xuất ID người dùng từ Token
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdString))
         {
@@ -85,6 +110,7 @@ public class RescueRequestController : ControllerBase
 
         var userId = int.Parse(userIdString);
 
+        // 2. Truy vấn danh sách yêu cầu thuộc về User này
         var requests = await _context.RescueRequests
             .Where(r => r.CitizenId == userId)
             .OrderByDescending(r => r.CreatedAt)
@@ -109,10 +135,16 @@ public class RescueRequestController : ControllerBase
             })
             .ToListAsync();
 
+        // 3. Kiểm tra xem người dân đã có thể báo an toàn (Confirm Rescued) hay chưa
         await ApplyCanReportSafeAsync(requests);
+        
         return Ok(new { Success = true, Data = requests });
     }
 
+    /// <summary>
+    /// API lấy yêu cầu cứu hộ gần đây nhất. 
+    /// Dùng để hiển thị trạng thái hiện thời cho người dân ngay khi vào trang chủ.
+    /// </summary>
     [HttpGet("my-latest-request")]
     [AllowAnonymous]
     public async Task<IActionResult> GetMyLatestRequest()
@@ -120,6 +152,7 @@ public class RescueRequestController : ControllerBase
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var query = _context.RescueRequests.AsQueryable();
 
+        // Nếu đã đăng nhập, lọc theo ID. Nếu là khách, lọc các yêu cầu không có ID (Guest requests)
         if (!string.IsNullOrEmpty(userIdString))
         {
             var userId = int.Parse(userIdString);
@@ -130,6 +163,7 @@ public class RescueRequestController : ControllerBase
             query = query.Where(r => r.CitizenId == null);
         }
 
+        // Lấy bản ghi mới nhất dựa trên thời gian tạo
         var latestRequest = await query
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new LatestRescueRequestDto
@@ -149,13 +183,24 @@ public class RescueRequestController : ControllerBase
 
         if (latestRequest == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho nao." });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ nào." });
         }
 
+        // Gán trạng thái có thể báo an toàn hay không
         await ApplyCanReportSafeAsync(latestRequest);
+        
         return Ok(new { Success = true, Data = latestRequest });
     }
 
+    /// <summary>
+    /// ADMIN / COORDINATOR / MANAGER - Truy vấn toàn bộ danh sách yêu cầu cứu hộ trong hệ thống.
+    /// Hỗ trợ lọc theo trạng thái, mức độ ưu tiên và tìm kiếm đa năng.
+    /// </summary>
+    /// <param name="status">Trạng thái cần lọc (Pending, Verified, v.v.).</param>
+    /// <param name="priorityId">ID mức độ ưu tiên cần lọc.</param>
+    /// <param name="searchBy">Trường cần tìm kiếm (requestId, phone, address, title, citizenName, contactName).</param>
+    /// <param name="keyword">Từ khóa tìm kiếm.</param>
+    /// <returns>Danh sách các yêu cầu khớp với bộ lọc.</returns>
     [HttpGet]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
     public async Task<IActionResult> GetAllRequests(
@@ -168,10 +213,10 @@ public class RescueRequestController : ControllerBase
             .Include(r => r.Citizen)
             .AsQueryable();
 
-        // Chuẩn hóa search backend: Mỗi trang chỉ tìm theo 1 field đúng mục đích nghiệp vụ
+        // 1. Phân tích logic tìm kiếm (Search)
         if (!string.IsNullOrWhiteSpace(searchBy))
         {
-            // Whitelist các trường được phép search cho endpoint này
+            // Kiểm tra tính hợp lệ của trường tìm kiếm (Whitelist)
             var allowedFields = new[] { "requestId", "phone", "contactPhone", "address", "title", "citizenName", "contactName" };
             if (!allowedFields.Contains(searchBy))
             {
@@ -211,6 +256,7 @@ public class RescueRequestController : ControllerBase
             }
         }
 
+        // 2. Lọc theo trạng thái và độ ưu tiên
         if (!string.IsNullOrEmpty(status))
         {
             query = query.Where(r => r.Status == status);
@@ -221,12 +267,14 @@ public class RescueRequestController : ControllerBase
             query = query.Where(r => r.PriorityLevelId == priorityId.Value);
         }
 
+        // 3. Thực thi truy vấn, sắp xếp theo thời gian tạo mới nhất và Map sang DTO
         var requests = await query
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new RescueRequestResponseDto
             {
                 RequestId = r.RequestId,
                 CitizenId = r.CitizenId,
+                // Định danh người gửi: Ưu tiên FullName nếu là Citizen, ngược lại dùng ContactName
                 CitizenName = r.Citizen != null ? (r.Citizen.FullName ?? "") : (r.ContactName ?? ""),
                 CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
                 Title = r.Title,
@@ -247,6 +295,9 @@ public class RescueRequestController : ControllerBase
         return Ok(new { Success = true, Data = requests });
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết của một yêu cầu cứu hộ qua ID.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetRequestById(int id)
     {
@@ -276,13 +327,17 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         await ApplyCanReportSafeAsync(request);
         return Ok(new { Success = true, Data = request });
     }
 
+    /// <summary>
+    /// API kiểm tra trạng thái yêu cầu dành cho Khách vãng lai (không cần đăng nhập).
+    /// </summary>
+    /// <param name="requestId">ID yêu cầu đã được cấp sau khi gửi yêu cứu trợ.</param>
     [HttpGet("guest/status")]
     [AllowAnonymous]
     public async Task<IActionResult> GetRequestByIdForGuest([FromQuery] int requestId)
@@ -306,34 +361,41 @@ public class RescueRequestController : ControllerBase
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
         await ApplyCanReportSafeAsync(request);
         return Ok(new { Success = true, Data = request });
     }
 
+    /// <summary>
+    /// API cho phép Khách vãng lai cập nhật thông tin yêu cầu cứu hộ.
+    /// Chỉ cho phép sửa khi trạng thái vẫn đang là 'Pending' hoặc 'Verified'.
+    /// </summary>
     [HttpPut("guest/update/{id}")]
     [AllowAnonymous]
     public async Task<IActionResult> UpdateRequestByGuest(int id, [FromBody] UpdateRescueRequestDto dto)
     {
+        // 1. Tìm yêu cầu cứu hộ
         var request = await _context.RescueRequests
             .FirstOrDefaultAsync(r => r.RequestId == id);
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
+        // 2. Kiểm tra trạng thái: Không cho phép sửa nếu đã phân công (Assigned) hoặc đang giải cứu
         if (request.Status != "Pending" && request.Status != "Verified")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Khong the chinh sua yeu cau khi dang o trang thai: {request.Status}"
+                Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
             });
         }
 
+        // 3. Cập nhật các trường thông tin (Nếu DTO có giá trị mới)
         request.Title = dto.Title ?? request.Title;
         request.Description = dto.Description ?? request.Description;
         request.Phone = dto.ContactPhone ?? request.Phone;
@@ -351,15 +413,20 @@ public class RescueRequestController : ControllerBase
 
         request.UpdatedAt = DateTime.UtcNow;
 
+        // 4. Lưu thay đổi
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
+        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
     }
 
+    /// <summary>
+    /// API cho phép người dùng (Citizen) cập nhật yêu cầu cứu hộ của chính họ.
+    /// </summary>
     [HttpPut("{id}/update")]
     [Authorize(Roles = "CITIZEN")]
     public async Task<IActionResult> UpdateRequestByCitizen(int id, [FromBody] UpdateRescueRequestDto dto)
     {
+        // 1. Xác thực quyền sở hữu yêu cầu
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdString))
         {
@@ -376,19 +443,21 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Khong tim thay yeu cau cuu ho hoac ban khong co quyen chinh sua yeu cau nay."
+                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền chỉnh sửa yêu cầu này."
             });
         }
 
+        // 2. Kiểm tra trạng thái
         if (request.Status != "Pending" && request.Status != "Verified")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Khong the chinh sua yeu cau khi dang o trang thai: {request.Status}"
+                Message = $"Không thể chỉnh sửa yêu cầu khi đang ở trạng thái: {request.Status}"
             });
         }
 
+        // 3. Cập nhật dữ liệu
         request.Title = dto.Title ?? request.Title;
         request.Description = dto.Description ?? request.Description;
         request.Phone = dto.ContactPhone ?? request.Phone;
@@ -408,88 +477,110 @@ public class RescueRequestController : ControllerBase
         request.UpdatedAt = DateTime.UtcNow;
         request.UpdatedBy = userId;
 
+        // 4. Lưu thay đổi
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cap nhat yeu cau thanh cong" });
+        return Ok(new { Success = true, Message = "Cập nhật yêu cầu thành công" });
     }
 
+    /// <summary>
+    /// ADMIN / COORDINATOR - Cập nhật trực tiếp trạng thái của yêu cầu cứu hộ.
+    /// Đồng thời ghi lại lịch sử thay đổi trạng thái.
+    /// </summary>
     [HttpPut("{id}/status")]
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDto dto)
     {
+        // 1. Tìm yêu cầu
         var request = await _context.RescueRequests.FindAsync(id);
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
+        // 2. Lấy định danh người thực hiện cập nhật
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var userId = userIdString != null ? int.Parse(userIdString) : 0;
 
+        // 3. Cập nhật trạng thái
         request.Status = dto.Status;
         request.UpdatedAt = DateTime.UtcNow;
         request.UpdatedBy = userId;
 
+        // 4. Lưu vết lịch sử (History)
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
             Status = dto.Status,
-            Notes = "Trang thai cap nhat boi he thong quan ly",
+            Notes = "Trạng thái cập nhật bởi hệ thống quản lý",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Cap nhat trang thai thanh cong" });
+        return Ok(new { Success = true, Message = "Cập nhật trạng thái thành công" });
     }
 
+    /// <summary>
+    /// COORDINATOR - Xác minh yêu cầu cứu hộ (Chuyển từ Pending sang Verified).
+    /// Đây là bước quan trọng để yêu cầu có thể được phân công cho các đội cứu hộ.
+    /// </summary>
     [HttpPut("{id}/verify")]
     [Authorize(Roles = "COORDINATOR")]
     public async Task<IActionResult> VerifyRequest(int id)
     {
+        // 1. Tìm yêu cầu
         var request = await _context.RescueRequests.FindAsync(id);
 
         if (request == null)
         {
-            return NotFound(new { Success = false, Message = "Khong tim thay yeu cau cuu ho" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ" });
         }
 
+        // 2. Chỉ cho phép xác minh các yêu cầu chưa được xử lý (Pending)
         if (request.Status != "Pending")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Yeu cau cuu ho phai o trang thai Pending (hien tai: {request.Status})"
+                Message = $"Yêu cầu cứu hộ phải ở trạng thái Pending (hiện tại: {request.Status})"
             });
         }
 
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var userId = userIdString != null ? int.Parse(userIdString) : 0;
 
+        // 3. Cập nhật sang trạng thái 'Verified'
         request.Status = "Verified";
         request.UpdatedAt = DateTime.UtcNow;
         request.UpdatedBy = userId;
 
+        // 4. Lưu vết lịch sử xác minh
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
             Status = "Verified",
-            Notes = $"Coordinator xac minh yeu cau (uu tien hien tai: {request.PriorityLevelId})",
+            Notes = $"Điều phối viên xác minh yêu cầu (ưu tiên hiện tại: {request.PriorityLevelId})",
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });
 
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = "Xac minh yeu cau thanh cong" });
+        return Ok(new { Success = true, Message = "Xác minh yêu cầu thành công" });
     }
 
+    /// <summary>
+    /// CITIZEN - Người dân xác nhận đã được cứu an toàn (Confirm Rescued).
+    /// Giúp đóng yêu cầu cứu hộ sau khi đội cứu hộ đã hoàn tất công việc.
+    /// </summary>
     [HttpPut("{id}/confirm-rescued")]
     [Authorize(Roles = "CITIZEN")]
     public async Task<IActionResult> ConfirmRescued(int id)
     {
+        // 1. Xác thực ID người dùng
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdString))
         {
@@ -498,6 +589,7 @@ public class RescueRequestController : ControllerBase
 
         var userId = int.Parse(userIdString);
 
+        // 2. Tìm yêu cầu thuộc sở hữu của User
         var request = await _context.RescueRequests
             .FirstOrDefaultAsync(r => r.RequestId == id && r.CitizenId == userId);
 
@@ -506,39 +598,43 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Khong tim thay yeu cau cuu ho hoac ban khong co quyen bao an toan cho yeu cau nay."
+                Message = "Không tìm thấy yêu cầu cứu hộ hoặc bạn không có quyền báo an toàn cho yêu cầu này."
             });
         }
 
+        // 3. Chỉ cho phép báo an toàn khi yêu cầu đã được phân công (Assigned)
         if (request.Status != "Assigned")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chi co the bao an toan khi yeu cau dang o trang thai 'Assigned'. Trang thai hien tai: '{request.Status}'."
+                Message = $"Chỉ có thể báo an toàn khi yêu cầu đang ở trạng thái 'Assigned'. Trạng thái hiện tại: '{request.Status}'."
             });
         }
 
+        // 4. Ràng buộc: Đội cứu hộ phải xác nhận HOÀN TẤT trước thì người dân mới có thể xác nhận AN TOÀN
         var canReportSafe = await RequestHasCompletedOperationAsync(request.RequestId);
         if (!canReportSafe)
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = "Doi cuu ho chua xac nhan hoan tat, ban chua the bao an toan."
+                Message = "Đội cứu hộ chưa xác nhận hoàn tất nhiệm vụ, bạn chưa thể báo an toàn vào lúc này."
             });
         }
 
+        // 5. Cập nhật yêu cầu sang trạng thái 'Completed'
         var now = DateTime.UtcNow;
         request.Status = "Completed";
         request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
+        // 6. Ghi lịch sử báo an toàn
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
             Status = "Completed",
-            Notes = "Cong dan da bao an toan sau khi doi cuu ho xac nhan hoan tat.",
+            Notes = "Công dân đã báo an toàn sau khi đội cứu hộ xác nhận hoàn tất thực địa.",
             UpdatedBy = userId,
             UpdatedAt = now
         });
@@ -550,14 +646,18 @@ public class RescueRequestController : ControllerBase
             Success = true,
             RequestId = request.RequestId,
             Status = request.Status,
-            Message = "Bao an toan thanh cong. Yeu cau da duoc chuyen sang Completed."
+            Message = "Báo an toàn thành công. Yêu cầu đã được đóng chính thức."
         });
     }
 
+    /// <summary>
+    /// GUEST - Khách vãng lai báo an toàn. Cần cung cấp Số điện thoại để xác thực quyền sở hữu yêu cầu.
+    /// </summary>
     [HttpPut("guest/{id}/confirm-rescued")]
     [AllowAnonymous]
     public async Task<IActionResult> GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
     {
+        // 1. Tìm yêu cầu
         var request = await _context.RescueRequests
             .FirstOrDefaultAsync(r => r.RequestId == id);
 
@@ -566,25 +666,27 @@ public class RescueRequestController : ControllerBase
             return NotFound(new
             {
                 Success = false,
-                Message = "Khong tim thay yeu cau cuu ho."
+                Message = "Không tìm thấy yêu cầu cứu hộ."
             });
         }
 
+        // 2. Xác thực bằng số điện thoại đăng ký (Phone hoặc ContactPhone)
         if (!PhoneMatches(request.Phone, dto.Phone) && !PhoneMatches(request.ContactPhone, dto.Phone))
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = "So dien thoai khong khop voi yeu cau da dang ky."
+                Message = "Số điện thoại không khớp với số đã dùng để gửi yêu cầu."
             });
         }
 
+        // 3. Kiểm tra trạng thái và xác nhận từ đội cứu hộ
         if (request.Status != "Assigned")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chi co the bao an toan khi yeu cau dang o trang thai 'Assigned'. Trang thai hien tai: '{request.Status}'."
+                Message = $"Chỉ có thể báo an toàn khi yêu cầu đang ở trạng thái 'Assigned'. Trạng thái hiện tại: '{request.Status}'."
             });
         }
 
@@ -594,20 +696,21 @@ public class RescueRequestController : ControllerBase
             return BadRequest(new
             {
                 Success = false,
-                Message = "Doi cuu ho chua xac nhan hoan tat, ban chua the bao an toan."
+                Message = "Đội cứu hộ chưa xác nhận hoàn tất, khách chưa thể tự báo an toàn."
             });
         }
 
+        // 4. Hoàn tất yêu cầu
         var now = DateTime.UtcNow;
         request.Status = "Completed";
         request.UpdatedAt = now;
-        request.UpdatedBy = 0;
+        request.UpdatedBy = 0; // Hệ thống/Guest
 
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
             Status = "Completed",
-            Notes = "Khach vang lai da bao an toan sau khi doi cuu ho xac nhan hoan tat.",
+            Notes = "Khách vãng lai đã báo an toàn thông qua số điện thoại xác thực.",
             UpdatedBy = 0,
             UpdatedAt = now
         });
@@ -619,14 +722,19 @@ public class RescueRequestController : ControllerBase
             Success = true,
             RequestId = request.RequestId,
             Status = request.Status,
-            Message = "Bao an toan thanh cong. Yeu cau da duoc chuyen sang Completed."
+            Message = "Báo an toàn thành công."
         });
     }
 
+    /// <summary>
+    /// API cung cấp dữ liệu thống kê tổng hợp cho Dashboard quản lý.
+    /// Bao gồm số lượng yêu cầu theo từng loại trạng thái và số yêu cầu mới trong ngày.
+    /// </summary>
     [HttpGet("statistics")]
     [Authorize(Roles = "MANAGER,ADMIN,COORDINATOR")]
     public async Task<IActionResult> GetStatistics()
     {
+        // Thực hiện đếm trực tiếp trên Database cho các trạng thái quan trọng
         var totalRequests = await _context.RescueRequests.CountAsync();
         var pending = await _context.RescueRequests.CountAsync(r => r.Status == "Pending");
         var verified = await _context.RescueRequests.CountAsync(r => r.Status == "Verified");
@@ -635,6 +743,8 @@ public class RescueRequestController : ControllerBase
         var citizenConfirmed = await _context.RescueRequests.CountAsync(r => r.Status == "CitizenConfirmed");
         var cancelled = await _context.RescueRequests.CountAsync(r => r.Status == "Cancelled");
         var duplicate = await _context.RescueRequests.CountAsync(r => r.Status == "Duplicate");
+        
+        // Thống kê số yêu cầu phát sinh trong ngày hôm nay
         var today = DateTime.UtcNow.Date;
         var todayRequests = await _context.RescueRequests.CountAsync(r => r.CreatedAt >= today);
 
@@ -656,21 +766,28 @@ public class RescueRequestController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Kiểm tra và gán giá trị CanReportSafe cho danh sách DTO.
+    /// Giúp Front-end biết có nên hiển thị nút "Báo an toàn" hay không.
+    /// </summary>
     private async Task ApplyCanReportSafeAsync(List<RescueRequestResponseDto> requests)
     {
-        if (requests.Count == 0)
-        {
-            return;
-        }
+        if (requests.Count == 0) return;
 
+        // Lấy danh sách RequestId có các Operation đã hoàn tất (Completed)
         var completedRequestIds = await GetCompletedOperationRequestIdsAsync(requests.Select(r => r.RequestId));
+        
         foreach (var request in requests)
         {
+            // Điều kiện: Đang bị gán nhiệm vụ (Assigned) VÀ Đội cứu hộ đã báo xong (Completed Operation)
             request.CanReportSafe = NormalizeStatusKey(request.Status) == "ASSIGNED"
                 && completedRequestIds.Contains(request.RequestId);
         }
     }
 
+    /// <summary>
+    /// Kiểm tra và gán giá trị CanReportSafe cho một DTO duy nhất.
+    /// </summary>
     private async Task ApplyCanReportSafeAsync(RescueRequestResponseDto request)
     {
         var completedRequestIds = await GetCompletedOperationRequestIdsAsync(new[] { request.RequestId });
@@ -678,6 +795,9 @@ public class RescueRequestController : ControllerBase
             && completedRequestIds.Contains(request.RequestId);
     }
 
+    /// <summary>
+    /// Kiểm tra và gán giá trị CanReportSafe cho LatestRescueRequestDto.
+    /// </summary>
     private async Task ApplyCanReportSafeAsync(LatestRescueRequestDto request)
     {
         var completedRequestIds = await GetCompletedOperationRequestIdsAsync(new[] { request.RequestId });
@@ -685,17 +805,14 @@ public class RescueRequestController : ControllerBase
             && completedRequestIds.Contains(request.RequestId);
     }
 
+    /// <summary>
+    /// Truy vấn Database để tìm những RequestId nào có ít nhất một Rescue Operation đã ở trạng thái 'Completed'.
+    /// </summary>
     private async Task<HashSet<int>> GetCompletedOperationRequestIdsAsync(IEnumerable<int> requestIds)
     {
-        var ids = requestIds
-            .Where(id => id > 0)
-            .Distinct()
-            .ToList();
+        var ids = requestIds.Where(id => id > 0).Distinct().ToList();
 
-        if (ids.Count == 0)
-        {
-            return new HashSet<int>();
-        }
+        if (ids.Count == 0) return new HashSet<int>();
 
         var completedIds = await _context.RescueOperations
             .Where(o => ids.Contains(o.RequestId) && o.Status == "Completed")
@@ -706,12 +823,18 @@ public class RescueRequestController : ControllerBase
         return completedIds.ToHashSet();
     }
 
+    /// <summary>
+    /// Kiểm tra xem một yêu cầu cứu hộ cụ thể đã có báo cáo hoàn tất từ Đội cứu hộ hay chưa.
+    /// </summary>
     private async Task<bool> RequestHasCompletedOperationAsync(int requestId)
     {
         return await _context.RescueOperations
             .AnyAsync(o => o.RequestId == requestId && o.Status == "Completed");
     }
 
+    /// <summary>
+    /// Chuẩn hóa chuỗi trạng thái thành IN_UPPER_CASE_SNAKE để dễ so sánh logic.
+    /// </summary>
     private static string NormalizeStatusKey(string? status)
     {
         return string.IsNullOrWhiteSpace(status)
@@ -719,11 +842,17 @@ public class RescueRequestController : ControllerBase
             : status.Trim().ToUpperInvariant().Replace(" ", "_");
     }
 
+    /// <summary>
+    /// So sánh hai số điện thoại xem có khớp nhau không sau khi đã chuẩn hóa.
+    /// </summary>
     private static bool PhoneMatches(string? left, string? right)
     {
         return NormalizePhone(left) == NormalizePhone(right);
     }
 
+    /// <summary>
+    /// Chuẩn hóa số điện thoại: Loại bỏ ký tự không phải số, chuyển '84' về '0'.
+    /// </summary>
     private static string NormalizePhone(string? phone)
     {
         var value = new string((phone ?? string.Empty).Where(char.IsDigit).ToArray());

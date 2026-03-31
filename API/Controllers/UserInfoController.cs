@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Flood_Rescue_Coordination.API.Controllers;
 
+/// <summary>
+/// UserInfoController: Cung cấp các chức năng quản trị người dùng dành riêng cho ADMIN.
+/// Bao gồm: Liệt kê, tìm kiếm người dùng, thay đổi phân quyền (Role) và quản lý trạng thái tài khoản.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "ADMIN")]
@@ -22,27 +26,31 @@ public class UserInfoController : ControllerBase
     }
 
     /// <summary>
-    /// Admin - Lấy danh sách người dùng.
-    /// Hỗ trợ chuẩn hóa search: ?searchBy=userId&keyword=123
+    /// ADMIN - Lấy danh sách toàn bộ người dùng trong hệ thống.
+    /// Hỗ trợ tìm kiếm linh hoạt theo UserId, Username, Họ tên, Email hoặc Số điện thoại.
     /// </summary>
+    /// <param name="searchBy">Trường cần tìm kiếm (userId, username, fullName, email, phone).</param>
+    /// <param name="keyword">Từ khóa tìm kiếm tương ứng.</param>
+    /// <returns>Danh sách người dùng được sắp xếp theo thời gian tạo mới nhất.</returns>
     [HttpGet]
     public async Task<IActionResult> GetAllUsers([FromQuery] string? searchBy = null, [FromQuery] string? keyword = null)
     {
         var query = _context.Users.AsQueryable();
 
-        // Chuẩn hóa search backend: Mỗi trang chỉ tìm theo 1 field đúng mục đích nghiệp vụ
+        // 1. Xử lý Logic tìm kiếm (Search Backend)
         if (!string.IsNullOrWhiteSpace(searchBy))
         {
-            // Whitelist các trường được phép search cho endpoint này
+            // Kiểm tra tính hợp lệ của trường tìm kiếm (Whitelist)
             var allowedFields = new[] { "userId", "username", "fullName", "email", "phone" };
             if (!allowedFields.Contains(searchBy))
             {
                 return BadRequest(new { 
                     Success = false, 
-                    Message = $"Trường tìm kiếm '{searchBy}' không hợp lệ. Chỉ chấp nhận: {string.Join(", ", allowedFields)}" 
+                    Message = $"Trường tìm kiếm '{searchBy}' không được hỗ trợ. Chỉ chấp nhận: {string.Join(", ", allowedFields)}" 
                 });
             }
 
+            // Nếu có từ khóa, bắt đầu lọc Query
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 keyword = keyword.Trim();
@@ -52,7 +60,7 @@ public class UserInfoController : ControllerBase
                         if (int.TryParse(keyword, out int id))
                             query = query.Where(u => u.UserId == id);
                         else
-                            return BadRequest(new { Success = false, Message = "Id người dùng phải là số." });
+                            return BadRequest(new { Success = false, Message = "Id người dùng phải là một số nguyên hợp lệ." });
                         break;
                     case "username":
                         query = query.Where(u => u.Username.Contains(keyword));
@@ -70,6 +78,7 @@ public class UserInfoController : ControllerBase
             }
         }
 
+        // 2. Thực thi truy vấn, sắp xếp và Map sang định dạng kết quả (UserInfo DTO)
         var users = await query
             .OrderByDescending(u => u.CreatedAt)
             .Select(u => new UserInfo
@@ -99,72 +108,84 @@ public class UserInfoController : ControllerBase
     }
 
     /// <summary>
-    /// Admin - Cập nhật role cho người dùng
+    /// ADMIN - Thay đổi quyền hạn (Role) của một người dùng cụ thể.
+    /// Có các ràng buộc bảo mật nghiêm ngặt để tránh việc lạm quyền hoặc tự hạ quyền.
     /// </summary>
+    /// <param name="id">ID người dùng cần thay đổi.</param>
+    /// <param name="request">Role mới cần gán.</param>
     [HttpPut("{id}/role")]
     public async Task<IActionResult> UpdateUserRole(int id, [FromBody] UpdateUserRoleRequest request)
     {
+        // 1. Tìm người dùng
         var user = await _context.Users.FindAsync(id);
         if (user == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy người dùng" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy người dùng trong hệ thống." });
         }
 
-        // 1. Không cho phép admin tự thay đổi role của chính mình
+        // 2. Bảo mật: Không cho phép Admin tự thay đổi Role của chính mình thông qua API này
         var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (int.TryParse(currentUserIdClaim, out int currentUserId) && currentUserId == id)
         {
-            return BadRequest(new { Success = false, Message = "Admin không thể tự thay đổi role của chính mình" });
+            return BadRequest(new { Success = false, Message = "Admin không thể tự thay đổi quyền hạn của chính mình." });
         }
 
-        // 2. Không cho phép thay đổi role của người đang là Admin hoặc Manager
+        // 3. Ràng buộc: Không cho phép thay đổi Role của những tài khoản đang có quyền Admin hoặc Manager
+        // (Để bảo vệ tầng quản trị cao nhất, việc thay đổi các role này cần can thiệp trực tiếp DB hoặc quy trình khác)
         if (user.Role == "ADMIN" || user.Role == "MANAGER")
         {
-            return BadRequest(new { Success = false, Message = "Admin không thể thay đổi role của người dùng có quyền Admin hoặc Manager" });
+            return BadRequest(new { Success = false, Message = "Không thể thay đổi quyền hạn của tài khoản Admin hoặc Manager khác." });
         }
 
-        // 3. Không cho phép thay đổi role thành Admin hoặc Manager
+        // 4. Ràng buộc: Không cho phép Admin cấp quyền Admin hoặc Manager cho người khác thông qua API này
         string newRole = request.Role.ToUpper();
         if (newRole == "ADMIN" || newRole == "MANAGER")
         {
-            return BadRequest(new { Success = false, Message = "Admin không thể cấp quyền Admin hoặc Manager cho người dùng" });
+            return BadRequest(new { Success = false, Message = "Admin không có quyền cấp Role Admin hoặc Manager cho người dùng thông qua chức năng này." });
         }
 
+        // 5. Kiểm tra tính hợp lệ của Role mới
         var validRoles = new List<string> { "ADMIN", "COORDINATOR", "MANAGER", "RESCUE_TEAM", "CITIZEN" };
         if (!validRoles.Contains(newRole))
         {
-            return BadRequest(new { Success = false, Message = "Role không hợp lệ" });
+            return BadRequest(new { Success = false, Message = "Tên quyền (Role) không hợp lệ." });
         }
 
+        // 6. Cập nhật và lưu
         user.Role = newRole;
         await _context.SaveChangesAsync();
 
-        return Ok(new { Success = true, Message = $"Đã cập nhật role cho người dùng {user.Username} thành {user.Role}" });
+        return Ok(new { Success = true, Message = $"Đã cập nhật quyền hạn cho người dùng '{user.Username}' thành '{user.Role}'." });
     }
 
     /// <summary>
-    /// Admin - Kích hoạt hoặc vô hiệu hóa tài khoản người dùng
+    /// ADMIN - Kích hoạt hoặc Vô hiệu hóa tài khoản người dùng.
+    /// Tài khoản bị vô hiệu hóa sẽ không thể đăng nhập vào hệ thống.
     /// </summary>
+    /// <param name="id">ID người dùng.</param>
+    /// <param name="request">Trạng thái IsActive mới.</param>
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateUserStatus(int id, [FromBody] UpdateUserStatusRequest request)
     {
+        // 1. Tìm người dùng
         var user = await _context.Users.FindAsync(id);
         if (user == null)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy người dùng" });
+            return NotFound(new { Success = false, Message = "Không tìm thấy người dùng." });
         }
 
-        // Không cho phép admin tự vô hiệu hóa chính mình
+        // 2. Bảo mật: Admin không được phép tự vô hiệu hóa tài khoản của chính mình
         var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (int.TryParse(currentUserIdClaim, out int currentUserId) && currentUserId == id && !request.IsActive)
         {
-            return BadRequest(new { Success = false, Message = "Admin không thể tự vô hiệu hóa tài khoản của chính mình" });
+            return BadRequest(new { Success = false, Message = "Admin không thể tự vô hiệu hóa tài khoản của chính mình." });
         }
 
+        // 3. Cập nhật và lưu
         user.IsActive = request.IsActive;
         await _context.SaveChangesAsync();
 
-        string statusLabel = request.IsActive ? "kích hoạt" : "vô hiệu hóa";
-        return Ok(new { Success = true, Message = $"Đã {statusLabel} tài khoản {user.Username}" });
+        string statusLabel = request.IsActive ? "Kích hoạt" : "Vô hiệu hóa";
+        return Ok(new { Success = true, Message = $"Đã {statusLabel} tài khoản '{user.Username}' thành công." });
     }
 }

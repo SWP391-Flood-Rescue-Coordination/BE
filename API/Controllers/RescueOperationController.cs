@@ -8,6 +8,10 @@ using System.Security.Claims;
 
 namespace Flood_Rescue_Coordination.API.Controllers;
 
+/// <summary>
+/// RescueOperationController: Quản lý các hoạt động cứu hộ thực tế.
+/// Bao gồm việc phân công đội cứu hộ, cập nhật trạng thái nhiệm vụ và tìm kiếm các đội cứu hộ gần điểm xảy ra sự cố.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -17,8 +21,10 @@ public class RescueOperationController : ControllerBase
     private readonly IDistanceService _distanceService;
 
     /// <summary>
-    /// Constructor khởi tạo RescueOperationController với DbContext và dịch vụ tính toán khoảng cách.
+    /// Constructor khởi tạo RescueOperationController.
     /// </summary>
+    /// <param name="context">DbContext để thao tác dữ liệu.</param>
+    /// <param name="distanceService">Dịch vụ tính toán khoảng cách địa lý.</param>
     public RescueOperationController(ApplicationDbContext context, IDistanceService distanceService)
     {
         _context = context;
@@ -26,17 +32,19 @@ public class RescueOperationController : ControllerBase
     }
 
     /// <summary>
-    /// COORDINATOR - Phân công đội cứu hộ và phương tiện cho một rescue request.
-    /// rescue_requests.status phải = Verified, rescue_teams.status phải = Available,
-    /// vehicles.status (nếu có) phải = Available.
+    /// API Phân công đội cứu hộ (Rescue Team) và phương tiện (Vehicles) cho một yêu cầu cứu hộ cụ thể.
+    /// Chỉ dành cho vai trò COORDINATOR.
     /// </summary>
+    /// <param name="dto">Dữ liệu phân công mẫu: ID yêu cầu, ID Team, danh sách ID phương tiện.</param>
+    /// <returns>Thông tin chi tiết về nhiệm vụ vừa được khởi tạo.</returns>
     [HttpPost("assign")]
     [Authorize(Roles = "COORDINATOR")]
     public async Task<IActionResult> AssignRescue([FromBody] AssignRescueDto dto)
     {
+        // 1. Lấy ID người điều phối từ Token JWT
         var coordinatorId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-        // --- Parse vehicle IDs từ chuỗi ---
+        // 2. Phân tách danh sách ID phương tiện từ chuỗi (dấu phẩy ngăn cách)
         var vehicleIds = new List<int>();
         if (!string.IsNullOrWhiteSpace(dto.VehicleIds))
         {
@@ -49,7 +57,7 @@ public class RescueOperationController : ControllerBase
             }
         }
 
-        // --- Validate rescue_requests.status = Verified ---
+        // 3. Kiểm tra tính hợp lệ của Rescue Request (Yêu cầu phải tồn tại và có trạng thái Verified)
         var rescueRequest = await _context.RescueRequests.FindAsync(dto.RequestId);
         if (rescueRequest == null)
             return NotFound(new { Success = false, Message = $"Không tìm thấy rescue request với ID = {dto.RequestId}" });
@@ -57,7 +65,7 @@ public class RescueOperationController : ControllerBase
         if (rescueRequest.Status != "Verified")
             return BadRequest(new { Success = false, Message = $"Rescue request phải có status = Verified. Status hiện tại: {rescueRequest.Status}" });
 
-        // --- Validate rescue_teams.status = Available ---
+        // 4. Kiểm tra tính hợp lệ của Rescue Team (Team phải tồn tại và đang rảnh - Available)
         var rescueTeam = await _context.RescueTeams.FindAsync(dto.TeamId);
         if (rescueTeam == null)
             return NotFound(new { Success = false, Message = $"Không tìm thấy rescue team với ID = {dto.TeamId}" });
@@ -65,7 +73,7 @@ public class RescueOperationController : ControllerBase
         if (!string.Equals(rescueTeam.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { Success = false, Message = $"Rescue team phải có status = AVAILABLE. Status hiện tại: {rescueTeam.Status}" });
 
-        // --- Validate vehicles.status = Available (nếu có) ---
+        // 5. Kiểm tra tính hợp lệ của các phương tiện được chọn (Phương tiện phải rảnh - Available)
         var vehicles = new List<Vehicle>();
         if (vehicleIds.Count > 0)
         {
@@ -73,13 +81,13 @@ public class RescueOperationController : ControllerBase
                 .Where(v => vehicleIds.Contains(v.VehicleId))
                 .ToListAsync();
 
-            // Kiểm tra tất cả ID có tồn tại không
+            // Đảm bảo tìm thấy tất cả ID đã cung cấp
             var foundIds = vehicles.Select(v => v.VehicleId).ToHashSet();
             var missingIds = vehicleIds.Where(id => !foundIds.Contains(id)).ToList();
             if (missingIds.Any())
                 return NotFound(new { Success = false, Message = $"Không tìm thấy vehicle với ID: {string.Join(", ", missingIds)}" });
 
-            // Kiểm tra status
+            // Kiểm tra trạng thái từng phương tiện
             var unavailable = vehicles
                 .Where(v => !string.Equals(v.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -91,11 +99,8 @@ public class RescueOperationController : ControllerBase
                 });
         }
 
-        // --- Thực hiện tất cả DB writes trong một transaction ---
-        // SqlServerRetryingExecutionStrategy yêu cầu dùng CreateExecutionStrategy()
-        // để bao bọc manual transaction thành một đơn vị có thể retry.
+        // 6. Thực thi quy trình phân công bằng Database Transaction (Để đảm bảo tính nhất quán dữ liệu)
         var strategy = _context.Database.CreateExecutionStrategy();
-
         AssignRescueResponseDto? responseData = null;
 
         await strategy.ExecuteAsync(async () =>
@@ -104,7 +109,7 @@ public class RescueOperationController : ControllerBase
 
             var now = DateTime.UtcNow;
 
-            // 1. Tạo rescue_operation
+            // (1) Tạo bản ghi Rescue Operation (Nhiệm vụ cứu hộ)
             var operation = new RescueOperation
             {
                 RequestId  = dto.RequestId,
@@ -116,9 +121,9 @@ public class RescueOperationController : ControllerBase
                 EstimatedTime = dto.EstimatedTime
             };
             _context.RescueOperations.Add(operation);
-            await _context.SaveChangesAsync(); // Cần SaveChanges để có OperationId
+            await _context.SaveChangesAsync(); // Lưu để phát sinh OperationId tự tăng
 
-            // 2. Tạo rescue_operation_vehicles (nếu có vehicle)
+            // (2) Liên kết các phương tiện với nhiệm vụ cứu hộ này
             foreach (var vid in vehicleIds)
             {
                 _context.RescueOperationVehicles.Add(new RescueOperationVehicle
@@ -130,12 +135,12 @@ public class RescueOperationController : ControllerBase
                 });
             }
 
-            // 3. Cập nhật rescue_requests.status → Assigned
+            // (3) Cập nhật trạng thái của Yêu cầu (Request) sang 'Assigned'
             rescueRequest.Status    = "Assigned";
             rescueRequest.UpdatedAt = now;
             rescueRequest.UpdatedBy = coordinatorId;
 
-            // 4. Thêm record vào rescue_request_status_history
+            // (4) Lưu vết lịch sử thay đổi trạng thái của Yêu cầu
             _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
             {
                 RequestId = dto.RequestId,
@@ -145,10 +150,10 @@ public class RescueOperationController : ControllerBase
                 UpdatedAt = now
             });
 
-            // 5. Cập nhật rescue_teams.status → BUSY
+            // (5) Chuyển trạng thái Đội cứu hộ sang 'BUSY'
             rescueTeam.Status = "BUSY";
 
-            // 6. Cập nhật vehicles.status → InUse
+            // (6) Chuyển trạng thái các Phương tiện sang 'InUse'
             foreach (var v in vehicles)
             {
                 v.Status    = "InUse";
@@ -180,26 +185,30 @@ public class RescueOperationController : ControllerBase
     }
 
     /// <summary>
-    /// RESCUE_TEAM - Lấy danh sách các operation đã được giao cho một team,    
-    /// sắp xếp theo thời gian phân công mới nhất trước.
-    /// Chỉ thành viên của team đó mới được gọi.
+    /// API lấy danh sách các nhiệm vụ cứu hộ được phân công cho một Đội (Rescue Team).
+    /// Hỗ trợ đội cứu hộ xem các công việc đang chờ xử lý.
     /// </summary>
+    /// <param name="teamId">ID của đội cứu hộ cần tra cứu.</param>
+    /// <returns>Danh sách các nhiệm vụ cụ thể và thông tin đi kèm từ yêu cầu gốc.</returns>
     [HttpGet("team/{teamId:int}")]
     [Authorize(Roles = "RESCUE_TEAM")]
     public async Task<IActionResult> GetOperationsByTeam(int teamId)
     {
+        // 1. Xác thực ID người dùng từ Token
         var userIdText = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdText, out var currentUserId))
         {
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
         }
 
+        // 2. Bảo mật: Đảm bảo người dùng gọi API là thành viên chính thức của Team đó
         var isMember = await _context.RescueTeamMembers
             .AnyAsync(m => m.TeamId == teamId && m.UserId == currentUserId && m.IsActive);
 
         if (!isMember)
             return Forbid();
 
+        // 3. Truy vấn các nhiệm vụ đang ở trạng thái 'Assigned' của Team
         var operations = await _context.RescueOperations
             .Where(op => op.TeamId == teamId && op.Status == "Assigned")
             .OrderByDescending(op => op.AssignedAt)
@@ -208,10 +217,12 @@ public class RescueOperationController : ControllerBase
                 OperationId = op.OperationId,
                 RequestId = op.RequestId,
                 TeamId = op.TeamId,
+                // Lấy thông tin tóm tắt từ Yêu cầu cứu hộ gốc để Team nắm bắt hiện trạng
                 RequestTitle = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Title).FirstOrDefault(),
                 RequestAddress = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Address).FirstOrDefault(),
                 RequestDescription = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Description).FirstOrDefault(),
                 RequestPhone = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Phone).FirstOrDefault(),
+                // Phân loại mức độ ưu tiên sang tiếng Việt dễ hiểu
                 PriorityName = _context.RescueRequests
                     .Where(r => r.RequestId == op.RequestId)
                     .Select(r => (r.PriorityLevelId == 1 ? "CAO" :
@@ -226,6 +237,7 @@ public class RescueOperationController : ControllerBase
                 CompletedAt = op.CompletedAt,
                 NumberOfAffectedPeople = op.NumberOfAffectedPeople,
                 EstimatedTime = op.EstimatedTime,
+                // Lấy danh sách phương tiện được cấp cho nhiệm vụ này
                 VehicleIds = _context.RescueOperationVehicles
                     .Where(v => v.OperationId == op.OperationId)
                     .Select(v => v.VehicleId)
@@ -243,12 +255,15 @@ public class RescueOperationController : ControllerBase
     }
 
     /// <summary>
-    /// ADMIN / COORDINATOR / MANAGER - Tìm kiếm rescue operation theo operation_id.
+    /// Lấy thông tin chi tiết của một nhiệm vụ cứu hộ thông qua ID.
     /// </summary>
+    /// <param name="operationId">Mã định danh của nhiệm vụ.</param>
+    /// <returns>Dữ liệu DTO của nhiệm vụ (TeamOperationDto).</returns>
     [HttpGet("{operationId:int}")]
     [Authorize(Roles = "ADMIN,COORDINATOR,MANAGER,RESCUE_TEAM")]
     public async Task<IActionResult> GetOperationById(int operationId)
     {
+        // Thực hiện truy vấn và Map nhanh sang DTO
         var operation = await _context.RescueOperations
             .Where(op => op.OperationId == operationId)
             .Select(op => new TeamOperationDto
@@ -306,8 +321,11 @@ public class RescueOperationController : ControllerBase
     }
 
     /// <summary>
-    /// RESCUE_TEAM - Cập nhật trạng thái của nhiệm vụ (In Progress hoặc Completed)
+    /// API cho phép đội cứu hộ (Rescue Team) báo cáo hoàn thành nhiệm vụ hoặc báo cáo từ chối/thất bại.
+    /// Hệ thống sẽ tự động giải phóng đội cứu hộ và phương tiện sau khi hoàn tất.
     /// </summary>
+    /// <param name="id">ID của nhiệm vụ cứu hộ (OperationId).</param>
+    /// <param name="dto">Dữ liệu trạng thái mới (COMPLETED hoặc FAILED).</param>
     [HttpPatch("{id}/status")]
     [Authorize(Roles = "RESCUE_TEAM")]
     public async Task<IActionResult> UpdateOperationStatus(int id, [FromBody] UpdateOperationStatusDto dto)
@@ -322,6 +340,7 @@ public class RescueOperationController : ControllerBase
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
+            // 1. Tìm thông tin nhiệm vụ cứu hộ kèm theo request và team liên quan
             var operation = await _context.RescueOperations
                 .Include(op => op.Request)
                 .Include(op => op.Team)
@@ -333,6 +352,7 @@ public class RescueOperationController : ControllerBase
                 return;
             }
 
+            // 2. Kiểm tra xem người dùng có quyền cập nhật (phải là thành viên của team được giao nhiệm vụ)
             var isMember = await _context.RescueTeamMembers
                 .AnyAsync(m => m.TeamId == operation.TeamId && m.UserId == currentUserId && m.IsActive);
 
@@ -345,18 +365,22 @@ public class RescueOperationController : ControllerBase
             var currentOpStatus = operation.Status;
             var targetStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
 
+            // 3. Xử lý trường hợp HOÀN THÀNH (COMPLETED)
             if (targetStatusKey == "COMPLETED")
             {
+                // Chỉ cho phép hoàn thành nếu nhiệm vụ đang được phân công/thực hiện
                 if (currentOpStatus != "Assigned")
                 {
                     result = Conflict(new { Success = false, Message = $"Không thể hoàn tất nhiệm vụ. Trạng thái hiện tại: {currentOpStatus}" });
                     return;
                 }
 
+                // Cập nhật trạng thái nhiệm vụ và thời gian
                 operation.Status = "Completed";
                 operation.StartedAt ??= now;
                 operation.CompletedAt = now;
 
+                // Cập nhật trạng thái Yêu cầu cứu hộ gốc sang 'Completed'
                 if (operation.Request != null)
                 {
                     operation.Request.Status = "Completed";
@@ -364,11 +388,13 @@ public class RescueOperationController : ControllerBase
                     operation.Request.UpdatedBy = currentUserId;
                 }
 
+                // GIẢI PHÓNG ĐỘI CỨU HỘ: Trạng thái trở về 'AVAILABLE'
                 if (operation.Team != null)
                 {
                     operation.Team.Status = "AVAILABLE";
                 }
 
+                // GIẢI PHÓNG PHƯƠNG TIỆN: Tìm tất cả phương tiện đang dùng và chuyển về 'AVAILABLE'
                 var vehicleIds = await _context.RescueOperationVehicles
                     .Where(rov => rov.OperationId == operation.OperationId)
                     .Select(rov => rov.VehicleId)
@@ -387,6 +413,7 @@ public class RescueOperationController : ControllerBase
                     }
                 }
             }
+            // 4. Xử lý trường hợp THẤT BẠI/HỦY (FAILED)
             else if (targetStatusKey == "FAILED")
             {
                 if (currentOpStatus != "Assigned")
@@ -399,6 +426,7 @@ public class RescueOperationController : ControllerBase
                 operation.StartedAt ??= now;
                 operation.CompletedAt = now;
 
+                // Khi thất bại, Yêu cầu cứu hộ được đẩy lại về trạng thái 'Verified' để Điều phối viên có thể gán cho team khác
                 if (operation.Request != null)
                 {
                     operation.Request.Status = "Verified";
@@ -406,6 +434,7 @@ public class RescueOperationController : ControllerBase
                     operation.Request.UpdatedBy = currentUserId;
                 }
 
+                // Vẫn giải phóng Đội và Phương tiện để họ có thể nhận nhiệm vụ mới
                 if (operation.Team != null)
                 {
                     operation.Team.Status = "AVAILABLE";
@@ -435,6 +464,7 @@ public class RescueOperationController : ControllerBase
                 return;
             }
 
+            // 5. Lưu vết lịch sử thay đổi trạng thái Yêu cầu cứu hộ
             var requestStatusForHistory = operation.Request?.Status ?? (targetStatusKey == "FAILED" ? "Verified" : "Completed");
             _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
             {
@@ -442,7 +472,7 @@ public class RescueOperationController : ControllerBase
                 Status = requestStatusForHistory,
                 Notes = targetStatusKey == "FAILED"
                     ? $"Nhiệm vụ thất bại. Lý do: {dto.Reason}"
-                    : "Đội cứu hộ hoàn tất nhiệm vụ, yêu cầu chuyển trực tiếp sang Completed.",
+                    : "Đội cứu hộ hoàn tất nhiệm vụ, yêu cầu đã được xác nhận hoàn tất thành công.",
                 UpdatedBy = currentUserId,
                 UpdatedAt = now
             });
@@ -454,8 +484,8 @@ public class RescueOperationController : ControllerBase
             {
                 Success = true,
                 Message = targetStatusKey == "FAILED"
-                    ? "Cập nhật trạng thái nhiệm vụ thất bại thành công. Yêu cầu đã quay về Verified."
-                    : "Cập nhật trạng thái Completed thành công. Yêu cầu đã chuyển trực tiếp sang Completed."
+                    ? "Cập nhật trạng thái nhiệm vụ thất bại thành công. Yêu cầu đã quay về trạng thái Verified."
+                    : "Cập nhật trạng thái thành công. Toàn bộ đội và phương tiện đã được giải phóng."
             });
         });
 
@@ -463,13 +493,16 @@ public class RescueOperationController : ControllerBase
     }
 
     /// <summary>
-    /// COORDINATOR - Tìm kiếm các đội cứu hộ ở gần nhất đối với một yêu cầu cứu hộ cụ thể để tiện bề điều phối.
-    /// Thuật toán lấy tọa độ và tính toán khoảng cách đường bộ bằng thuật toán Haversine hoặc qua Google Matrix (tùy IDistanceService).
+    /// API tìm kiếm các đội cứu hộ đang rảnh (AVAILABLE) và ở gần vị trí yêu cầu cứu hộ nhất.
+    /// Tính toán khoảng cách di chuyển thực tế theo đường bộ thông qua dịch vụ DistanceService (OSRM API).
+    /// Hỗ trợ COORDINATOR ra quyết định phân công tối ưu nhất về thời gian di chuyển.
     /// </summary>
+    /// <param name="requestId">ID của yêu cầu cứu hộ cần hỗ trợ.</param>
     [HttpGet("requests/{requestId:int}/nearest-teams")]
     [Authorize(Roles = "COORDINATOR")]
     public async Task<IActionResult> GetNearestTeamsForRequest(int requestId, CancellationToken cancellationToken)
     {
+        // 1. Lấy thông tin tọa độ của yêu cầu cứu hộ từ DB
         var request = await _context.RescueRequests
             .AsNoTracking()
             .Where(r => r.RequestId == requestId)
@@ -491,6 +524,7 @@ public class RescueOperationController : ControllerBase
             return BadRequest(new { Success = false, Message = "Yêu cầu cứu hộ chưa có tọa độ hợp lệ." });
         }
 
+        // 2. Lấy danh sách tất cả các Đội cứu hộ đang rảnh (AVAILABLE) và có tọa độ đóng quân
         var teams = await _context.RescueTeams
             .AsNoTracking()
             .Where(t => t.Status == "AVAILABLE" && t.BaseLatitude.HasValue && t.BaseLongitude.HasValue)
@@ -506,6 +540,7 @@ public class RescueOperationController : ControllerBase
 
         var result = new List<RescueTeamDistanceDto>();
 
+        // 3. Với mỗi đội cứu hộ, gọi API OSRM để tính toán khoảng cách đường bộ tới điểm cứu hộ
         foreach (var team in teams)
         {
             var distanceKm = await _distanceService.GetRoadDistanceKmAsync(
@@ -528,6 +563,7 @@ public class RescueOperationController : ControllerBase
             });
         }
 
+        // 4. Sắp xếp danh sách đội cứu hộ từ gần nhất đến xa nhất và trả về
         var ordered = result
             .OrderBy(x => x.DistanceKm)
             .ToList();

@@ -6,11 +6,11 @@ namespace Flood_Rescue_Coordination.API.Services;
 public interface IEmailService
 {
     /// <summary>
-    /// Gửi mã xác thực OTP qua Email cho người dùng
+    /// Gửi mã xác thực OTP qua Email cho người dùng để phục hồi mật khẩu hoặc xác minh tài khoản.
     /// </summary>
-    /// <param name="toEmail">Địa chỉ email nhận</param>
-    /// <param name="userName">Tên người dùng (hiển thị trong mail)</param>
-    /// <param name="otp">Mã OTP</param>
-    /// <returns>True nếu gửi thành công qua Resend API</returns>
+    /// <param name="toEmail">Địa chỉ email đích của người nhận</param>
+    /// <param name="userName">Tên hiển thị của người dùng trong nội dung email</param>
+    /// <param name="otp">Chuỗi mã OTP gồm các chữ số</param>
+    /// <returns>True nếu email được gửi đi thành công; ngược lại là False.</returns>
     Task<bool> SendOtpEmailAsync(string toEmail, string userName, string otp);
 }

@@ -4,9 +4,6 @@ namespace Flood_Rescue_Coordination.API.DTOs;
 
 public class RegisterRequest
 {
-    [Required(ErrorMessage = "Ten dang nhap la bat buoc")]
-    public string Username { get; set; } = string.Empty;
-
     [Required(ErrorMessage = "Password la bat buoc")]
     [MinLength(5, ErrorMessage = "Password phai co it nhat 5 ky tu")]
     public string Password { get; set; } = string.Empty;

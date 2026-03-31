@@ -7,6 +7,10 @@ using System.Security.Claims;
 
 namespace Flood_Rescue_Coordination.API.Controllers;
 
+/// <summary>
+/// RescueTeamController: Quản lý các hoạt động và nhiệm vụ dành riêng cho Đội cứu hộ.
+/// Cho phép đội cứu hộ xem danh sách nhiệm vụ được giao, cập nhật trạng thái thực hiện và xem thông tin chi tiết.
+/// </summary>
 [ApiController]
 [Route("api/rescue-team")]
 [Authorize(Roles = "RESCUE_TEAM,COORDINATOR,ADMIN")]
@@ -23,25 +27,30 @@ public class RescueTeamController : ControllerBase
     }
 
     /// <summary>
-    /// Đội cứu hộ - Cập nhật trạng thái nhiệm vụ cứu hộ (COMPLETED hoặc FAILED), bao gồm kèm cả lý do nếu thất bại.
-    /// Ghi nhận thay đổi vào lịch sử yêu cầu và giải phóng phương tiện nếu hoàn tất hoặc thất bại.
+    /// Đội cứu hộ - Cập nhật trạng thái nhiệm vụ cứu hộ (COMPLETED hoặc FAILED).
     /// </summary>
+    /// <param name="operationId">ID của nhiệm vụ cần cập nhật.</param>
+    /// <param name="dto">Trạng thái mới và lý do (nếu thất bại).</param>
+    /// <returns>Kết quả cập nhật trạng thái.</returns>
     [HttpPut("operations/{operationId}/status")]
     public async Task<IActionResult> UpdateMissionStatus(
         int operationId,
         [FromBody] UpdateMissionStatusDto dto)
     {
+        // 1. Kiểm tra tính hợp lệ của dữ liệu đầu vào
         if (dto == null)
         {
             return BadRequest(new { Success = false, Message = "Dữ liệu gửi lên không hợp lệ." });
         }
 
+        // 2. Xác thực định danh người dùng từ Token
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var userId))
         {
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
         }
 
+        // 3. Chuẩn hóa trạng thái mục tiêu
         var targetStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
         var targetStatus = targetStatusKey == "COMPLETED"
             ? "Completed"
@@ -58,6 +67,7 @@ public class RescueTeamController : ControllerBase
             });
         }
 
+        // Ràng buộc: Thất bại thì phải có lý do
         if (targetStatus == "Failed" && string.IsNullOrWhiteSpace(dto.Reason))
         {
             return BadRequest(new
@@ -67,6 +77,7 @@ public class RescueTeamController : ControllerBase
             });
         }
 
+        // 4. Truy vấn thông tin Operation và Request liên quan
         var operation = await _context.RescueOperations
             .Include(o => o.Request)
             .Include(o => o.Team)
@@ -83,6 +94,7 @@ public class RescueTeamController : ControllerBase
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ liên kết." });
         }
 
+        // 5. Kiểm tra quyền hạn: User phải là thành viên ĐANG HOẠT ĐỘNG của Team được giao nhiệm vụ này
         var isMember = await _context.RescueTeamMembers
             .AnyAsync(m => m.TeamId == operation.TeamId
                         && m.UserId == userId
@@ -92,6 +104,7 @@ public class RescueTeamController : ControllerBase
             return Forbid();
         }
 
+        // 6. Kiểm tra logic trạng thái hiện tại
         if (operation.Status != "Assigned")
         {
             return BadRequest(new
@@ -112,18 +125,23 @@ public class RescueTeamController : ControllerBase
 
         var now = DateTime.UtcNow;
 
+        // 7. Cập nhật trạng thái nhiệm vụ (Operation)
         operation.Status = targetStatus;
-        operation.StartedAt ??= now;
+        operation.StartedAt ??= now; // Ghi nhận lúc bắt đầu nếu chưa có
         operation.CompletedAt = now;
 
+        // 8. Cập nhật yêu cầu cứu hộ (Request)
+        // Nếu thất bại: Trả yêu cầu về trạng thái Verified để Coordinator có thể phân công đội khác
         if (targetStatus == "Failed")
         {
             request.Status = "Verified";
         }
+        // Lưu ý: Nếu Thành công (Completed), Request vẫn giữ Assigned cho đến khi người dân xác nhận báo an toàn
 
         request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
+        // 9. Ghi lịch sử trạng thái yêu cầu nếu thất bại
         if (targetStatus == "Failed")
         {
             await UpsertRequestStatusHistoryAsync(
@@ -134,11 +152,13 @@ public class RescueTeamController : ControllerBase
                 now);
         }
 
+        // 10. Giải phóng trạng thái cho Đội cứu hộ (AVAILABLE)
         if (operation.Team != null)
         {
             operation.Team.Status = "AVAILABLE";
         }
 
+        // 11. Giải phóng tất cả các phương tiện được gán cho nhiệm vụ này
         var vehicleIds = await _context.RescueOperationVehicles
             .Where(ov => ov.OperationId == operation.OperationId)
             .Select(ov => ov.VehicleId)
@@ -157,20 +177,21 @@ public class RescueTeamController : ControllerBase
             }
         }
 
+        // 12. Lưu các thay đổi vào DB với xử lý tranh chấp (Concurrency)
         try
         {
             await _context.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Conflict(new { Success = false, Message = "Dữ liệu đã bị thay đổi bởi người khác." });
+            return Conflict(new { Success = false, Message = "Dữ liệu đã bị thay đổi bởi người khác. Vui lòng thử lại." });
         }
         catch (DbUpdateException ex) when (IsDuplicateRequestStatusHistoryError(ex))
         {
             return Conflict(new
             {
                 Success = false,
-                Message = "Lịch sử trạng thái của yêu cầu đã tồn tại cho trạng thái này. Vui lòng tải lại dữ liệu và thử lại."
+                Message = "Lịch sử trạng thái của yêu cầu đã tồn tại. Vui lòng tải lại dữ liệu."
             });
         }
         catch (DbUpdateException)
@@ -178,7 +199,7 @@ public class RescueTeamController : ControllerBase
             return StatusCode(500, new
             {
                 Success = false,
-                Message = "Không thể lưu thay đổi nhiệm vụ vào cơ sở dữ liệu."
+                Message = "Lỗi hệ thống khi lưu dữ liệu nhiệm vụ."
             });
         }
 
@@ -192,24 +213,27 @@ public class RescueTeamController : ControllerBase
             StartedAt = operation.StartedAt,
             CompletedAt = operation.CompletedAt,
             Message = targetStatus == "Failed"
-                ? "Cập nhật nhiệm vụ thất bại thành công. Yêu cầu đã quay lại Verified."
-                : "Đã ghi nhận đội cứu hộ hoàn tất. Yêu cầu vẫn ở Assigned và người dân có thể báo an toàn để chuyển sang Completed."
+                ? "Đã ghi nhận nhiệm vụ thất bại. Yêu cầu đã quay lại trạng thái Chờ xử lý (Verified)."
+                : "Xác nhận hoàn tất nhiệm vụ thành công. Chờ người dân báo an toàn để đóng yêu cầu hoàn toàn."
         });
     }
 
     /// <summary>
-    /// Đội cứu hộ - Lấy danh sách các nhiệm vụ đang được phân công (Status = Assigned) 
-    /// cho các đội cứu hộ mà user hiện tại đang tham gia (IsActive = true).
+    /// Đội cứu hộ - Lấy danh sách nhiệm vụ được giao cho các đội mà user hiện tại đang tham gia.
+    /// Chứa các thông tin quan trọng như: Địa chỉ, Số điện thoại người dân, Mức độ ưu tiên, Phương tiện gán kèm.
     /// </summary>
+    /// <returns>Danh sách các nhiệm vụ đang ở trạng thái 'Assigned'.</returns>
     [HttpGet("my-operations")]
     public async Task<IActionResult> GetMyOperations()
     {
+        // 1. Trích xuất ID người dùng
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var userId))
         {
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
         }
 
+        // 2. Tìm danh sách TeamId mà user này là thành viên đang hoạt động
         var myTeamIds = await _context.RescueTeamMembers
             .Where(m => m.UserId == userId && m.IsActive)
             .Select(m => m.TeamId)
@@ -220,6 +244,7 @@ public class RescueTeamController : ControllerBase
             return Ok(new { Success = true, Message = "Bạn chưa thuộc đội cứu hộ nào.", Data = new List<object>() });
         }
 
+        // 3. Lấy ra các nhiệm vụ 'Assigned' của những Team đó
         var operations = await _context.RescueOperations
             .Include(o => o.Request)
             .Include(o => o.Team)
@@ -234,9 +259,10 @@ public class RescueTeamController : ControllerBase
                 RequestAddress = o.Request != null ? o.Request.Address : null,
                 RequestDescription = o.Request != null ? o.Request.Description : null,
                 RequestPhone = o.Request != null ? o.Request.Phone : null,
+                // Chuyển ID mức độ ưu tiên sang nhãn văn bản để dễ đọc
                 PriorityName = o.Request != null ? (o.Request.PriorityLevelId == 1 ? "CAO" :
-                                                    o.Request.PriorityLevelId == 2 ? "TRUNG BINH" :
-                                                    o.Request.PriorityLevelId == 3 ? "THAP" : "THONG THUONG") : null,
+                                                    o.Request.PriorityLevelId == 2 ? "TRUNG BÌNH" :
+                                                    o.Request.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG") : null,
                 RequestLatitude = o.Request != null ? o.Request.Latitude : (decimal?)null,
                 RequestLongitude = o.Request != null ? o.Request.Longitude : (decimal?)null,
                 TeamName = o.Team != null ? o.Team.TeamName : null,
@@ -245,6 +271,7 @@ public class RescueTeamController : ControllerBase
                 o.StartedAt,
                 o.CompletedAt,
                 o.EstimatedTime,
+                // Lấy danh sách tên phương tiện được phân bổ cho nhiệm vụ
                 Vehicles = _context.RescueOperationVehicles
                     .Where(ov => ov.OperationId == o.OperationId)
                     .Join(_context.Vehicles, ov => ov.VehicleId, v => v.VehicleId, (_, v) => v.VehicleName)
@@ -256,18 +283,22 @@ public class RescueTeamController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy chi tiết một nhiệm vụ (operation) cụ thể dựa vào ID. 
-    /// Phương thức có phân quyền, chỉ lấy nếu thuộc quyền quản lý của đội mà user đó tham gia.
+    /// Lấy toàn bộ thông tin chi tiết của một nhiệm vụ cụ thể.
+    /// Có kiểm tra quyền hạn (chỉ xem được nhiệm vụ của đội mình tham gia).
     /// </summary>
+    /// <param name="operationId">ID nhiệm vụ.</param>
+    /// <returns>Dữ liệu chi tiết nhiệm vụ và danh sách phương tiện.</returns>
     [HttpGet("operations/{operationId:int}")]
     public async Task<IActionResult> GetMissionDetails(int operationId)
     {
+        // 1. Xác thực User
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var userId))
         {
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
         }
 
+        // 2. Truy vấn thông tin chi tiết nhiệm vụ
         var operation = await _context.RescueOperations
             .Include(o => o.Request)
             .Include(o => o.Team)
@@ -282,8 +313,8 @@ public class RescueTeamController : ControllerBase
                 RequestDescription = o.Request != null ? o.Request.Description : null,
                 RequestPhone = o.Request != null ? o.Request.Phone : null,
                 PriorityName = o.Request != null ? (o.Request.PriorityLevelId == 1 ? "CAO" :
-                                                    o.Request.PriorityLevelId == 2 ? "TRUNG BINH" :
-                                                    o.Request.PriorityLevelId == 3 ? "THAP" : "THONG THUONG") : null,
+                                                    o.Request.PriorityLevelId == 2 ? "TRUNG BÌNH" :
+                                                    o.Request.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG") : null,
                 RequestLatitude = o.Request != null ? o.Request.Latitude : (decimal?)null,
                 RequestLongitude = o.Request != null ? o.Request.Longitude : (decimal?)null,
                 TeamName = o.Team != null ? o.Team.TeamName : null,
@@ -304,6 +335,7 @@ public class RescueTeamController : ControllerBase
             return NotFound(new { Success = false, Message = "Không tìm thấy nhiệm vụ." });
         }
 
+        // 3. Phân quyền: Lấy TeamId gán cho nhiệm vụ này để kiểm tra tư cách thành viên của User
         var teamId = await _context.RescueOperations
             .Where(ro => ro.OperationId == operationId)
             .Select(ro => ro.TeamId)
@@ -316,7 +348,7 @@ public class RescueTeamController : ControllerBase
 
         if (!isMember)
         {
-            return Forbid();
+            return Forbid(); // Không có quyền xem nhiệm vụ của đội khác
         }
 
         return Ok(new { Success = true, Data = operation });

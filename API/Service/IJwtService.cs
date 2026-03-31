@@ -9,22 +9,32 @@ namespace Flood_Rescue_Coordination.API.Services;
 public interface IJwtService
 {
     /// <summary>
-    /// Tạo Access Token mới chứa các Claims dựa trên thông tin định danh của User.
+    /// Tạo ra một chuỗi JWT Access Token mới dựa trên thông tin của User.
+    /// Token này sẽ chứa các Claims quan trọng như UserId, Role, FullName...
     /// </summary>
+    /// <param name="user">Đối tượng người dùng cần cấp token</param>
+    /// <returns>Chuỗi JWT Token được ký bảo mật</returns>
     string GenerateAccessToken(User user);
 
     /// <summary>
-    /// Tạo ra một chuỗi ngẫu nhiên bảo mật dùng làm Refresh Token kéo dài phiên đăng nhập.
+    /// Tạo ra một chuỗi ngẫu nhiên duy nhất dùng làm Refresh Token.
+    /// Refresh Token dùng để yêu cầu cấp Access Token mới mà không cần đăng nhập lại.
     /// </summary>
+    /// <returns>Chuỗi ký tự Refresh Token</returns>
     string GenerateRefreshToken();
 
     /// <summary>
-    /// Phân tích Jwt Token lấy về thời gian hết hạn (Expiration Time).
+    /// Đọc thông tin từ một chuỗi JWT để lấy ra thời gian hết hạn của nó.
     /// </summary>
+    /// <param name="token">Chuỗi JWT Token cần kiểm tra</param>
+    /// <returns>Thời điểm hết hạn (DateTime)</returns>
     DateTime GetTokenExpiration(string token);
 
     /// <summary>
-    /// Phân tích Token đã hết hạn, trả về cấu trúc xác thực cơ bản (ClaimsPrincipal) bỏ qua lỗi thời hạn, thường áp dụng cho Refreshing token phase.
+    /// Trích xuất các thông tin định danh (ClaimsPrincipal) từ một Token đã hết hạn.
+    /// Được sử dụng trong luồng làm mới Access Token (Token Refresh).
     /// </summary>
+    /// <param name="token">Chuỗi Access Token đã hết hạn</param>
+    /// <returns>Các thông tin định danh của người dùng hoặc null nếu token không hợp lệ</returns>
     ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
 }

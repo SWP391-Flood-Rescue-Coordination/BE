@@ -8,42 +8,51 @@ using Microsoft.IdentityModel.Tokens;
 namespace Flood_Rescue_Coordination.API.Services;
 
 /// <summary>
-/// Service triển khai chức năng liên quan đến Token định danh JWT.
-/// Đảm nhiệm đọc config (secret key, issuer...) để khởi tạo và kiểm chứng Token.
+/// JwtService: Quản lý việc tạo, phân tích và kiểm tra tính hợp lệ của JSON Web Tokens (JWT).
+/// Sử dụng các thiết lập từ cấu hình hệ thống (JwtSettings).
 /// </summary>
 public class JwtService : IJwtService
 {
     private readonly IConfiguration _configuration;
 
+    /// <summary>
+    /// Constructor khởi tạo JwtService.
+    /// </summary>
     public JwtService(IConfiguration configuration)
     {
         _configuration = configuration;
     }
 
     /// <summary>
-    /// Lấy định danh user, tạo claims bảo mật, dùng mã hóa ký Symmetric key để sinh Access Token mới.
+    /// Tạo Access Token chứa các thông tin định danh (Claims) của người dùng.
     /// </summary>
+    /// <param name="user">Thông tin người dùng cần mã hóa vào token.</param>
+    /// <returns>Chuỗi JWT Token đã được ký số.</returns>
     public string GenerateAccessToken(User user)
     {
+        // 1. Đọc các tham số cấu hình từ JwtSettings
         var secretKey = _configuration["JwtSettings:SecretKey"]!;
         var issuer = _configuration["JwtSettings:Issuer"]!;
         var audience = _configuration["JwtSettings:Audience"]!;
         var expirationMinutes = int.Parse(_configuration["JwtSettings:AccessTokenExpirationMinutes"]!);
 
+        // 2. Thiết lập khóa ký bảo mật (Symmetric Security Key)
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        // 3. Định nghĩa danh sách các quyền hạn và thông tin (Claims) đính kèm trong Token
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
-            new Claim(ClaimTypes.Role, user.Role),
-            new Claim("fullName", user.FullName ?? ""),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+            new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),        // ID người dùng
+            new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),          // Tên đăng nhập
+            new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),           // Email
+            new Claim(ClaimTypes.Role, user.Role),                                // Vai trò (Admin, Citizen, v.v.)
+            new Claim("fullName", user.FullName ?? ""),                           // Họ tên đầy đủ
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),     // ID định danh duy nhất cho Token (chống Replay Attack)
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64) // Thời điểm phát hành
         };
 
+        // 4. Khởi tạo cấu trúc Token
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
@@ -52,12 +61,15 @@ public class JwtService : IJwtService
             signingCredentials: credentials
         );
 
+        // 5. Chuyển đổi đối tượng Token thành chuỗi văn bản (JWT string)
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     /// <summary>
-    /// Sinh chuỗi bytes ngẫu nhiên chuẩn bảo mật làm Refresh Token (Mã hóa Base64).
+    /// Sinh chuỗi Refresh Token ngẫu nhiên có độ bảo mật cao.
+    /// Sử dụng RandomNumberGenerator để đảm bảo tính không thể dự đoán.
     /// </summary>
+    /// <returns>Chuỗi Refresh Token dưới dạng Base64.</returns>
     public string GenerateRefreshToken()
     {
         var randomNumber = new byte[32];
@@ -67,7 +79,7 @@ public class JwtService : IJwtService
     }
 
     /// <summary>
-    /// Phân tích Jwt Token mà không cần validate chữ ký, chỉ để lấy về thuộc tính ValidTo (thời hạn).
+    /// Đọc thông tin từ chuỗi JWT đã cấp để lấy thời gian hết hạn (ValidTo).
     /// </summary>
     public DateTime GetTokenExpiration(string token)
     {
@@ -77,23 +89,30 @@ public class JwtService : IJwtService
     }
 
     /// <summary>
-    /// Tắt ValidateLifetime trong param cấu hình để có thể decode lấy dữ liệu ClaimsPrincipal từ một Token dù nó đã hết hạn.
+    /// Trích xuất thông tin người dùng (Principal) từ một Token đã hết hạn.
+    /// Dùng trong quá trình Refresh Token để xác định ai đang yêu cầu cấp mới.
     /// </summary>
     public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
     {
         var secretKey = _configuration["JwtSettings:SecretKey"]!;
+
+        // Thiết lập các tham số kiểm tra Token
         var tokenValidationParameters = new TokenValidationParameters
         {
             ValidateAudience = false,
             ValidateIssuer = false,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-            ValidateLifetime = false // Quan trọng: không validate lifetime để lấy principal từ token đã hết hạn
+            // Quan trọng: Tắt kiểm tra thời gian hết hạn để có thể đọc thông tin từ Token cũ
+            ValidateLifetime = false 
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();
+        
+        // Tiến hành giải mã và xác thực chữ ký (chỉ bỏ qua phần thời gian)
         var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
 
+        // Kiểm tra xem thuật toán mã hóa (Algorithm) có đúng là HS256 không
         if (securityToken is not JwtSecurityToken jwtSecurityToken || 
             !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
         {

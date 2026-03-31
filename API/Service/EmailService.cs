@@ -7,13 +7,19 @@ using System.Net.Http.Headers;
 namespace Flood_Rescue_Coordination.API.Services;
 
 /// <summary>
-/// Dịch vụ gửi Email sử dụng Resend.com API
+/// EmailService: Triển khai gửi email thông qua Resend API.
+/// Chuyên dùng để gửi mã OTP xác thực và các thông báo hệ thống.
 /// </summary>
 public class EmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
 
+    /// <summary>
+    /// Constructor khởi tạo EmailService.
+    /// </summary>
+    /// <param name="configuration">Cấu hình hệ thống (ApiKey, FromEmail).</param>
+    /// <param name="httpClientFactory">Factory để tạo HttpClient gửi request REST.</param>
     public EmailService(IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
         _configuration = configuration;
@@ -21,23 +27,30 @@ public class EmailService : IEmailService
     }
 
     /// <summary>
-    /// Gửi OTP thông qua Email dùng Resend REST API (không cần thêm SDK)
+    /// Gửi mã OTP phục hồi mật khẩu qua Email.
+    /// Sử dụng giao thức HTTP POST tới Resend API với nội dung HTML.
     /// </summary>
+    /// <param name="toEmail">Địa chỉ nhận.</param>
+    /// <param name="userName">Tên hiển thị của người dùng.</param>
+    /// <param name="otp">Mã số OTP.</param>
+    /// <returns>True nếu gửi thành công (HTTP 200/201).</returns>
     public async Task<bool> SendOtpEmailAsync(string toEmail, string userName, string otp)
     {
+        // 1. Lấy cấu hình từ appsettings.json
         var apiKey = _configuration["ResendSettings:ApiKey"];
         var fromEmail = _configuration["ResendSettings:FromEmail"] ?? "onboarding@resend.dev";
 
+        // 2. Tạo HttpClient và thiết lập Header Authorization (Bearer Token)
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-        // Chuẩn bị payload dữ liệu gửi tới Resend API
+        // 3. Chuẩn bị Payload dữ liệu theo định dạng yêu cầu của Resend API
         var emailData = new
         {
             from = $"Flood Rescue <{fromEmail}>",
             to = new[] { toEmail },
             subject = "Mã xác thực phục hồi mật khẩu - Flood Rescue",
-            // Tạo template HTML cho Email (thân thiện hơn SMS)
+            // 4. Tạo giao diện Email bằng HTML để thân thiện với người dùng
             html = $@"
                 <div style='font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;'>
                     <h2 style='color: #007bff;'>Xác minh phục hồi mật khẩu</h2>
@@ -58,11 +71,12 @@ public class EmailService : IEmailService
 
         try
         {
+            // 5. Gửi request POST tới Resend API endpoint
             var response = await client.PostAsync("https://api.resend.com/emails", content);
             
             if (!response.IsSuccessStatusCode)
             {
-                // Đọc lỗi chi tiết từ Resend để báo lại cho Console
+                // 6. Log lỗi chi tiết nếu API trả về lỗi (ví dụ: Sai API Key, Domain chưa xác thực)
                 var errorInfo = await response.Content.ReadAsStringAsync();
                 Console.WriteLine("==========================================");
                 Console.WriteLine($"RESEND API ERROR: {response.StatusCode}");
@@ -75,6 +89,7 @@ public class EmailService : IEmailService
         }
         catch (Exception ex)
         {
+            // 7. Xử lý các ngoại lệ kết nối mạng hoặc JSON
             Console.WriteLine($"EXCEPTION IN EMAIL SERVICE: {ex.Message}");
             return false;
         }

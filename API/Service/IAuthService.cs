@@ -2,6 +2,9 @@ using Flood_Rescue_Coordination.API.DTOs;
 
 namespace Flood_Rescue_Coordination.API.Services;
 
+/// <summary>
+/// Định nghĩa các dịch vụ xác thực người dùng bao gồm đăng nhập, đăng ký và quản lý token.
+/// </summary>
 public interface IAuthService
 {
     /// <summary>
