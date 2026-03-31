@@ -13,7 +13,8 @@ public class StockHistoryController : ControllerBase
     private readonly ApplicationDbContext _context;
 
     /// <summary>
-    /// Constructor khởi tạo StockHistoryController với DbContext.
+    /// API Quản lý (Admin/Manager): Truy vấn lịch sử biến động kho vật tư cứu trợ.
+    /// Hỗ trợ lọc theo loại giao dịch: IN (Nhập), OUT (Xuất).
     /// </summary>
     public StockHistoryController(ApplicationDbContext context)
     {
@@ -34,39 +35,24 @@ public class StockHistoryController : ControllerBase
             var upper = type.ToUpper();
             if (upper != "IN" && upper != "OUT")
                 return BadRequest(new { Success = false, Message = "type phải là 'IN' hoặc 'OUT'." });
-
             type = upper;
         }
 
         var query = _context.StockHistories.AsQueryable();
-
-        if (!string.IsNullOrEmpty(type))
-            query = query.Where(s => s.Type == type);
+        if (!string.IsNullOrEmpty(type)) query = query.Where(s => s.Type == type);
 
         var items = await query
             .OrderByDescending(s => s.Date)
-            .Select(s => new StockHistoryDto
-            {
-                Id     = s.Id,
-                Type   = s.Type,
-                Date   = s.Date,
-                Body   = s.Body,
-                FromTo = s.FromTo,
-                Note   = s.Note
-            })
+            .Select(s => new StockHistoryDto { Id = s.Id, Type = s.Type, Date = s.Date, Body = s.Body, FromTo = s.FromTo, Note = s.Note })
             .ToListAsync();
 
-        return Ok(new
-        {
-            Success = true,
-            Type    = type ?? "ALL",
-            Count   = items.Count,
-            Data    = items
-        });
+        return Ok(new { Success = true, Type = type ?? "ALL", Count = items.Count, Data = items });
     }
 
     /// <summary>
-    /// Tạo phiếu nhập kho vật tư cứu trợ khi tiếp nhận hàng từ các nguồn hỗ trợ.
+    /// API Quản lý (Manager): Thực hiện nhập kho vật tư cứu trợ (Import).
+    /// Quy trình: Cập nhật tăng số lượng tồn kho (Quantity) cho từng vật phẩm và ghi lại lịch sử giao dịch.
+    /// Sử dụng Transaction để đảm bảo tính nhất quán của dữ liệu kho.
     /// </summary>
     [HttpPost("import")]
     [Authorize(Roles = "MANAGER")]
@@ -77,15 +63,10 @@ public class StockHistoryController : ControllerBase
             return BadRequest(new { Success = false, Message = "Danh sách vật tư không được rỗng." });
         }
 
+        // Kiểm tra nguồn gốc nhập hàng (Source) bám theo danh sách đơn vị đăng ký trong hệ thống
         var sourceUnitName = await ResolveActiveStockUnitNameAsync(request.Source, forImport: true);
         if (sourceUnitName == null)
-        {
-            return BadRequest(new
-            {
-                Success = false,
-                Message = "Nguồn nhập không tồn tại hoặc đã ngưng sử dụng. Vui lòng chọn từ danh sách đơn vị hợp lệ."
-            });
-        }
+            return BadRequest(new { Success = false, Message = "Nguồn nhập không tồn tại hoặc đã bị vô hiệu hoá." });
 
         var strategy = _context.Database.CreateExecutionStrategy();
         
@@ -99,20 +80,11 @@ public class StockHistoryController : ControllerBase
                 foreach (var itemInput in request.Items)
                 {
                     var reliefItem = await _context.ReliefItems.FindAsync(itemInput.ItemId);
-                    if (reliefItem == null)
-                    {
-                        throw new Exception($"Vật tư với ID {itemInput.ItemId} không tồn tại trong hệ thống.");
-                    }
-
-                    if (!reliefItem.IsActive)
-                    {
-                        throw new Exception($"Vật tư '{reliefItem.ItemName}' (ID: {itemInput.ItemId}) đang trong trạng thái ngưng hoạt động.");
-                    }
+                    if (reliefItem == null || !reliefItem.IsActive)
+                        throw new Exception($"Vật tư (ID: {itemInput.ItemId}) không tồn tại hoặc đã ngừng cung cấp.");
 
                     if (itemInput.Quantity <= 0)
-                    {
-                        throw new Exception($"Số lượng vật tư '{reliefItem.ItemName}' phải lớn hơn 0.");
-                    }
+                        throw new Exception($"Số lượng nhập vào phải lớn hơn 0.");
 
                     reliefItem.Quantity += itemInput.Quantity;
                     importedItemsBodyList.Add($"{itemInput.ItemId}-{itemInput.Quantity}");
@@ -126,37 +98,26 @@ public class StockHistoryController : ControllerBase
                     Date = DateTime.UtcNow,
                     FromTo = sourceUnitName,
                     Body = bodyContent.Length > 500 ? bodyContent.Substring(0, 497) + "..." : bodyContent,
-                    Note = request.Note?.Length > 500 ? request.Note.Substring(0, 497) + "..." : request.Note
+                    Note = request.Note
                 };
 
                 _context.StockHistories.Add(history);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Ok(new
-                {
-                    Success = true,
-                    Message = "Tạo phiếu nhập kho thành công.",
-                    HistoryId = history.Id,
-                    Data = new
-                    {
-                        history.Type,
-                        history.Date,
-                        history.FromTo,
-                        history.Body,
-                        history.Note
-                    }
-                });
+                return Ok(new { Success = true, Message = "Nhập kho thành công." });
             });
         }
         catch (Exception ex)
         {
-            return BadRequest(new { Success = false, Message = "Lỗi khi tạo phiếu nhập kho: " + ex.Message });
+            return BadRequest(new { Success = false, Message = "Lỗi nghiệp vụ: " + ex.Message });
         }
     }
 
     /// <summary>
-    /// Tạo phiếu xuất kho vật tư cứu trợ để điều phối đến đơn vị nhận (tỉnh/xóm).
+    /// API Quản lý (Manager): Thực hiện xuất kho vật tư (Export) để điều phối cứu trợ.
+    /// Quy trình: Kiểm tra tồn kho hiện tại, trừ số lượng và ghi nhận đơn vị nhận hàng (Destination).
+    /// Sử dụng Transaction để đảm bảo không bị xuất quá số lượng hiện có.
     /// </summary>
     [HttpPost("export")]
     [Authorize(Roles = "MANAGER")]
@@ -166,8 +127,7 @@ public class StockHistoryController : ControllerBase
             return BadRequest(new { Success = false, Message = "Danh sách vật tư xuất không được rỗng." });
 
         var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdStr, out int userId))
-            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
 
         var strategy = _context.Database.CreateExecutionStrategy();
 
@@ -210,11 +170,10 @@ public class StockHistoryController : ControllerBase
                 foreach (var itemInput in request.Items)
                 {
                     var reliefItem = await _context.ReliefItems.FindAsync(itemInput.ItemId);
-                    if (reliefItem == null)
-                        throw new Exception($"Vật tư với ID {itemInput.ItemId} không tồn tại.");
+                    if (reliefItem == null) throw new Exception($"Vật tư (ID: {itemInput.ItemId}) không còn trong kho.");
 
                     if (reliefItem.Quantity < itemInput.Quantity)
-                        throw new Exception($"Vật tư '{reliefItem.ItemName}' không đủ tồn kho (Cần: {itemInput.Quantity}, Hiện có: {reliefItem.Quantity}).");
+                        throw new Exception($"Vật tư '{reliefItem.ItemName}' không đủ tồn kho (Hiện có: {reliefItem.Quantity}).");
 
                     reliefItem.Quantity -= itemInput.Quantity;
                     totalExportQuantity += itemInput.Quantity;
@@ -237,7 +196,6 @@ public class StockHistoryController : ControllerBase
                 };
 
                 _context.StockHistories.Add(history);
-
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -258,35 +216,25 @@ public class StockHistoryController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(new { Success = false, Message = "Lỗi khi xuất kho: " + ex.Message });
+            return BadRequest(new { Success = false, Message = "Lỗi nghiệp vụ xuất kho: " + ex.Message });
         }
     }
 
     /// <summary>
-    /// Helper resolve đơn vị hợp lệ từ bảng stock_units.
-    /// - forImport = true  -> chỉ nhận đơn vị supports_import + is_active
-    /// - forImport = false -> chỉ nhận đơn vị supports_export + is_active
-    /// Cho phép FE gửi theo UnitCode hoặc UnitName.
+    /// Hàm hỗ trợ: Xác thực và chuẩn hoá tên đơn vị (Source/Destination) từ bảng stock_units.
+    /// Đảm bảo dữ liệu đầu vào khớp với danh sách đơn vị tham chiếu của hệ thống.
     /// </summary>
     private async Task<string?> ResolveActiveStockUnitNameAsync(string rawValue, bool forImport)
     {
-        if (string.IsNullOrWhiteSpace(rawValue))
-        {
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(rawValue)) return null;
 
-        var normalized = rawValue.Trim();
-        var normalizedUpper = normalized.ToUpperInvariant();
+        var normalizedUpper = rawValue.Trim().ToUpperInvariant();
 
-        var query = _context.StockUnits
+        return await _context.StockUnits
             .AsNoTracking()
-            .Where(u => u.IsActive && (forImport ? u.SupportsImport : u.SupportsExport));
-
-        var resolvedName = await query
+            .Where(u => u.IsActive && (forImport ? u.SupportsImport : u.SupportsExport))
             .Where(u => u.UnitCode.ToUpper() == normalizedUpper || u.UnitName.ToUpper() == normalizedUpper)
             .Select(u => u.UnitName)
             .FirstOrDefaultAsync();
-
-        return resolvedName;
     }
 }
