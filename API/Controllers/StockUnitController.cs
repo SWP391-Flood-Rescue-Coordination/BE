@@ -276,4 +276,50 @@ public class StockUnitController : ControllerBase
             SupportsExport = u.SupportsExport
         };
     }
+
+    /// <summary>
+    /// Lấy toàn bộ danh sách đơn vị trong database, không lọc theo import/export hay active/inactive.
+    /// </summary>
+    /// <remarks>
+    /// Route: `GET /api/StockUnit/all`
+    /// Phân quyền: `ADMIN`
+    ///
+    /// Công dụng:
+    /// - Dùng cho màn quản trị để xem toàn bộ dữ liệu đơn vị.
+    /// - Bao gồm cả đơn vị active/inactive.
+    /// - Bao gồm cả đơn vị chỉ dùng cho import, chỉ dùng cho export, hoặc dùng cho cả hai.
+    ///
+    /// Nơi FE gọi tới:
+    /// - Màn hình quản trị danh mục đơn vị kho.
+    /// </remarks>
+    [HttpGet("all")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> GetAllUnits()
+    {
+        var units = await _context.StockUnits
+            .AsNoTracking()
+            .OrderBy(u => u.UnitName)
+            .Select(u => new StockUnitDetailDto
+            {
+                StockUnitId = u.StockUnitId,
+                Id = u.UnitCode,
+                Name = u.UnitName,
+                Type = u.UnitType,
+                Region = u.Region,
+                Address = u.Address,
+                SupportsImport = u.SupportsImport,
+                SupportsExport = u.SupportsExport,
+                IsActive = u.IsActive,
+                CreatedAt = u.CreatedAt,
+                UpdatedAt = u.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            Success = true,
+            Count = units.Count,
+            Data = units
+        });
+    }
 }

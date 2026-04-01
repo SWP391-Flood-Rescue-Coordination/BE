@@ -50,3 +50,18 @@ public class UpdateStockUnitStatusRequest
     /// </summary>
     public bool? IsActive { get; set; }
 }
+
+public class StockUnitDetailDto
+{
+    public int StockUnitId { get; set; }
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Type { get; set; }
+    public string? Region { get; set; }
+    public string? Address { get; set; }
+    public bool SupportsImport { get; set; }
+    public bool SupportsExport { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
