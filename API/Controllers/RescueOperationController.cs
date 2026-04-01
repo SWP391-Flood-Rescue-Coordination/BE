@@ -325,7 +325,7 @@ public class RescueOperationController : ControllerBase
     /// Hệ thống sẽ tự động giải phóng đội cứu hộ và phương tiện sau khi hoàn tất.
     /// </summary>
     /// <param name="id">ID của nhiệm vụ cứu hộ (OperationId).</param>
-    /// <param name="dto">Dữ liệu trạng thái mới (COMPLETED hoặc FAILED).</param>
+    /// <param name="dto">Dữ liệu trạng thái mới (COMPLETED).</param>
     [HttpPatch("{id}/status")]
     [Authorize(Roles = "RESCUE_TEAM")]
     public async Task<IActionResult> UpdateOperationStatus(int id, [FromBody] UpdateOperationStatusDto dto)
@@ -380,14 +380,6 @@ public class RescueOperationController : ControllerBase
                 operation.StartedAt ??= now;
                 operation.CompletedAt = now;
 
-                // Cập nhật trạng thái Yêu cầu cứu hộ gốc sang 'Completed'
-                if (operation.Request != null)
-                {
-                    operation.Request.Status = "Completed";
-                    operation.Request.UpdatedAt = now;
-                    operation.Request.UpdatedBy = currentUserId;
-                }
-
                 // GIẢI PHÓNG ĐỘI CỨU HỘ: Trạng thái trở về 'AVAILABLE'
                 if (operation.Team != null)
                 {
@@ -413,66 +405,19 @@ public class RescueOperationController : ControllerBase
                     }
                 }
             }
-            // 4. Xử lý trường hợp THẤT BẠI/HỦY (FAILED)
-            else if (targetStatusKey == "FAILED")
-            {
-                if (currentOpStatus != "Assigned")
-                {
-                    result = Conflict(new { Success = false, Message = $"Không thể cập nhật thất bại. Trạng thái hiện tại: {currentOpStatus}" });
-                    return;
-                }
-
-                operation.Status = "Failed";
-                operation.StartedAt ??= now;
-                operation.CompletedAt = now;
-
-                // Khi thất bại, Yêu cầu cứu hộ được đẩy lại về trạng thái 'Verified' để Điều phối viên có thể gán cho team khác
-                if (operation.Request != null)
-                {
-                    operation.Request.Status = "Verified";
-                    operation.Request.UpdatedAt = now;
-                    operation.Request.UpdatedBy = currentUserId;
-                }
-
-                // Vẫn giải phóng Đội và Phương tiện để họ có thể nhận nhiệm vụ mới
-                if (operation.Team != null)
-                {
-                    operation.Team.Status = "AVAILABLE";
-                }
-
-                var vehicleIds = await _context.RescueOperationVehicles
-                    .Where(rov => rov.OperationId == operation.OperationId)
-                    .Select(rov => rov.VehicleId)
-                    .ToListAsync();
-
-                if (vehicleIds.Any())
-                {
-                    var vehiclesToRelease = await _context.Vehicles
-                        .Where(v => vehicleIds.Contains(v.VehicleId))
-                        .ToListAsync();
-
-                    foreach (var v in vehiclesToRelease)
-                    {
-                        v.Status = "AVAILABLE";
-                        v.UpdatedAt = now;
-                    }
-                }
-            }
             else
             {
-                result = BadRequest(new { Success = false, Message = "Trạng thái mới không hợp lệ. Chỉ chấp nhận COMPLETED hoặc FAILED." });
+                result = BadRequest(new { Success = false, Message = "Trạng thái mới không hợp lệ. Chỉ chấp nhận COMPLETED." });
                 return;
             }
 
-            // 5. Lưu vết lịch sử thay đổi trạng thái Yêu cầu cứu hộ
-            var requestStatusForHistory = operation.Request?.Status ?? (targetStatusKey == "FAILED" ? "Verified" : "Completed");
+            // 4. Lưu vết lịch sử thay đổi trạng thái Yêu cầu cứu hộ
+            var requestStatusForHistory = operation.Request?.Status ?? "Completed";
             _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
             {
                 RequestId = operation.RequestId,
                 Status = requestStatusForHistory,
-                Notes = targetStatusKey == "FAILED"
-                    ? $"Nhiệm vụ thất bại. Lý do: {dto.Reason}"
-                    : "Đội cứu hộ hoàn tất nhiệm vụ, yêu cầu đã được xác nhận hoàn tất thành công.",
+                Notes = "Đội cứu hộ hoàn tất nhiệm vụ, yêu cầu đã được xác nhận hoàn tất thành công.",
                 UpdatedBy = currentUserId,
                 UpdatedAt = now
             });
@@ -483,9 +428,7 @@ public class RescueOperationController : ControllerBase
             result = Ok(new
             {
                 Success = true,
-                Message = targetStatusKey == "FAILED"
-                    ? "Cập nhật trạng thái nhiệm vụ thất bại thành công. Yêu cầu đã quay về trạng thái Verified."
-                    : "Cập nhật trạng thái thành công. Toàn bộ đội và phương tiện đã được giải phóng."
+                Message = "Cập nhật trạng thái thành công. Toàn bộ đội và phương tiện đã được giải phóng."
             });
         });
 
