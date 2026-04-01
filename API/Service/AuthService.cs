@@ -16,7 +16,6 @@ public class AuthService : IAuthService
     private readonly ApplicationDbContext _context;
     private readonly IJwtService _jwtService;
     private readonly IConfiguration _configuration;
-    private readonly ISmsService _smsService;
     private readonly IEmailService _emailService;
     private readonly IMemoryCache _cache;
 
@@ -27,14 +26,12 @@ public class AuthService : IAuthService
         ApplicationDbContext context,
         IJwtService jwtService,
         IConfiguration configuration,
-        ISmsService smsService,
         IEmailService emailService,
         IMemoryCache cache)
     {
         _context = context;
         _jwtService = jwtService;
         _configuration = configuration;
-        _smsService = smsService;
         _emailService = emailService;
         _cache = cache;
     }
