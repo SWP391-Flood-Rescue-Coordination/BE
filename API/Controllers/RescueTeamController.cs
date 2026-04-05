@@ -215,6 +215,68 @@ public class RescueTeamController : ControllerBase
     }
 
     /// <summary>
+    /// Đội trưởng (Leader) - Tiếp nhận Yêu cầu cứu hộ được phân công (Chuyển trạng thái sang Assigned).
+    /// </summary>
+    [HttpPut("requests/{requestId}/accept")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> AcceptRequest(int requestId)
+    {
+        // 1. Trích xuất ID người dùng
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        }
+
+        // 2. Tìm yêu cầu cứu hộ
+        var request = await _context.RescueRequests.FindAsync(requestId);
+        if (request == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ." });
+        }
+
+        // 3. Kiểm tra trạng thái và cấu hình
+        if (request.Status != "Verified")
+        {
+            return BadRequest(new { Success = false, Message = $"Yêu cầu đang ở trạng thái {request.Status}. Phải là Verified để có thể tiếp nhận." });
+        }
+
+        if (!request.TeamId.HasValue)
+        {
+            return BadRequest(new { Success = false, Message = "Yêu cầu này chưa được hệ thống điều phối cho bất kỳ đội nào." });
+        }
+
+        // 4. Phân quyền: Người dùng phải tham gia Team đó và mang quyền Leader
+        var isLeader = await _context.RescueTeamMembers
+            .AnyAsync(m => m.TeamId == request.TeamId.Value 
+                        && m.UserId == userId 
+                        && m.MemberRole == "Leader" 
+                        && m.IsActive);
+                        
+        if (!isLeader)
+        {
+            return StatusCode(403, new { Success = false, Message = "Bạn không có quyền thực hiện. Chỉ Đội trưởng (Leader) của đội này mới có quyền tiếp nhận." });
+        }
+
+        // 5. Cập nhật trạng thái yêu cầu
+        var now = DateTime.UtcNow;
+        request.Status = "Assigned";
+        request.UpdatedAt = now;
+        request.UpdatedBy = userId;
+
+        await UpsertRequestStatusHistoryAsync(
+            requestId,
+            "Assigned",
+            $"Đội trưởng xác nhận tiếp nhận yêu cầu.",
+            userId,
+            now);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Success = true, Message = "Tiếp nhận yêu cầu thành công" });
+    }
+
+    /// <summary>
     /// Đội cứu hộ - Lấy danh sách nhiệm vụ được giao cho các đội mà user hiện tại đang tham gia.
     /// Chứa các thông tin quan trọng như: Địa chỉ, Số điện thoại người dân, Mức độ ưu tiên, Phương tiện gán kèm.
     /// </summary>

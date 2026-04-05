@@ -10,9 +10,11 @@ public class RescueTeamMember
     
     public bool IsActive { get; set; } = true;
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? LeftAt { get; set; }
+    
+    public int? RequestId { get; set; }
 
     // Navigation properties
     public virtual RescueTeam? Team { get; set; }
     public virtual User? User { get; set; }
+    public virtual RescueRequest? Request { get; set; }
 }

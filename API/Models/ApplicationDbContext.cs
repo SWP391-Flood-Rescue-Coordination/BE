@@ -130,7 +130,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.MemberRole).HasColumnName("member_role").HasMaxLength(20);
             entity.Property(e => e.JoinedAt).HasColumnName("joined_at");
-            entity.Property(e => e.LeftAt).HasColumnName("left_at");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
 
             entity.HasOne(e => e.Team)
@@ -139,6 +139,9 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.User)
                   .WithMany()
                   .HasForeignKey(e => e.UserId);
+            entity.HasOne(e => e.Request)
+                  .WithMany()
+                  .HasForeignKey(e => e.RequestId);
         });
 
 
