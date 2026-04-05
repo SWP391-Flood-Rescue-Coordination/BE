@@ -4,7 +4,7 @@ public class RescueTeamDistanceDto
 {
     public int TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
+
 
     public decimal BaseLatitude { get; set; }
     public decimal BaseLongitude { get; set; }
