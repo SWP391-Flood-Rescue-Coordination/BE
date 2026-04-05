@@ -65,6 +65,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ElderlyCount).HasColumnName("elderly_count");
             entity.Property(e => e.ChildrenCount).HasColumnName("children_count");
             entity.Property(e => e.NumberOfAffectedPeople).HasColumnName("number_of_affected_people");
+            entity.Property(e => e.TeamId).HasColumnName("team_id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
@@ -116,7 +117,6 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.TeamId);
             entity.Property(e => e.TeamId).HasColumnName("team_id");
             entity.Property(e => e.TeamName).HasColumnName("team_name").HasMaxLength(100);
-            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.BaseLatitude).HasColumnName("base_latitude").HasPrecision(9, 6);
             entity.Property(e => e.BaseLongitude).HasColumnName("base_longitude").HasPrecision(9, 6);

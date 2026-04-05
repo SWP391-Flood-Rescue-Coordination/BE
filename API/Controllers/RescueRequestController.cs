@@ -569,7 +569,7 @@ public class RescueRequestController : ControllerBase
 
                     if (operation.Team != null)
                     {
-                        operation.Team.Status = "AVAILABLE";
+                        // Team status is derived dynamically based on active operations
                     }
                 }
 
@@ -622,7 +622,7 @@ public class RescueRequestController : ControllerBase
 
                     if (operation.Team != null)
                     {
-                        operation.Team.Status = "AVAILABLE";
+                        // Team status is derived dynamically based on active operations
                     }
                 }
 
@@ -678,7 +678,7 @@ public class RescueRequestController : ControllerBase
     /// </summary>
     [HttpPut("{id}/verify")]
     [Authorize(Roles = "COORDINATOR")]
-    public async Task<IActionResult> VerifyRequest(int id)
+    public async Task<IActionResult> VerifyRequest(int id, [FromQuery] int? team_id)
     {
         // 1. Tìm yêu cầu
         var request = await _context.RescueRequests.FindAsync(id);
@@ -706,12 +706,17 @@ public class RescueRequestController : ControllerBase
         request.UpdatedAt = DateTime.UtcNow;
         request.UpdatedBy = userId;
 
+        if (team_id.HasValue)
+        {
+            request.TeamId = team_id.Value;
+        }
+
         // 4. Lưu vết lịch sử xác minh
         _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
         {
             RequestId = request.RequestId,
             Status = "Verified",
-            Notes = $"Điều phối viên xác minh yêu cầu (ưu tiên hiện tại: {request.PriorityLevelId})",
+            Notes = $"Điều phối viên xác minh yêu cầu (ưu tiên hiện tại: {request.PriorityLevelId})" + (team_id.HasValue ? $", Gán cho Đội ID: {team_id.Value}" : ""),
             UpdatedBy = userId,
             UpdatedAt = DateTime.UtcNow
         });

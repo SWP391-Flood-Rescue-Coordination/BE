@@ -70,8 +70,7 @@ public class RescueOperationController : ControllerBase
         if (rescueTeam == null)
             return NotFound(new { Success = false, Message = $"Không tìm thấy rescue team với ID = {dto.TeamId}" });
 
-        if (!string.Equals(rescueTeam.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { Success = false, Message = $"Rescue team phải có status = AVAILABLE. Status hiện tại: {rescueTeam.Status}" });
+        // (Đã loại bỏ check trạng thái bận của Đội cứu hộ theo yêu cầu)
 
         // 5. Kiểm tra tính hợp lệ của các phương tiện được chọn (Phương tiện phải rảnh - Available)
         var vehicles = new List<Vehicle>();
@@ -150,8 +149,7 @@ public class RescueOperationController : ControllerBase
                 UpdatedAt = now
             });
 
-            // (5) Chuyển trạng thái Đội cứu hộ sang 'BUSY'
-            rescueTeam.Status = "BUSY";
+            // (5) Đội cứu hộ (trạng thái bận được tính toán động dựa trên các operation đang chạy)
 
             // (6) Chuyển trạng thái các Phương tiện sang 'InUse'
             foreach (var v in vehicles)
@@ -380,10 +378,10 @@ public class RescueOperationController : ControllerBase
                 operation.StartedAt ??= now;
                 operation.CompletedAt = now;
 
-                // GIẢI PHÓNG ĐỘI CỨU HỘ: Trạng thái trở về 'AVAILABLE'
+                // GIẢI PHÓNG ĐỘI CỨU HỘ: Trạng thái trở về rảnh (tính toán động)
                 if (operation.Team != null)
                 {
-                    operation.Team.Status = "AVAILABLE";
+                    // Team status is derived dynamically
                 }
 
                 // GIẢI PHÓNG PHƯƠNG TIỆN: Tìm tất cả phương tiện đang dùng và chuyển về 'AVAILABLE'
@@ -467,15 +465,14 @@ public class RescueOperationController : ControllerBase
             return BadRequest(new { Success = false, Message = "Yêu cầu cứu hộ chưa có tọa độ hợp lệ." });
         }
 
-        // 2. Lấy danh sách tất cả các Đội cứu hộ đang rảnh (AVAILABLE) và có tọa độ đóng quân
+        // 2. Lấy danh sách tất cả các Đội cứu hộ có tọa độ đóng quân
         var teams = await _context.RescueTeams
             .AsNoTracking()
-            .Where(t => t.Status == "AVAILABLE" && t.BaseLatitude.HasValue && t.BaseLongitude.HasValue)
+            .Where(t => t.BaseLatitude.HasValue && t.BaseLongitude.HasValue)
             .Select(t => new
             {
                 t.TeamId,
                 t.TeamName,
-                t.Status,
                 t.BaseLatitude,
                 t.BaseLongitude
             })
@@ -497,7 +494,6 @@ public class RescueOperationController : ControllerBase
             {
                 TeamId = team.TeamId,
                 TeamName = team.TeamName,
-                Status = team.Status,
                 BaseLatitude = team.BaseLatitude.Value,
                 BaseLongitude = team.BaseLongitude.Value,
                 RequestLatitude = request.Latitude.Value,

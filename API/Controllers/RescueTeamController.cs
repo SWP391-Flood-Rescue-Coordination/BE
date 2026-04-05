@@ -152,11 +152,7 @@ public class RescueTeamController : ControllerBase
                 now);
         }
 
-        // 10. Giải phóng trạng thái cho Đội cứu hộ (AVAILABLE)
-        if (operation.Team != null)
-        {
-            operation.Team.Status = "AVAILABLE";
-        }
+        // 10. Giải phóng trạng thái cho Đội cứu hộ (trạng thái được tính toán động)
 
         // 11. Giải phóng tất cả các phương tiện được gán cho nhiệm vụ này
         var vehicleIds = await _context.RescueOperationVehicles
@@ -362,12 +358,8 @@ public class RescueTeamController : ControllerBase
     [Authorize(Roles = "COORDINATOR,ADMIN,MANAGER")]
     public async Task<IActionResult> GetTeamsWithStatus([FromQuery] string? status = null)
     {
+        // Bỏ qua lọc theo status (vì logic quét chéo sang operation đã bị hủy bỏ theo yêu cầu)
         var query = _context.RescueTeams.AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(status))
-        {
-            query = query.Where(t => t.Status == status);
-        }
 
         var teams = await query
             .OrderBy(t => t.TeamName)
@@ -375,7 +367,7 @@ public class RescueTeamController : ControllerBase
             {
                 t.TeamId,
                 t.TeamName,
-                t.Status,
+                Status = "AVAILABLE", // Mặc định trả về rảnh rỗi như một placeholder
                 t.BaseLatitude,
                 t.BaseLongitude,
                 t.CreatedAt
