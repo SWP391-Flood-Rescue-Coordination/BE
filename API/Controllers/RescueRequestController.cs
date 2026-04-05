@@ -590,6 +590,59 @@ public class RescueRequestController : ControllerBase
                 }
             }
         }
+        if (nextStatusKey == "COMPLETED")
+        {
+            var activeOperations = (await _context.RescueOperations
+                .Include(o => o.Team)
+                .Where(o => o.RequestId == request.RequestId)
+                .ToListAsync())
+                .Where(o =>
+                {
+                    var operationStatusKey = NormalizeStatusKey(o.Status);
+                    return operationStatusKey == "ASSIGNED"
+                        || operationStatusKey == "IN_PROGRESS"
+                        || operationStatusKey == "SCHEDULED";
+                })
+                .ToList();
+
+            if (activeOperations.Count > 0)
+            {
+                foreach (var operation in activeOperations)
+                {
+                    operation.Status = "Completed";
+                    operation.CompletedAt ??= now;
+
+                    if (operation.Team != null)
+                    {
+                        operation.Team.Status = "AVAILABLE";
+                    }
+                }
+
+                var activeOperationIds = activeOperations
+                    .Select(o => o.OperationId)
+                    .Distinct()
+                    .ToList();
+
+                var vehicleIds = await _context.RescueOperationVehicles
+                    .Where(ov => activeOperationIds.Contains(ov.OperationId))
+                    .Select(ov => ov.VehicleId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (vehicleIds.Count > 0)
+                {
+                    var vehicles = await _context.Vehicles
+                        .Where(v => vehicleIds.Contains(v.VehicleId))
+                        .ToListAsync();
+
+                    foreach (var vehicle in vehicles)
+                    {
+                        vehicle.Status = "AVAILABLE";
+                        vehicle.UpdatedAt = now;
+                    }
+                }
+            }
+        }
 
         // 4. Cập nhật trạng thái request
         request.Status = dto.Status;
