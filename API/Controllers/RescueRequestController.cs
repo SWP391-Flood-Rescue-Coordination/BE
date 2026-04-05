@@ -42,7 +42,15 @@ public class RescueRequestController : ControllerBase
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
         int? userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : null;
 
-        // 2. Khởi tạo đối tượng RescueRequest từ DTO
+        // 2. Kiểm tra trùng lặp: Cùng Address và Phone trong 15 phút gần đây
+        var duplicateTimeWindow = DateTime.UtcNow.AddMinutes(-15);
+        var isDuplicate = await _context.RescueRequests.AnyAsync(r =>
+            (r.Phone == dto.ContactPhone || r.ContactPhone == dto.ContactPhone) && 
+            r.Address.ToLower() == dto.Address.ToLower() && 
+            r.CreatedAt >= duplicateTimeWindow &&
+            r.Status != "Completed" && r.Status != "Cancelled");
+
+        // 3. Khởi tạo đối tượng RescueRequest từ DTO
         var request = new RescueRequest
         {
             CitizenId = userId, // Nếu là Guest thì CitizenId sẽ là null
@@ -57,7 +65,7 @@ public class RescueRequestController : ControllerBase
             AdultCount = dto.AdultCount,
             ElderlyCount = dto.ElderlyCount,
             ChildrenCount = dto.ChildrenCount,
-            Status = "Pending", // Trạng thái mặc định khi mới tạo
+            Status = isDuplicate ? "Duplicate" : "Pending", // Gán cờ Duplicate nếu trùng lặp
             CreatedAt = DateTime.UtcNow
         };
 
