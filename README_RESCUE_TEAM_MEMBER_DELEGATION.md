@@ -55,24 +55,18 @@ GET /api/rescue-team/my-assignment
 ```
 PUT /api/rescue-team/my-assignment/confirm
 ```
-- **Quyền hạn:** `RESCUE_TEAM`.
+- **Quyền hạn:** Tài khoản có role `RESCUE_TEAM`, đồng thời bản ghi trong `rescue_team_members` phải có `member_role = 'Member'`.
 - **Request Body:** Không cần (No Body).
 - **Hoạt động:**
-  - Hệ thống tự động lấy `UserId` từ JWT Token của người dùng.
-  - Kiểm tra xem Member có đang được giao nhiệm vụ (`RequestId != null`) hay không.
-  - Nếu **đang bận** và Operation ở trạng thái `Assigned`: Đặt `RequestId = null` → Member trở về trạng thái **Rảnh**.
-  - Nếu **đang rảnh** (`RequestId = null`): Trả về `404 Not Found` với thông điệp báo lỗi.
-  - Nếu Operation không ở trạng thái `Assigned`: Trả về `400 Bad Request`.
-- **Response thành công (200):**
-  ```json
-  {
-    "success": true,
-    "userId": 4,
-    "operationId": 15,
-    "requestId": 7,
-    "message": "Xác nhận hoàn tất nhiệm vụ thành công. Bạn đã trở về trạng thái Rảnh."
-  }
-  ```
+  - Hệ thống tự động lấy `UserId` từ JWT Token.
+  - **Kiểm tra vai trò (Database):** Nếu người dùng là `Leader`, API sẽ báo lỗi `403 Forbidden` (Đội trưởng quản lý nhiệm vụ qua API Status chung, không thực hiện xác nhận cá nhân tại đây).
+  - **Kiểm tra trạng thái:** Nếu Member đang được giao việc (`request_id != null`) và Operation liên quan đang ở trạng thái `Assigned`.
+  - **Giải phóng:** Hệ thống đặt `request_id = null` cho Member này → Trạng thái trở về **Rảnh (Available)**, sẵn sàng nhận Task tiếp theo từ Leader.
+- **Mã lỗi phản hồi:**
+  - `200 OK`: Xác nhận thành công. Trả về `operationId` và `requestId`.
+  - `403 Forbidden`: Người dùng là Leader, không được dùng quyền của Member.
+  - `404 Not Found`: Không tìm thấy nhiệm vụ hoặc Member đang rảnh.
+  - `400 Bad Request`: Operation không ở trạng thái `Assigned` để xác nhận.
 
 ### 5. Leader: Xem và tìm kiếm danh sách Thành viên (Get Team Members)
 ```

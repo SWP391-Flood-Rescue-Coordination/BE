@@ -685,17 +685,29 @@ public class RescueTeamController : ControllerBase
         if (!int.TryParse(userIdStr, out var userId))
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
 
-        // 2. Tìm bản ghi thành viên đang được giao nhiệm vụ (RequestId != null)
+        // 2. Tìm bản ghi thành viên trong DB (kiểm tra tư cách thành viên trước)
         var member = await _context.RescueTeamMembers
-            .FirstOrDefaultAsync(m => m.UserId == userId && m.RequestId != null && m.IsActive);
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.IsActive);
 
-        if (member == null || member.RequestId == null)
+        if (member == null)
+            return NotFound(new { Success = false, Message = "Bạn không thuộc đội cứu hộ nào đang hoạt động." });
+
+        // 3. Chỉ cho phép Member (không phải Leader) dùng endpoint này
+        if (member.MemberRole == "Leader")
+            return StatusCode(403, new
+            {
+                Success = false,
+                Message = "Đội trưởng (Leader) không sử dụng chức năng này. Endpoint này chỉ dành cho Thành viên (Member)."
+            });
+
+        // 4. Kiểm tra Member có đang được giao nhiệm vụ không (RequestId != null)
+        if (member.RequestId == null)
             return NotFound(new { Success = false, Message = "Bạn hiện đang rảnh. Không có nhiệm vụ nào cần xác nhận." });
 
         var requestId = member.RequestId.Value;
         var teamId = member.TeamId;
 
-        // 3. Tìm Operation liên quan để trả về thông tin phản hồi
+        // 5. Tìm Operation liên quan để trả về thông tin phản hồi
         var operation = await _context.RescueOperations
             .Include(o => o.Request)
             .Where(o => o.RequestId == requestId && o.TeamId == teamId)
@@ -704,7 +716,7 @@ public class RescueTeamController : ControllerBase
         if (operation == null)
             return NotFound(new { Success = false, Message = "Không tìm thấy dữ liệu nhiệm vụ liên kết. Vui lòng liên hệ Đội trưởng." });
 
-        // 4. Kiểm tra Operation đang ở trạng thái hợp lệ để xác nhận
+        // 6. Kiểm tra Operation đang ở trạng thái hợp lệ để xác nhận
         if (operation.Status != "Assigned")
         {
             return BadRequest(new
@@ -714,10 +726,10 @@ public class RescueTeamController : ControllerBase
             });
         }
 
-        // 5. Giải phóng thành viên: Đặt RequestId = null → trạng thái Rảnh
+        // 7. Giải phóng thành viên: Đặt RequestId = null → trạng thái Rảnh
         member.RequestId = null;
 
-        // 6. Lưu thay đổi
+        // 8. Lưu thay đổi
         try
         {
             await _context.SaveChangesAsync();
