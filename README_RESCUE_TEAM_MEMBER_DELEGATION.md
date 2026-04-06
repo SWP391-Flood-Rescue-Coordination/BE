@@ -51,16 +51,28 @@ GET /api/rescue-team/my-assignment
   - Nếu Member đang Rảnh (`request_id = null`), API sẽ trả về lỗi `404 Not Found` kèm thông điệp báo Rảnh để ngăn chặn / chặn lại việc xem thông tin rác.
   - Đây là endpoint dành riêng cho các thành viên bình thường xem đúng 1 Task mà bản thân phải chịu trách nhiệm.
 
-### 4. Member: Xác nhận tiếp nhận nhiệm vụ (Confirm Task)
+### 4. Member: Xác nhận hoàn tất nhiệm vụ (Confirm Task) ✅
 ```
 PUT /api/rescue-team/my-assignment/confirm
 ```
 - **Quyền hạn:** `RESCUE_TEAM`.
+- **Request Body:** Không cần (No Body).
 - **Hoạt động:**
-  - *Lưu ý:* API này không cần gửi bất cứ data nào lên (Không có Body, không cần Ghi chú).
-  - Hệ thống tự động lấy ID của người dùng.
-  - Nếu có nhiệm vụ, API trả về thông điệp "Xác nhận thành công".
-  - Nếu chưa có nhiệm vụ nào được giao, API sẽ báo mắng / chặn lại.
+  - Hệ thống tự động lấy `UserId` từ JWT Token của người dùng.
+  - Kiểm tra xem Member có đang được giao nhiệm vụ (`RequestId != null`) hay không.
+  - Nếu **đang bận** và Operation ở trạng thái `Assigned`: Đặt `RequestId = null` → Member trở về trạng thái **Rảnh**.
+  - Nếu **đang rảnh** (`RequestId = null`): Trả về `404 Not Found` với thông điệp báo lỗi.
+  - Nếu Operation không ở trạng thái `Assigned`: Trả về `400 Bad Request`.
+- **Response thành công (200):**
+  ```json
+  {
+    "success": true,
+    "userId": 4,
+    "operationId": 15,
+    "requestId": 7,
+    "message": "Xác nhận hoàn tất nhiệm vụ thành công. Bạn đã trở về trạng thái Rảnh."
+  }
+  ```
 
 ### 5. Leader: Xem và tìm kiếm danh sách Thành viên (Get Team Members)
 ```
