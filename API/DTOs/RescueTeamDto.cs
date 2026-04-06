@@ -54,7 +54,7 @@ public class MemberAssignmentDto
 {
     /// <summary>Danh sách UserId của các thành viên cần giao việc. Ví dụ: [2, 4, 8]</summary>
     public List<int> UserIds { get; set; } = new();
-    public int OperationId { get; set; }
+    public int RequestId { get; set; }
 }
 
 /// <summary>
