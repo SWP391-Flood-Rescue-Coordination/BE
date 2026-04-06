@@ -48,23 +48,24 @@ public class MissionStatusResponseDto
 }
 
 /// <summary>
-/// DTO để Đội trưởng (Leader) giao việc cho thành viên (Member)
+/// DTO để Đội trưởng (Leader) giao việc cho một hoặc nhiều thành viên (Member) cùng lúc
 /// </summary>
 public class MemberAssignmentDto
 {
-    public int UserId { get; set; }
+    /// <summary>Danh sách UserId của các thành viên cần giao việc. Ví dụ: [2, 4, 8]</summary>
+    public List<int> UserIds { get; set; } = new();
     public int OperationId { get; set; }
 }
 
 /// <summary>
-/// Phản hồi sau khi Đội trưởng giao việc
+/// Phản hồi sau khi Đội trưởng giao việc (bulk)
 /// </summary>
 public class MemberAssignmentResponseDto
 {
     public int TeamId { get; set; }
-    public int UserId { get; set; }
     public int OperationId { get; set; }
-    public string MemberStatus { get; set; } = string.Empty;
+    public List<int> AssignedUserIds { get; set; } = new();
+    public List<int> SkippedUserIds { get; set; } = new();
     public string Message { get; set; } = string.Empty;
 }
 

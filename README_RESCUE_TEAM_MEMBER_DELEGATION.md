@@ -31,13 +31,15 @@ POST /api/rescue-team/members/assign-task
 - **Request Body:**
   ```json
   {
-      "userId": 8,
+      "userIds": [2, 4, 8],
       "operationId": 15
   }
   ```
 - **Hoạt động:** 
-  - Hệ thống kiểm tra xem User ID (số 8) có đang rảnh không (`request_id == null`).
-  - Hệ thống tự tìm Nhiệm vụ (Operation) thông qua `operationId`, sau đó gán `request_id` tương ứng của nhiệm vụ đó cho thành viên này. Ngay lập tức, thành viên này được hệ thống coi là **Bận**.
+  - Hệ thống lặp qua danh sách `userIds`.
+  - Nếu thành viên nhận lệnh đang Rảnh (`request_id == null`), hệ thống sẽ gán `request_id` của Operation vào cho họ, đánh dấu là Bận.
+  - Những ID nào không thuộc đội hoặc đang bận sẽ bị bỏ qua (Skip) nhưng không làm hỏng toàn bộ request.
+  - API trả về danh sách `assignedUserIds` và `skippedUserIds` để Frontend dễ kiểm soát.
 
 ### 3. Member: Kiểm tra Nhiệm vụ cá nhân (Get My Assignment)
 ```

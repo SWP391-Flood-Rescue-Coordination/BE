@@ -511,7 +511,8 @@ public class RescueTeamController : ControllerBase
     }
 
     /// <summary>
-    /// Đội trưởng (Leader) - Giao nhiệm vụ cụ thể cho một thành viên trong đội.
+    /// Đội trưởng (Leader) - Giao nhiệm vụ cho một hoặc nhiều thành viên cùng lúc.
+    /// Thành viên đang bận hoặc không thuộc đội sẽ được ghi vào danh sách skipped, không làm hỏng cả request.
     /// </summary>
     [HttpPost("members/assign-task")]
     [Authorize(Roles = "RESCUE_TEAM")]
@@ -521,40 +522,57 @@ public class RescueTeamController : ControllerBase
         var leaderIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(leaderIdStr, out var leaderId)) return Unauthorized();
 
+        if (dto.UserIds == null || !dto.UserIds.Any())
+            return BadRequest(new { Success = false, Message = "Danh sách thành viên (userIds) không được để trống." });
+
         // 2. Tìm Operation (Nhiệm vụ) được giao
         var operation = await _context.RescueOperations.FindAsync(dto.OperationId);
         if (operation == null) return NotFound(new { Success = false, Message = "Không tìm thấy nhiệm vụ (Operation)." });
 
-        if (operation.Status != "Assigned") 
+        if (operation.Status != "Assigned")
             return BadRequest(new { Success = false, Message = "Nhiệm vụ này chưa được xác nhận hoặc đã kết thúc." });
 
         // 3. Phân quyền: Kiểm tra Leader này có đang quản lý Team của Operation này không
-        var leaderMember = await _context.RescueTeamMembers
-            .FirstOrDefaultAsync(m => m.TeamId == operation.TeamId && m.UserId == leaderId && m.MemberRole == "Leader" && m.IsActive);
+        var isLeader = await _context.RescueTeamMembers
+            .AnyAsync(m => m.TeamId == operation.TeamId && m.UserId == leaderId && m.MemberRole == "Leader" && m.IsActive);
 
-        if (leaderMember == null) return Forbid();
+        if (!isLeader) return Forbid();
 
-        // 4. Kiểm tra thành viên được giao việc có thuộc cùng đội không
-        var member = await _context.RescueTeamMembers
-            .FirstOrDefaultAsync(m => m.TeamId == operation.TeamId && m.UserId == dto.UserId && m.IsActive);
+        // 4. Lấy toàn bộ thành viên trong đội khớp với danh sách UserIds
+        var teamMembers = await _context.RescueTeamMembers
+            .Where(m => m.TeamId == operation.TeamId && dto.UserIds.Contains(m.UserId) && m.IsActive)
+            .ToListAsync();
 
-        if (member == null) return BadRequest(new { Success = false, Message = "Thành viên này không thuộc đội của bạn hoặc không khả dụng." });
+        var assignedIds = new List<int>();
+        var skippedIds = new List<int>();
 
-        if (member.RequestId.HasValue) 
-            return BadRequest(new { Success = false, Message = "Thành viên này đang bận thực hiện một nhiệm vụ khác." });
+        // 5. Loop thông qua từng UserId, gán RequestId nếu thành viên đang Rảnh
+        foreach (var uid in dto.UserIds)
+        {
+            var member = teamMembers.FirstOrDefault(m => m.UserId == uid);
 
-        // 5. Giao việc bằng cách set RequestId
-        member.RequestId = operation.RequestId;
+            if (member == null || member.RequestId.HasValue)
+            {
+                skippedIds.Add(uid);
+                continue;
+            }
+
+            member.RequestId = operation.RequestId;
+            assignedIds.Add(uid);
+        }
+
+        if (!assignedIds.Any())
+            return BadRequest(new { Success = false, Message = "Không có thành viên nào có thể được giao việc. Tất cả đang bận hoặc không thuộc đội.", SkippedUserIds = skippedIds });
 
         await _context.SaveChangesAsync();
 
         return Ok(new MemberAssignmentResponseDto
         {
-            TeamId = member.TeamId,
-            UserId = member.UserId,
+            TeamId = operation.TeamId,
             OperationId = dto.OperationId,
-            MemberStatus = "Assigned",
-            Message = $"Đã giao nhiệm vụ cho thành viên {dto.UserId}. Chờ xác nhận."
+            AssignedUserIds = assignedIds,
+            SkippedUserIds = skippedIds,
+            Message = $"Đã giao nhiệm vụ cho {assignedIds.Count} thành viên." + (skippedIds.Any() ? $" Bỏ qua {skippedIds.Count} thành viên (đang bận hoặc không hợp lệ)." : "")
         });
     }
 
