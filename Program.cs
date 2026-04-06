@@ -313,6 +313,15 @@ using (var scope = app.Services.CreateScope())
                 SET status = 'Completed'
                 WHERE status IN ('Confirmed', 'CONFIRMED', 'CitizenConfirmed');
 
+                UPDATE rescue_operations
+                SET status = 'Failed'
+                WHERE status IN ('FAILED', 'Failed', 'Cancelled');
+
+                -- Ensure NO invalid statuses remain that would break the Check Constraint
+                UPDATE rescue_operations
+                SET status = 'Assigned'
+                WHERE status NOT IN ('Assigned', 'Completed', 'Failed') OR status IS NULL;
+
                 -- Cập nhật CHECK constraint
                 IF EXISTS (SELECT * FROM sys.check_constraints WHERE name = 'CK_rescue_operations_status_allowed')
                 BEGIN

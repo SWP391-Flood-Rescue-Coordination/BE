@@ -46,3 +46,33 @@ public class MissionStatusResponseDto
     public DateTime? CompletedAt { get; set; }
     public string Message { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// DTO để Đội trưởng (Leader) giao việc cho thành viên (Member)
+/// </summary>
+public class MemberAssignmentDto
+{
+    public int UserId { get; set; }
+    public int OperationId { get; set; }
+}
+
+/// <summary>
+/// Phản hồi sau khi Đội trưởng giao việc
+/// </summary>
+public class MemberAssignmentResponseDto
+{
+    public int TeamId { get; set; }
+    public int UserId { get; set; }
+    public int OperationId { get; set; }
+    public string MemberStatus { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// DTO để Member xác nhận nhiệm vụ được Leader giao
+/// </summary>
+public class ConfirmTaskDto
+{
+    public int OperationId { get; set; }
+    public string? Notes { get; set; }
+}

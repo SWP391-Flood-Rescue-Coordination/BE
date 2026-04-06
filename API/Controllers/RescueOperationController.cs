@@ -378,12 +378,14 @@ public class RescueOperationController : ControllerBase
                 operation.StartedAt ??= now;
                 operation.CompletedAt = now;
 
-                // GIẢI PHÓNG ĐỘI CỨU HỘ: Trạng thái trở về rảnh (tính toán động)
-                if (operation.Team != null)
+                // GIẢI PHÓNG ĐỘI CỨU HỘ: Trạng thái trở về rảnh
+                var membersToRelease = await _context.RescueTeamMembers
+                    .Where(m => m.TeamId == operation.TeamId && m.RequestId == operation.RequestId)
+                    .ToListAsync();
+                foreach (var m in membersToRelease)
                 {
-                    // Team status is derived dynamically
+                    m.RequestId = null;
                 }
-
                 // GIẢI PHÓNG PHƯƠNG TIỆN: Tìm tất cả phương tiện đang dùng và chuyển về 'AVAILABLE'
                 var vehicleIds = await _context.RescueOperationVehicles
                     .Where(rov => rov.OperationId == operation.OperationId)

@@ -152,7 +152,15 @@ public class RescueTeamController : ControllerBase
                 now);
         }
 
-        // 10. Giải phóng trạng thái cho Đội cứu hộ (trạng thái được tính toán động)
+        // 10. Giải phóng trạng thái cho các thành viên trong đội đang làm nhiệm vụ này
+        var membersToRelease = await _context.RescueTeamMembers
+            .Where(m => m.RequestId == request.RequestId && m.IsActive)
+            .ToListAsync();
+            
+        foreach (var m in membersToRelease)
+        {
+            m.RequestId = null;
+        }
 
         // 11. Giải phóng tất cả các phương tiện được gán cho nhiệm vụ này
         var vehicleIds = await _context.RescueOperationVehicles
@@ -212,6 +220,96 @@ public class RescueTeamController : ControllerBase
                 ? "Đã ghi nhận nhiệm vụ thất bại. Yêu cầu đã quay lại trạng thái Chờ xử lý (Verified)."
                 : "Xác nhận hoàn tất nhiệm vụ thành công. Chờ người dân báo an toàn để đóng yêu cầu hoàn toàn."
         });
+    }
+
+    /// <summary>
+    /// Đội trưởng (Leader) - Từ chối Yêu cầu cứu hộ được phân công (Gỡ bỏ gán đội).
+    /// </summary>
+    [HttpPut("requests/{requestId}/reject")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> RejectRequest(int requestId, [FromQuery] string? reason = null)
+    {
+        // 1. Trích xuất ID người dùng
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        }
+
+        // 2. Tìm yêu cầu cứu hộ
+        var request = await _context.RescueRequests.FindAsync(requestId);
+        if (request == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ." });
+        }
+
+        // 3. Kiểm tra trạng thái
+        if (request.Status != "Verified" && request.Status != "Assigned")
+        {
+            return BadRequest(new { Success = false, Message = $"Yêu cầu đang ở trạng thái {request.Status}. Không thể từ chối." });
+        }
+
+        if (!request.TeamId.HasValue)
+        {
+            return BadRequest(new { Success = false, Message = "Yêu cầu này chưa được hệ thống điều phối cho đội nào." });
+        }
+
+        // 4. Phân quyền: Người dùng phải tham gia Team đó và mang quyền Leader
+        var isLeader = await _context.RescueTeamMembers
+            .AnyAsync(m => m.TeamId == request.TeamId.Value 
+                        && m.UserId == userId 
+                        && m.MemberRole == "Leader" 
+                        && m.IsActive);
+                        
+        if (!isLeader)
+        {
+            return StatusCode(403, new { Success = false, Message = "Bạn không có quyền thực hiện. Chỉ Đội trưởng (Leader) của đội này mới có quyền từ chối." });
+        }
+
+        // 5. Giải phóng phương tiện gán cho nhiệm vụ (nếu có)
+        var operation = await _context.RescueOperations
+            .Where(o => o.RequestId == requestId && o.TeamId == request.TeamId && o.Status == "Assigned")
+            .FirstOrDefaultAsync();
+
+        var now = DateTime.UtcNow;
+
+        if (operation != null)
+        {
+            // Giải phóng các phương tiện
+            var rovList = await _context.RescueOperationVehicles
+                .Where(rov => rov.OperationId == operation.OperationId)
+                .ToListAsync();
+
+            if (rovList.Any())
+            {
+                var vIds = rovList.Select(r => r.VehicleId).ToList();
+                var vehicles = await _context.Vehicles.Where(v => vIds.Contains(v.VehicleId)).ToListAsync();
+                foreach (var v in vehicles)
+                {
+                    v.Status = "AVAILABLE";
+                }
+            }
+            
+            // Xóa Operation (hoặc đánh dấu Cancelled)
+            _context.RescueOperations.Remove(operation);
+        }
+
+        // 6. Cập nhật trạng thái yêu cầu (Quay về Verified và xóa TeamId)
+        request.Status = "Verified";
+        request.TeamId = null;
+        request.UpdatedAt = now;
+        request.UpdatedBy = userId;
+
+        await UpsertRequestStatusHistoryAsync(
+            requestId,
+            "Verified",
+            $"Đội trưởng từ chối tiếp nhận. Lý do: {reason ?? "Không có lý do cụ thể"}",
+            userId,
+            now);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Success = true, Message = "Đã từ chối và giải phóng yêu cầu cứu hộ thành công" });
     }
 
     /// <summary>
@@ -410,6 +508,181 @@ public class RescueTeamController : ControllerBase
         }
 
         return Ok(new { Success = true, Data = operation });
+    }
+
+    /// <summary>
+    /// Đội trưởng (Leader) - Giao nhiệm vụ cụ thể cho một thành viên trong đội.
+    /// </summary>
+    [HttpPost("members/assign-task")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> AssignTaskToMember([FromBody] MemberAssignmentDto dto)
+    {
+        // 1. Xác thực Leader
+        var leaderIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(leaderIdStr, out var leaderId)) return Unauthorized();
+
+        // 2. Tìm Operation (Nhiệm vụ) được giao
+        var operation = await _context.RescueOperations.FindAsync(dto.OperationId);
+        if (operation == null) return NotFound(new { Success = false, Message = "Không tìm thấy nhiệm vụ (Operation)." });
+
+        if (operation.Status != "Assigned") 
+            return BadRequest(new { Success = false, Message = "Nhiệm vụ này chưa được xác nhận hoặc đã kết thúc." });
+
+        // 3. Phân quyền: Kiểm tra Leader này có đang quản lý Team của Operation này không
+        var leaderMember = await _context.RescueTeamMembers
+            .FirstOrDefaultAsync(m => m.TeamId == operation.TeamId && m.UserId == leaderId && m.MemberRole == "Leader" && m.IsActive);
+
+        if (leaderMember == null) return Forbid();
+
+        // 4. Kiểm tra thành viên được giao việc có thuộc cùng đội không
+        var member = await _context.RescueTeamMembers
+            .FirstOrDefaultAsync(m => m.TeamId == operation.TeamId && m.UserId == dto.UserId && m.IsActive);
+
+        if (member == null) return BadRequest(new { Success = false, Message = "Thành viên này không thuộc đội của bạn hoặc không khả dụng." });
+
+        if (member.RequestId.HasValue) 
+            return BadRequest(new { Success = false, Message = "Thành viên này đang bận thực hiện một nhiệm vụ khác." });
+
+        // 5. Giao việc bằng cách set RequestId
+        member.RequestId = operation.RequestId;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new MemberAssignmentResponseDto
+        {
+            TeamId = member.TeamId,
+            UserId = member.UserId,
+            OperationId = dto.OperationId,
+            MemberStatus = "Assigned",
+            Message = $"Đã giao nhiệm vụ cho thành viên {dto.UserId}. Chờ xác nhận."
+        });
+    }
+
+    /// <summary>
+    /// Thành viên (Member) - Xác nhận tiếp nhận nhiệm vụ được Đội trưởng giao.
+    /// </summary>
+    [HttpPut("my-assignment/confirm")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> ConfirmTask()
+    {
+        // 1. Xác thực User
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out var userId)) return Unauthorized();
+
+        // 2. Tìm bản ghi thành viên có nhiệm vụ được giao
+        var member = await _context.RescueTeamMembers
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.RequestId != null && m.IsActive);
+
+        if (member == null) 
+            return NotFound(new { Success = false, Message = "Bạn chưa được gán nhiệm vụ nào để xác nhận lúc này." });
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { Success = true, Message = "Đã xác nhận nhiệm vụ thành công. Chúc bạn hoàn thành tốt công việc!" });
+    }
+
+    /// <summary>
+    /// Thành viên (Member) - Xem chi tiết nhiệm vụ (Operation) ĐANG được giao cho cá nhân mình.
+    /// Khác với my-operations (xem tất cả nhiệm vụ của đội), endpoint này chỉ hiện đúng 1 task mà Thành viên bị cài RequestId.
+    /// </summary>
+    [HttpGet("my-assignment")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> GetMyAssignment()
+    {
+        // 1. Xác thực User
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out var userId)) return Unauthorized();
+
+        // 2. Tìm bản ghi thành viên có RequestId (tức là đang BẬN làm nhiệm vụ)
+        var member = await _context.RescueTeamMembers
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.RequestId != null && m.IsActive);
+
+        if (member == null || member.RequestId == null)
+            return NotFound(new { Success = false, Message = "Bạn hiện đang rảnh. Chưa có nhiệm vụ nào được giao lúc này." });
+
+        // 3. Tìm thông tin chi tiết của Nhiệm vụ (Operation) dựa trên RequestId của thành viên
+        // Bởi vì Member bị gán bởi Leader của một Team, nên ta kèm điều kiện TeamId
+        var operation = await _context.RescueOperations
+            .Include(o => o.Request)
+            .Include(o => o.Team)
+            .Where(o => o.RequestId == member.RequestId.Value && o.TeamId == member.TeamId)
+            .Select(o => new
+            {
+                o.OperationId,
+                o.RequestId,
+                RequestTitle = o.Request != null ? o.Request.Title : null,
+                RequestStatus = o.Request != null ? o.Request.Status : null,
+                RequestAddress = o.Request != null ? o.Request.Address : null,
+                RequestPhone = o.Request != null ? o.Request.Phone : null,
+                TeamName = o.Team != null ? o.Team.TeamName : null,
+                o.Status,
+                o.AssignedAt,
+                o.EstimatedTime
+            })
+            .FirstOrDefaultAsync();
+
+        if (operation == null)
+        {
+            return NotFound(new { Success = false, Message = "Có lỗi xảy ra: Dữ liệu nhiệm vụ đã bị xóa hoặc không hợp lệ." });
+        }
+
+        return Ok(new { Success = true, Data = operation });
+    }
+
+    /// <summary>
+    /// Đội trưởng (Leader) - Xem danh sách thành viên trong đội của mình (có hỗ trợ tìm kiếm).
+    /// </summary>
+    [HttpGet("members")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> GetTeamMembers([FromQuery] string? search = null)
+    {
+        // 1. Xác thực Leader
+        var leaderIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(leaderIdStr, out var leaderId)) return Unauthorized();
+
+        // 2. Lấy danh sách ID các đội mà user(Leader) này đang quản lý
+        var leaderTeamIds = await _context.RescueTeamMembers
+            .Where(m => m.UserId == leaderId && m.MemberRole == "Leader" && m.IsActive)
+            .Select(m => m.TeamId)
+            .ToListAsync();
+
+        if (!leaderTeamIds.Any()) 
+            return Forbid(); // Không phải leader của đội nào
+
+        // 3. Lấy thông tin thành viên (Join bảng Users để lấy tên/SĐT)
+        var query = _context.RescueTeamMembers
+            .Include(m => m.User)
+            .Where(m => leaderTeamIds.Contains(m.TeamId) && m.IsActive)
+            .AsQueryable();
+
+        // 4. Lọc theo chuỗi tìm kiếm (tên hoặc ID)
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = search.Trim().ToLower();
+            query = query.Where(m => 
+                m.UserId.ToString().Contains(search) || 
+                (m.User != null && m.User.FullName != null && m.User.FullName.ToLower().Contains(search)) ||
+                (m.User != null && m.User.Username != null && m.User.Username.ToLower().Contains(search)) ||
+                (m.User != null && m.User.Phone != null && m.User.Phone.Contains(search))
+            );
+        }
+
+        var members = await query
+            .Select(m => new
+            {
+                m.TeamId,
+                m.UserId,
+                FullName = m.User != null ? m.User.FullName : null,
+                Username = m.User != null ? m.User.Username : null,
+                Phone = m.User != null ? m.User.Phone : null,
+                m.MemberRole,
+                m.JoinedAt,
+                m.RequestId,
+                IsBusy = m.RequestId != null // Thuộc tính phụ trợ cho frontend dễ hiển thị rảnh/bận
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Total = members.Count, Data = members });
     }
 
     /// <summary>
