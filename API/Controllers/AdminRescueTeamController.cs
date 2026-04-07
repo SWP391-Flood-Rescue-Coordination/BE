@@ -1,5 +1,6 @@
 ﻿using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
+using Flood_Rescue_Coordination.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,16 +19,19 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 /// - `PUT /api/admin/rescue-teams/{id}/leader` : đổi leader
 /// - `DELETE /api/admin/rescue-teams/{id}` : xóa team
 /// </summary>
+[ApiExplorerSettings(GroupName = "rescue-team")]
 [ApiController]
 [Route("api/admin/rescue-teams")]
 [Authorize(Roles = "ADMIN")]
 public class AdminRescueTeamController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IGeocodingService _geocodingService;
 
-    public AdminRescueTeamController(ApplicationDbContext context)
+    public AdminRescueTeamController(ApplicationDbContext context, IGeocodingService geocodingService)
     {
         _context = context;
+        _geocodingService = geocodingService;
     }
 
     /// <summary>
@@ -53,6 +57,7 @@ public class AdminRescueTeamController : ControllerBase
             {
                 TeamId = t.TeamId,
                 TeamName = t.TeamName,
+                Address = t.Address,
                 BaseLatitude = t.BaseLatitude,
                 BaseLongitude = t.BaseLongitude,
                 CreatedAt = t.CreatedAt,
@@ -141,6 +146,11 @@ public class AdminRescueTeamController : ControllerBase
             return BadRequest(new { Success = false, Message = "TeamName không được để trống." });
         }
 
+        if (request.BaseLatitude.HasValue ^ request.BaseLongitude.HasValue)
+        {
+            return BadRequest(new { Success = false, Message = "Nếu nhập tọa độ thì phải nhập cả BaseLatitude và BaseLongitude." });
+        }
+
         if (request.BaseLatitude.HasValue &&
             (request.BaseLatitude.Value < -90 || request.BaseLatitude.Value > 90))
         {
@@ -177,6 +187,52 @@ public class AdminRescueTeamController : ControllerBase
             return BadRequest(new { Success = false, Message = "Người được chọn đang thuộc một team khác." });
         }
 
+        var memberUserIds = (request.MemberUserIds ?? new List<int>())
+            .Where(id => id > 0)
+            .Distinct()
+            .Where(id => id != request.LeaderUserId)
+            .ToList();
+
+        var memberUsers = new List<User>();
+        if (memberUserIds.Count > 0)
+        {
+            memberUsers = await _context.Users
+                .Where(u => memberUserIds.Contains(u.UserId))
+                .ToListAsync();
+
+            if (memberUsers.Count != memberUserIds.Count)
+            {
+                return BadRequest(new { Success = false, Message = "Một hoặc nhiều thành viên được chọn không tồn tại." });
+            }
+
+            var invalidMember = memberUsers.FirstOrDefault(u => !u.IsActive || !string.Equals(u.Role, "CITIZEN", StringComparison.OrdinalIgnoreCase));
+            if (invalidMember != null)
+            {
+                return BadRequest(new { Success = false, Message = "Chỉ có thể thêm các tài khoản CITIZEN đang hoạt động vào team." });
+            }
+
+            var memberIdsWithActiveTeam = await _context.RescueTeamMembers
+                .Where(m => memberUserIds.Contains(m.UserId) && m.IsActive)
+                .Select(m => new { m.UserId, m.TeamId })
+                .ToListAsync();
+
+            if (memberIdsWithActiveTeam.Any())
+            {
+                return BadRequest(new { Success = false, Message = "Một hoặc nhiều thành viên đang thuộc team khác." });
+            }
+        }
+
+        string? resolvedAddress = !string.IsNullOrWhiteSpace(request.Address)
+            ? request.Address.Trim()
+            : null;
+
+        if (string.IsNullOrWhiteSpace(resolvedAddress) && request.BaseLatitude.HasValue && request.BaseLongitude.HasValue)
+        {
+            resolvedAddress = await _geocodingService.ReverseGeocodeAsync(
+                request.BaseLatitude.Value,
+                request.BaseLongitude.Value);
+        }
+
         var strategy = _context.Database.CreateExecutionStrategy();
 
         try
@@ -191,6 +247,7 @@ public class AdminRescueTeamController : ControllerBase
                     var team = new RescueTeam
                     {
                         TeamName = teamName,
+                        Address = resolvedAddress,
                         BaseLatitude = request.BaseLatitude,
                         BaseLongitude = request.BaseLongitude,
                         CreatedAt = now
@@ -210,6 +267,22 @@ public class AdminRescueTeamController : ControllerBase
                     });
 
                     leader.Role = "RESCUE_TEAM";
+
+                    foreach (var memberUser in memberUsers)
+                    {
+                        _context.RescueTeamMembers.Add(new RescueTeamMember
+                        {
+                            TeamId = team.TeamId,
+                            UserId = memberUser.UserId,
+                            MemberRole = "Member",
+                            IsActive = true,
+                            JoinedAt = now,
+                            RequestId = null
+                        });
+
+                        memberUser.Role = "RESCUE_TEAM";
+                    }
+
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
@@ -699,6 +772,7 @@ public class AdminRescueTeamController : ControllerBase
         {
             TeamId = team.TeamId,
             TeamName = team.TeamName,
+            Address = team.Address,
             BaseLatitude = team.BaseLatitude,
             BaseLongitude = team.BaseLongitude,
             CreatedAt = team.CreatedAt,

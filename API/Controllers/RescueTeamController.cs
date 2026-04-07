@@ -11,6 +11,7 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 /// RescueTeamController: Quản lý các hoạt động và nhiệm vụ dành riêng cho Đội cứu hộ.
 /// Cho phép đội cứu hộ xem danh sách nhiệm vụ được giao, cập nhật trạng thái thực hiện và xem thông tin chi tiết.
 /// </summary>
+[ApiExplorerSettings(GroupName = "rescue-team")]
 [ApiController]
 [Route("api/rescue-team")]
 [Authorize(Roles = "RESCUE_TEAM,COORDINATOR,ADMIN")]

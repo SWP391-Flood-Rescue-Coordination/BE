@@ -117,6 +117,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.TeamId);
             entity.Property(e => e.TeamId).HasColumnName("team_id");
             entity.Property(e => e.TeamName).HasColumnName("team_name").HasMaxLength(100);
+            entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(300);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.BaseLatitude).HasColumnName("base_latitude").HasPrecision(9, 6);
             entity.Property(e => e.BaseLongitude).HasColumnName("base_longitude").HasPrecision(9, 6);

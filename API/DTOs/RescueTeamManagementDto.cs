@@ -26,6 +26,7 @@ public class RescueTeamSummaryDto
 {
     public int TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
+    public string? Address { get; set; }
     public decimal? BaseLatitude { get; set; }
     public decimal? BaseLongitude { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -50,11 +51,14 @@ public class CreateRescueTeamRequest
     [Required]
     public string TeamName { get; set; } = string.Empty;
 
+    public string? Address { get; set; }
     public decimal? BaseLatitude { get; set; }
     public decimal? BaseLongitude { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "LeaderUserId phải lớn hơn 0.")]
     public int LeaderUserId { get; set; }
+
+    public List<int> MemberUserIds { get; set; } = new();
 }
 
 /// <summary>
