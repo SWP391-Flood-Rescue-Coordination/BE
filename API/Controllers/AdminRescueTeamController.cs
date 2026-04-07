@@ -129,8 +129,8 @@ public class AdminRescueTeamController : ControllerBase
     /// 
     /// Công dụng:
     /// - Admin tạo team mới.
-    /// - Leader ban đầu phải là `CITIZEN`.
-    /// - Khi được thêm vào team, user sẽ đổi role thành `RESCUE_TEAM`.
+    /// - Có thể tạo team trống, sau đó thêm leader/member sau.
+    /// - Nếu có truyền `LeaderUserId` thì leader ban đầu phải là `CITIZEN`.
     /// </remarks>
     [HttpPost]
     public async Task<IActionResult> CreateTeam([FromBody] CreateRescueTeamRequest request)
@@ -163,34 +163,38 @@ public class AdminRescueTeamController : ControllerBase
             return BadRequest(new { Success = false, Message = "BaseLongitude không hợp lệ." });
         }
 
-        var leader = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.LeaderUserId);
-        if (leader == null)
+        User? leader = null;
+        if (request.LeaderUserId.HasValue)
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy người được chọn làm leader." });
-        }
+            leader = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.LeaderUserId.Value);
+            if (leader == null)
+            {
+                return NotFound(new { Success = false, Message = "Không tìm thấy người được chọn làm leader." });
+            }
 
-        if (!leader.IsActive)
-        {
-            return BadRequest(new { Success = false, Message = "Người được chọn làm leader đang bị vô hiệu hóa." });
-        }
+            if (!leader.IsActive)
+            {
+                return BadRequest(new { Success = false, Message = "Người được chọn làm leader đang bị vô hiệu hóa." });
+            }
 
-        if (!string.Equals(leader.Role, "CITIZEN", StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest(new { Success = false, Message = "Leader ban đầu phải là tài khoản CITIZEN." });
-        }
+            if (!string.Equals(leader.Role, "CITIZEN", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { Success = false, Message = "Leader ban đầu phải là tài khoản CITIZEN." });
+            }
 
-        var hasActiveMembership = await _context.RescueTeamMembers
-            .AnyAsync(m => m.UserId == leader.UserId && m.IsActive);
+            var hasActiveMembership = await _context.RescueTeamMembers
+                .AnyAsync(m => m.UserId == leader.UserId && m.IsActive);
 
-        if (hasActiveMembership)
-        {
-            return BadRequest(new { Success = false, Message = "Người được chọn đang thuộc một team khác." });
+            if (hasActiveMembership)
+            {
+                return BadRequest(new { Success = false, Message = "Người được chọn đang thuộc một team khác." });
+            }
         }
 
         var memberUserIds = (request.MemberUserIds ?? new List<int>())
             .Where(id => id > 0)
             .Distinct()
-            .Where(id => id != request.LeaderUserId)
+            .Where(id => !request.LeaderUserId.HasValue || id != request.LeaderUserId.Value)
             .ToList();
 
         var memberUsers = new List<User>();
@@ -256,17 +260,20 @@ public class AdminRescueTeamController : ControllerBase
                     _context.RescueTeams.Add(team);
                     await _context.SaveChangesAsync();
 
-                    _context.RescueTeamMembers.Add(new RescueTeamMember
+                    if (leader != null)
                     {
-                        TeamId = team.TeamId,
-                        UserId = leader.UserId,
-                        MemberRole = "Leader",
-                        IsActive = true,
-                        JoinedAt = now,
-                        RequestId = null
-                    });
+                        _context.RescueTeamMembers.Add(new RescueTeamMember
+                        {
+                            TeamId = team.TeamId,
+                            UserId = leader.UserId,
+                            MemberRole = "Leader",
+                            IsActive = true,
+                            JoinedAt = now,
+                            RequestId = null
+                        });
 
-                    leader.Role = "RESCUE_TEAM";
+                        leader.Role = "RESCUE_TEAM";
+                    }
 
                     foreach (var memberUser in memberUsers)
                     {

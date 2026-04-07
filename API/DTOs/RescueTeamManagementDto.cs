@@ -56,7 +56,7 @@ public class CreateRescueTeamRequest
     public decimal? BaseLongitude { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "LeaderUserId phải lớn hơn 0.")]
-    public int LeaderUserId { get; set; }
+    public int? LeaderUserId { get; set; }
 
     public List<int> MemberUserIds { get; set; } = new();
 }
