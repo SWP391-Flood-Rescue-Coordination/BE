@@ -476,7 +476,12 @@ public class RescueOperationController : ControllerBase
                 t.TeamId,
                 t.TeamName,
                 t.BaseLatitude,
-                t.BaseLongitude
+                t.BaseLongitude,
+                FreeMemberCount = _context.RescueTeamMembers.Count(m =>
+                    m.TeamId == t.TeamId &&
+                    m.IsActive &&
+                    m.RequestId == null &&
+                    m.MemberRole != "Leader")
             })
             .ToListAsync(cancellationToken);
 
@@ -500,7 +505,8 @@ public class RescueOperationController : ControllerBase
                 BaseLongitude = team.BaseLongitude.Value,
                 RequestLatitude = request.Latitude.Value,
                 RequestLongitude = request.Longitude.Value,
-                DistanceKm = Math.Round(distanceKm, 2)
+                DistanceKm = Math.Round(distanceKm, 2),
+                FreeMemberCount = team.FreeMemberCount
             });
         }
 

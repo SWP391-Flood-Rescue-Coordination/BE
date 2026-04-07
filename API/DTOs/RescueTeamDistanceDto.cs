@@ -13,4 +13,5 @@ public class RescueTeamDistanceDto
     public decimal RequestLongitude { get; set; }
 
     public double DistanceKm { get; set; }
+    public int FreeMemberCount { get; set; }
 }
