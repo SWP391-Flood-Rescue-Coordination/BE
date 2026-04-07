@@ -58,7 +58,7 @@ public class CreateRescueTeamRequest
     [Range(1, int.MaxValue, ErrorMessage = "LeaderUserId phải lớn hơn 0.")]
     public int? LeaderUserId { get; set; }
 
-    public List<int> MemberUserIds { get; set; } = new();
+    public List<int>? MemberUserIds { get; set; }
 }
 
 /// <summary>
@@ -67,7 +67,25 @@ public class CreateRescueTeamRequest
 public class AddRescueTeamMemberRequest
 {
     [Range(1, int.MaxValue, ErrorMessage = "UserId phải lớn hơn 0.")]
-    public int UserId { get; set; }
+    public int? UserId { get; set; }
+
+    public List<int> MemberUserIds { get; set; } = new();
+}
+
+/// <summary>
+/// Request cập nhật team một lần cho FE lưu thay đổi.
+/// </summary>
+public class UpdateRescueTeamRequest
+{
+    public string? TeamName { get; set; }
+    public string? Address { get; set; }
+    public decimal? BaseLatitude { get; set; }
+    public decimal? BaseLongitude { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "LeaderUserId phải lớn hơn 0.")]
+    public int? LeaderUserId { get; set; }
+
+    public List<int> MemberUserIds { get; set; } = new();
 }
 
 /// <summary>

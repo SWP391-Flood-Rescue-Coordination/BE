@@ -14,6 +14,7 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 /// - `GET /api/admin/rescue-teams` : lấy danh sách team
 /// - `GET /api/admin/rescue-teams/{id}` : xem chi tiết team
 /// - `POST /api/admin/rescue-teams` : tạo team mới
+/// - `PUT /api/admin/rescue-teams/{id}` : lưu thay đổi team 1 lần
 /// - `POST /api/admin/rescue-teams/{id}/members` : thêm thành viên
 /// - `DELETE /api/admin/rescue-teams/{id}/members/{userId}` : bớt thành viên
 /// - `PUT /api/admin/rescue-teams/{id}/leader` : đổi leader
@@ -326,13 +327,250 @@ public class AdminRescueTeamController : ControllerBase
     }
 
     /// <summary>
+    /// Lưu thay đổi tổng hợp cho một team.
+    /// </summary>
+    /// <remarks>
+    /// Route: `PUT /api/admin/rescue-teams/{teamId}`
+    /// 
+    /// Công dụng:
+    /// - Cho phép admin lưu thay đổi team trong một lần bấm.
+    /// - Hỗ trợ đổi tên team, địa chỉ, tọa độ, leader và danh sách member.
+    /// - Nếu FE truyền danh sách member thì backend sẽ đồng bộ danh sách đó với team.
+    /// </remarks>
+    [HttpPut("{teamId:int}")]
+    public async Task<IActionResult> UpdateTeam(int teamId, [FromBody] UpdateRescueTeamRequest request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { Success = false, Message = "Dữ liệu gửi lên không hợp lệ." });
+        }
+
+        var team = await _context.RescueTeams.FirstOrDefaultAsync(t => t.TeamId == teamId);
+        if (team == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy team." });
+        }
+
+        if (request.TeamName != null)
+        {
+            var teamName = request.TeamName.Trim();
+            if (string.IsNullOrWhiteSpace(teamName))
+            {
+                return BadRequest(new { Success = false, Message = "TeamName không được để trống." });
+            }
+
+            team.TeamName = teamName;
+        }
+
+        if (request.BaseLatitude.HasValue ^ request.BaseLongitude.HasValue)
+        {
+            return BadRequest(new { Success = false, Message = "Nếu nhập tọa độ thì phải nhập cả BaseLatitude và BaseLongitude." });
+        }
+
+        if (request.BaseLatitude.HasValue &&
+            (request.BaseLatitude.Value < -90 || request.BaseLatitude.Value > 90))
+        {
+            return BadRequest(new { Success = false, Message = "BaseLatitude không hợp lệ." });
+        }
+
+        if (request.BaseLongitude.HasValue &&
+            (request.BaseLongitude.Value < -180 || request.BaseLongitude.Value > 180))
+        {
+            return BadRequest(new { Success = false, Message = "BaseLongitude không hợp lệ." });
+        }
+
+        if (request.MemberUserIds != null && request.MemberUserIds.Any(id => id <= 0))
+        {
+            return BadRequest(new { Success = false, Message = "MemberUserIds phải là các số nguyên lớn hơn 0." });
+        }
+
+        var currentLeaderMembership = await _context.RescueTeamMembers
+            .FirstOrDefaultAsync(m => m.TeamId == teamId && m.IsActive && m.MemberRole == "Leader");
+
+        var targetLeaderId = request.LeaderUserId ?? currentLeaderMembership?.UserId;
+
+        var desiredMemberIds = request.MemberUserIds != null
+            ? request.MemberUserIds
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList()
+            : await _context.RescueTeamMembers
+                .Where(m => m.TeamId == teamId)
+                .Select(m => m.UserId)
+                .Distinct()
+                .ToListAsync();
+
+        if (targetLeaderId.HasValue)
+        {
+            desiredMemberIds = desiredMemberIds
+                .Where(id => id != targetLeaderId.Value)
+                .ToList();
+        }
+
+        var desiredUserIds = desiredMemberIds.ToList();
+        if (targetLeaderId.HasValue && !desiredUserIds.Contains(targetLeaderId.Value))
+        {
+            desiredUserIds.Add(targetLeaderId.Value);
+        }
+
+        var desiredUsers = new List<User>();
+        if (desiredUserIds.Count > 0)
+        {
+            desiredUsers = await _context.Users
+                .Where(u => desiredUserIds.Contains(u.UserId))
+                .ToListAsync();
+
+            if (desiredUsers.Count != desiredUserIds.Count)
+            {
+                return BadRequest(new { Success = false, Message = "Một hoặc nhiều thành viên được chọn không tồn tại." });
+            }
+
+            var invalidUser = desiredUsers.FirstOrDefault(u => !u.IsActive || (!string.Equals(u.Role, "CITIZEN", StringComparison.OrdinalIgnoreCase) && !string.Equals(u.Role, "RESCUE_TEAM", StringComparison.OrdinalIgnoreCase)));
+            if (invalidUser != null)
+            {
+                return BadRequest(new { Success = false, Message = "Chỉ có thể lưu các tài khoản đang hoạt động có role CITIZEN hoặc RESCUE_TEAM vào team." });
+            }
+
+            var conflictingUserIds = await _context.RescueTeamMembers
+                .Where(m => desiredUserIds.Contains(m.UserId) && m.TeamId != teamId && m.IsActive)
+                .Select(m => m.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            if (conflictingUserIds.Any())
+            {
+                return BadRequest(new { Success = false, Message = "Một hoặc nhiều thành viên đang thuộc team khác." });
+            }
+        }
+
+        string? resolvedAddress = team.Address;
+        if (request.Address != null)
+        {
+            resolvedAddress = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
+        }
+        else if (request.BaseLatitude.HasValue && request.BaseLongitude.HasValue)
+        {
+            resolvedAddress = await _geocodingService.ReverseGeocodeAsync(
+                request.BaseLatitude.Value,
+                request.BaseLongitude.Value);
+        }
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+
+        try
+        {
+            return await strategy.ExecuteAsync<IActionResult>(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var now = DateTime.UtcNow;
+
+                    team.Address = resolvedAddress;
+                    if (request.BaseLatitude.HasValue && request.BaseLongitude.HasValue)
+                    {
+                        team.BaseLatitude = request.BaseLatitude.Value;
+                        team.BaseLongitude = request.BaseLongitude.Value;
+                    }
+
+                    var currentMemberships = await _context.RescueTeamMembers
+                        .Where(m => m.TeamId == teamId)
+                        .ToListAsync();
+
+                    var membershipsToRemove = request.MemberUserIds != null
+                        ? currentMemberships.Where(m => !desiredUserIds.Contains(m.UserId)).ToList()
+                        : new List<RescueTeamMember>();
+
+                    foreach (var membership in membershipsToRemove)
+                    {
+                        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == membership.UserId);
+                        if (user != null)
+                        {
+                            var hasOtherActiveMembership = await _context.RescueTeamMembers
+                                .AnyAsync(m => m.UserId == membership.UserId && m.TeamId != teamId && m.IsActive);
+
+                            if (!hasOtherActiveMembership && string.Equals(user.Role, "RESCUE_TEAM", StringComparison.OrdinalIgnoreCase))
+                            {
+                                user.Role = "CITIZEN";
+                            }
+                        }
+                    }
+
+                    if (membershipsToRemove.Any())
+                    {
+                        _context.RescueTeamMembers.RemoveRange(membershipsToRemove);
+                    }
+
+                    foreach (var user in desiredUsers)
+                    {
+                        var membership = currentMemberships.FirstOrDefault(m => m.UserId == user.UserId);
+                        var isLeader = targetLeaderId.HasValue && user.UserId == targetLeaderId.Value;
+
+                        if (membership == null)
+                        {
+                            _context.RescueTeamMembers.Add(new RescueTeamMember
+                            {
+                                TeamId = teamId,
+                                UserId = user.UserId,
+                                MemberRole = isLeader ? "Leader" : "Member",
+                                IsActive = true,
+                                JoinedAt = now,
+                                RequestId = null
+                            });
+                        }
+                        else
+                        {
+                            membership.IsActive = true;
+                            membership.MemberRole = isLeader ? "Leader" : "Member";
+                            membership.RequestId = null;
+                        }
+
+                        user.Role = "RESCUE_TEAM";
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    var updatedTeam = await BuildTeamDetailAsync(teamId);
+
+                    return Ok(new
+                    {
+                        Success = true,
+                        Message = "Cập nhật team thành công.",
+                        Data = updatedTeam
+                    });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return StatusCode(500, new
+                    {
+                        Success = false,
+                        Message = "Không thể cập nhật team.",
+                        Detail = ex.Message
+                    });
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                Success = false,
+                Message = "Không thể cập nhật team.",
+                Detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
     /// Thêm một thành viên vào team.
     /// </summary>
     /// <remarks>
     /// Route: `POST /api/admin/rescue-teams/{teamId}/members`
     /// 
     /// Công dụng:
-    /// - Thêm citizen vào team.
+    /// - Thêm một hoặc nhiều citizen vào team.
     /// - Tự động đổi role user thành `RESCUE_TEAM`.
     /// - Thành viên đã inactive có thể được kích hoạt lại.
     /// </remarks>
@@ -350,33 +588,51 @@ public class AdminRescueTeamController : ControllerBase
             return NotFound(new { Success = false, Message = "Không tìm thấy team." });
         }
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.UserId);
-        if (user == null)
+        var memberUserIds = (request.MemberUserIds ?? new List<int>())
+            .Concat(request.UserId.HasValue ? new[] { request.UserId.Value } : Array.Empty<int>())
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+
+        if (!memberUserIds.Any())
         {
-            return NotFound(new { Success = false, Message = "Không tìm thấy người dùng." });
+            return BadRequest(new { Success = false, Message = "Phải chọn ít nhất một thành viên để thêm vào team." });
         }
 
-        if (!user.IsActive)
+        var users = await _context.Users
+            .Where(u => memberUserIds.Contains(u.UserId))
+            .ToListAsync();
+
+        if (users.Count != memberUserIds.Count)
         {
-            return BadRequest(new { Success = false, Message = "Người dùng đang bị vô hiệu hóa." });
+            return NotFound(new { Success = false, Message = "Một hoặc nhiều người dùng không tồn tại." });
         }
 
-        if (!string.Equals(user.Role, "CITIZEN", StringComparison.OrdinalIgnoreCase))
+        var inactiveUser = users.FirstOrDefault(u => !u.IsActive);
+        if (inactiveUser != null)
         {
-            return BadRequest(new { Success = false, Message = "Chỉ có thể thêm tài khoản CITIZEN vào team." });
+            return BadRequest(new { Success = false, Message = "Một hoặc nhiều người dùng đang bị vô hiệu hóa." });
         }
 
-        var activeMembership = await _context.RescueTeamMembers
-            .FirstOrDefaultAsync(m => m.UserId == user.UserId && m.IsActive);
-
-        if (activeMembership != null)
+        var nonCitizen = users.FirstOrDefault(u => !string.Equals(u.Role, "CITIZEN", StringComparison.OrdinalIgnoreCase));
+        if (nonCitizen != null)
         {
-            if (activeMembership.TeamId == teamId)
-            {
-                return BadRequest(new { Success = false, Message = "Người dùng đã là thành viên active của team này." });
-            }
+            return BadRequest(new { Success = false, Message = "Chỉ có thể thêm các tài khoản CITIZEN vào team." });
+        }
 
-            return BadRequest(new { Success = false, Message = "Người dùng đang thuộc một team khác." });
+        var existingActiveMemberships = await _context.RescueTeamMembers
+            .Where(m => memberUserIds.Contains(m.UserId) && m.IsActive)
+            .Select(m => new { m.UserId, m.TeamId })
+            .ToListAsync();
+
+        if (existingActiveMemberships.Any(m => m.TeamId == teamId))
+        {
+            return BadRequest(new { Success = false, Message = "Một hoặc nhiều người dùng đã là thành viên active của team này." });
+        }
+
+        if (existingActiveMemberships.Any())
+        {
+            return BadRequest(new { Success = false, Message = "Một hoặc nhiều người dùng đang thuộc team khác." });
         }
 
         var strategy = _context.Database.CreateExecutionStrategy();
@@ -390,30 +646,37 @@ public class AdminRescueTeamController : ControllerBase
                 {
                     var now = DateTime.UtcNow;
 
-                    var existingMembership = await _context.RescueTeamMembers
-                        .FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == user.UserId);
+                    var existingMemberships = await _context.RescueTeamMembers
+                        .Where(m => m.TeamId == teamId && memberUserIds.Contains(m.UserId))
+                        .ToListAsync();
 
-                    if (existingMembership == null)
+                    foreach (var user in users)
                     {
-                        _context.RescueTeamMembers.Add(new RescueTeamMember
+                        var existingMembership = existingMemberships.FirstOrDefault(m => m.UserId == user.UserId);
+
+                        if (existingMembership == null)
                         {
-                            TeamId = teamId,
-                            UserId = user.UserId,
-                            MemberRole = "Member",
-                            IsActive = true,
-                            JoinedAt = now,
-                            RequestId = null
-                        });
-                    }
-                    else
-                    {
-                        existingMembership.IsActive = true;
-                        existingMembership.MemberRole = "Member";
-                        existingMembership.JoinedAt = now;
-                        existingMembership.RequestId = null;
+                            _context.RescueTeamMembers.Add(new RescueTeamMember
+                            {
+                                TeamId = teamId,
+                                UserId = user.UserId,
+                                MemberRole = "Member",
+                                IsActive = true,
+                                JoinedAt = now,
+                                RequestId = null
+                            });
+                        }
+                        else
+                        {
+                            existingMembership.IsActive = true;
+                            existingMembership.MemberRole = "Member";
+                            existingMembership.JoinedAt = now;
+                            existingMembership.RequestId = null;
+                        }
+
+                        user.Role = "RESCUE_TEAM";
                     }
 
-                    user.Role = "RESCUE_TEAM";
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
