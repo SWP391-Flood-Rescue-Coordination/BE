@@ -7,6 +7,7 @@ public class RescueTeam
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Vị trí cố định của đội cứu hộ
+    public string? Address { get; set; }
     public decimal? BaseLatitude { get; set; }
     public decimal? BaseLongitude { get; set; }
 }
