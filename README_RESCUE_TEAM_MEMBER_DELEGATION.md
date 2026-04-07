@@ -51,16 +51,22 @@ GET /api/rescue-team/my-assignment
   - Nếu Member đang Rảnh (`request_id = null`), API sẽ trả về lỗi `404 Not Found` kèm thông điệp báo Rảnh để ngăn chặn / chặn lại việc xem thông tin rác.
   - Đây là endpoint dành riêng cho các thành viên bình thường xem đúng 1 Task mà bản thân phải chịu trách nhiệm.
 
-### 4. Member: Xác nhận tiếp nhận nhiệm vụ (Confirm Task)
+### 4. Member: Xác nhận hoàn tất nhiệm vụ (Confirm Task) ✅
 ```
 PUT /api/rescue-team/my-assignment/confirm
 ```
-- **Quyền hạn:** `RESCUE_TEAM`.
+- **Quyền hạn:** Tài khoản có role `RESCUE_TEAM`, đồng thời bản ghi trong `rescue_team_members` phải có `member_role = 'Member'`.
+- **Request Body:** Không cần (No Body).
 - **Hoạt động:**
-  - *Lưu ý:* API này không cần gửi bất cứ data nào lên (Không có Body, không cần Ghi chú).
-  - Hệ thống tự động lấy ID của người dùng.
-  - Nếu có nhiệm vụ, API trả về thông điệp "Xác nhận thành công".
-  - Nếu chưa có nhiệm vụ nào được giao, API sẽ báo mắng / chặn lại.
+  - Hệ thống tự động lấy `UserId` từ JWT Token.
+  - **Kiểm tra vai trò (Database):** Nếu người dùng là `Leader`, API sẽ báo lỗi `403 Forbidden` (Đội trưởng quản lý nhiệm vụ qua API Status chung, không thực hiện xác nhận cá nhân tại đây).
+  - **Kiểm tra trạng thái:** Nếu Member đang được giao việc (`request_id != null`) và Operation liên quan đang ở trạng thái `Assigned`.
+  - **Giải phóng:** Hệ thống đặt `request_id = null` cho Member này → Trạng thái trở về **Rảnh (Available)**, sẵn sàng nhận Task tiếp theo từ Leader.
+- **Mã lỗi phản hồi:**
+  - `200 OK`: Xác nhận thành công. Trả về `operationId` và `requestId`.
+  - `403 Forbidden`: Người dùng là Leader, không được dùng quyền của Member.
+  - `404 Not Found`: Không tìm thấy nhiệm vụ hoặc Member đang rảnh.
+  - `400 Bad Request`: Operation không ở trạng thái `Assigned` để xác nhận.
 
 ### 5. Leader: Xem và tìm kiếm danh sách Thành viên (Get Team Members)
 ```
