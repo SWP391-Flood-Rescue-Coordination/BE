@@ -28,10 +28,10 @@ public class RescueTeamController : ControllerBase
     }
 
     /// <summary>
-    /// Đội cứu hộ - Cập nhật trạng thái nhiệm vụ cứu hộ (COMPLETED hoặc FAILED).
+    /// Đội trưởng (Leader) - Cập nhật trạng thái nhiệm vụ cứu hộ từ Waiting sang Completed.
     /// </summary>
     /// <param name="operationId">ID của nhiệm vụ cần cập nhật.</param>
-    /// <param name="dto">Trạng thái mới và lý do (nếu thất bại).</param>
+    /// <param name="dto">Trạng thái mới (phải là COMPLETED).</param>
     /// <returns>Kết quả cập nhật trạng thái.</returns>
     [HttpPut("operations/{operationId}/status")]
     public async Task<IActionResult> UpdateMissionStatus(
@@ -51,32 +51,18 @@ public class RescueTeamController : ControllerBase
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
         }
 
-        // 3. Chuẩn hóa trạng thái mục tiêu
+        // 3. Chuẩn hóa trạng thái mục tiêu - Chỉ chấp nhận COMPLETED
         var targetStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
-        var targetStatus = targetStatusKey == "COMPLETED"
-            ? "Completed"
-            : targetStatusKey == "FAILED"
-                ? "Failed"
-                : string.Empty;
-
-        if (string.IsNullOrEmpty(targetStatus))
+        if (targetStatusKey != "COMPLETED")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = "Trạng thái không hợp lệ. Chỉ chấp nhận: COMPLETED, FAILED."
+                Message = "API này hiện chỉ hỗ trợ chuyển trạng thái sang COMPLETED."
             });
         }
 
-        // Ràng buộc: Thất bại thì phải có lý do
-        if (targetStatus == "Failed" && string.IsNullOrWhiteSpace(dto.Reason))
-        {
-            return BadRequest(new
-            {
-                Success = false,
-                Message = "Bắt buộc phải nhập lý do khi cập nhật trạng thái FAILED."
-            });
-        }
+        var targetStatus = "Completed";
 
         // 4. Truy vấn thông tin Operation và Request liên quan
         var operation = await _context.RescueOperations
@@ -95,32 +81,24 @@ public class RescueTeamController : ControllerBase
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ liên kết." });
         }
 
-        // 5. Kiểm tra quyền hạn: User phải là thành viên ĐANG HOẠT ĐỘNG của Team được giao nhiệm vụ này
-        var isMember = await _context.RescueTeamMembers
+        // 5. Kiểm tra quyền hạn: User phải là ĐỘI TRƯỞNG (Leader) đang hoạt động của Team được giao nhiệm vụ này
+        var isLeader = await _context.RescueTeamMembers
             .AnyAsync(m => m.TeamId == operation.TeamId
                         && m.UserId == userId
-                        && m.IsActive);
-        if (!isMember)
+                        && m.IsActive
+                        && m.MemberRole == "Leader");
+        if (!isLeader)
         {
             return Forbid();
         }
 
-        // 6. Kiểm tra logic trạng thái hiện tại
-        if (operation.Status != "Assigned")
+        // 6. Kiểm tra logic trạng thái hiện tại: Chỉ cho phép chuyển từ 'Waiting'
+        if (operation.Status != "Waiting")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Nhiệm vụ đang ở trạng thái '{operation.Status}', không thể chuyển sang '{targetStatus}'."
-            });
-        }
-
-        if (NormalizeStatusKey(request.Status) != "ASSIGNED")
-        {
-            return Conflict(new
-            {
-                Success = false,
-                Message = $"Yêu cầu liên kết đang ở trạng thái '{request.Status}', không phù hợp để đội cứu hộ hoàn tất nhiệm vụ."
+                Message = $"Nhiệm vụ đang ở trạng thái '{operation.Status}', không thể chuyển sang '{targetStatus}'. API này yêu cầu trạng thái nguồn là 'Waiting'."
             });
         }
 
@@ -128,61 +106,15 @@ public class RescueTeamController : ControllerBase
 
         // 7. Cập nhật trạng thái nhiệm vụ (Operation)
         operation.Status = targetStatus;
-        operation.StartedAt ??= now; // Ghi nhận lúc bắt đầu nếu chưa có
+        operation.StartedAt ??= now; 
         operation.CompletedAt = now;
 
         // 8. Cập nhật yêu cầu cứu hộ (Request)
-        // Nếu thất bại: Trả yêu cầu về trạng thái Verified để Coordinator có thể phân công đội khác
-        if (targetStatus == "Failed")
-        {
-            request.Status = "Verified";
-        }
-        // Lưu ý: Nếu Thành công (Completed), Request vẫn giữ Assigned cho đến khi người dân xác nhận báo an toàn
-
+        // Theo yêu cầu, không thay đổi trạng thái của RescueRequest (giữ nguyên Assigned)
         request.UpdatedAt = now;
         request.UpdatedBy = userId;
 
-        // 9. Ghi lịch sử trạng thái yêu cầu nếu thất bại
-        if (targetStatus == "Failed")
-        {
-            await UpsertRequestStatusHistoryAsync(
-                request.RequestId,
-                "Verified",
-                $"Nhiệm vụ thất bại. Lý do: {dto.Reason}",
-                userId,
-                now);
-        }
-
-        // 10. Giải phóng trạng thái cho các thành viên trong đội đang làm nhiệm vụ này
-        var membersToRelease = await _context.RescueTeamMembers
-            .Where(m => m.RequestId == request.RequestId && m.IsActive)
-            .ToListAsync();
-            
-        foreach (var m in membersToRelease)
-        {
-            m.RequestId = null;
-        }
-
-        // 11. Giải phóng tất cả các phương tiện được gán cho nhiệm vụ này
-        var vehicleIds = await _context.RescueOperationVehicles
-            .Where(ov => ov.OperationId == operation.OperationId)
-            .Select(ov => ov.VehicleId)
-            .ToListAsync();
-
-        if (vehicleIds.Any())
-        {
-            var vehicles = await _context.Vehicles
-                .Where(v => vehicleIds.Contains(v.VehicleId))
-                .ToListAsync();
-
-            foreach (var vehicle in vehicles)
-            {
-                vehicle.Status = "AVAILABLE";
-                vehicle.UpdatedAt = now;
-            }
-        }
-
-        // 12. Lưu các thay đổi vào DB với xử lý tranh chấp (Concurrency)
+        // 9. Lưu các thay đổi vào DB với xử lý tranh chấp (Concurrency)
         try
         {
             await _context.SaveChangesAsync();
@@ -217,13 +149,75 @@ public class RescueTeamController : ControllerBase
             RequestStatus = request.Status,
             StartedAt = operation.StartedAt,
             CompletedAt = operation.CompletedAt,
-            Message = targetStatus == "Failed"
-                ? "Đã ghi nhận nhiệm vụ thất bại. Yêu cầu đã quay lại trạng thái Chờ xử lý (Verified)."
-                : "Xác nhận hoàn tất nhiệm vụ thành công. Chờ người dân báo an toàn để đóng yêu cầu hoàn toàn."
+            Message = "Xác nhận hoàn tất nhiệm vụ thành công. Toàn bộ đội và phương tiện đã được giải phóng."
         });
     }
 
     /// <summary>
+    /// Thành viên (Member) - Chuyển trạng thái nhiệm vụ từ Assigned sang Waiting.
+    /// Cho phép đội cứu hộ báo cáo việc tạm dừng hoặc chờ đợi trong quá trình thực hiện nhiệm vụ.
+    /// </summary>
+    /// <param name="operationId">ID của nhiệm vụ cần chuyển sang trạng thái chờ.</param>
+    /// <returns>Thông tin trạng thái mới của nhiệm vụ.</returns>
+    [HttpPut("operations/{operationId}/waiting")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> SetOperationToWaiting(int operationId)
+    {
+        // 1. Xác thực định danh người dùng từ Token
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        }
+
+        // 2. Truy vấn thông tin nhiệm vụ cứu hộ
+        var operation = await _context.RescueOperations
+            .FirstOrDefaultAsync(o => o.OperationId == operationId);
+
+        if (operation == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy nhiệm vụ cứu hộ." });
+        }
+
+        // 3. Kiểm tra quyền hạn: User phải là thành viên (Member hoặc Leader) đang hoạt động của đội được giao nhiệm vụ
+        var isMember = await _context.RescueTeamMembers
+            .AnyAsync(m => m.TeamId == operation.TeamId
+                        && m.UserId == userId
+                        && m.IsActive);
+        if (!isMember)
+        {
+            return Forbid();
+        }
+
+        // 4. Kiểm tra logic trạng thái: Chỉ cho phép chuyển sang Waiting từ trạng thái Assigned
+        if (operation.Status != "Assigned")
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Nhiệm vụ đang ở trạng thái '{operation.Status}'. Chỉ có thể chuyển sang 'Waiting' từ trạng thái 'Assigned'."
+            });
+        }
+
+        // 5. Cập nhật trạng thái nhiệm vụ
+        var now = DateTime.UtcNow;
+        operation.Status = "Waiting";
+        operation.StartedAt ??= now; // Ghi nhận thời điểm bắt đầu hành trình nếu chưa có
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Success = true,
+            OperationId = operation.OperationId,
+            OperationStatus = operation.Status,
+            StartedAt = operation.StartedAt,
+            Message = "Chuyển trạng thái nhiệm vụ sang Waiting thành công."
+        });
+    }
+
+    /// <summary>
+
     /// Đội trưởng (Leader) - Từ chối Yêu cầu cứu hộ được phân công (Gỡ bỏ gán đội).
     /// </summary>
     [HttpPut("requests/{requestId}/reject")]
@@ -589,14 +583,51 @@ public class RescueTeamController : ControllerBase
                 NumberOfAffectedPeople = request.NumberOfAffectedPeople
             };
             _context.RescueOperations.Add(operation);
+            await _context.SaveChangesAsync(); // Lưu để có OperationId cho RescueOperationVehicles
         }
         else
         {
             // Nếu đã có record, đảm bảo trạng thái là Assigned
             operation.Status = "Assigned";
+            await _context.SaveChangesAsync();
         }
 
-        // 7. Cập nhật trạng thái Request sang Assigned và ghi History
+        // 7. Xử lý Gán Phương Tiện (Vehicles) - Chức năng mới cho Leader
+        var assignedVehicleIds = new List<int>();
+        if (dto.VehicleIds != null && dto.VehicleIds.Any())
+        {
+            var vehicles = await _context.Vehicles
+                .Where(v => dto.VehicleIds.Contains(v.VehicleId))
+                .ToListAsync();
+
+            foreach (var vid in dto.VehicleIds)
+            {
+                var vehicle = vehicles.FirstOrDefault(v => v.VehicleId == vid);
+                if (vehicle != null && vehicle.Status == "AVAILABLE")
+                {
+                    // Kiểm tra xem đã gán chưa để tránh duplicate trong cùng 1 operation
+                    bool alreadyAssigned = await _context.RescueOperationVehicles
+                        .AnyAsync(ov => ov.OperationId == operation.OperationId && ov.VehicleId == vid);
+
+                    if (!alreadyAssigned)
+                    {
+                        _context.RescueOperationVehicles.Add(new RescueOperationVehicle
+                        {
+                            OperationId = operation.OperationId,
+                            VehicleId = vid,
+                            AssignedBy = leaderId,
+                            AssignedAt = now
+                        });
+
+                        vehicle.Status = "InUse";
+                        vehicle.UpdatedAt = now;
+                        assignedVehicleIds.Add(vid);
+                    }
+                }
+            }
+        }
+
+        // 8. Cập nhật trạng thái Request sang Assigned và ghi History
         if (request.Status != "Assigned")
         {
             request.Status = "Assigned";
@@ -606,7 +637,7 @@ public class RescueTeamController : ControllerBase
             await UpsertRequestStatusHistoryAsync(
                 dto.RequestId,
                 "Assigned",
-                $"Đội trưởng phân công nhiệm vụ cho {assignedIds.Count} thành viên.",
+                $"Đội trưởng giao việc cho {assignedIds.Count} thành viên và gán {assignedVehicleIds.Count} phương tiện.",
                 leaderId,
                 now);
         }

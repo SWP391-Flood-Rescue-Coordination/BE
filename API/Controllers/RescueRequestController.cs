@@ -793,6 +793,44 @@ public class RescueRequestController : ControllerBase
             UpdatedAt = now
         });
 
+        // 7. Giải phóng trạng thái cho các thành viên trong đội đang làm nhiệm vụ này
+        var membersToRelease = await _context.RescueTeamMembers
+            .Where(m => m.RequestId == request.RequestId && m.IsActive)
+            .ToListAsync();
+            
+        foreach (var m in membersToRelease)
+        {
+            m.RequestId = null;
+        }
+
+        // 8. Giải phóng tất cả các phương tiện được gán cho các nhiệm vụ của yêu cầu này
+        var operationIds = await _context.RescueOperations
+            .Where(o => o.RequestId == request.RequestId)
+            .Select(o => o.OperationId)
+            .ToListAsync();
+
+        if (operationIds.Any())
+        {
+            var vehicleIds = await _context.RescueOperationVehicles
+                .Where(ov => operationIds.Contains(ov.OperationId))
+                .Select(ov => ov.VehicleId)
+                .Distinct()
+                .ToListAsync();
+
+            if (vehicleIds.Any())
+            {
+                var vehicles = await _context.Vehicles
+                    .Where(v => vehicleIds.Contains(v.VehicleId))
+                    .ToListAsync();
+
+                foreach (var vehicle in vehicles)
+                {
+                    vehicle.Status = "AVAILABLE";
+                    vehicle.UpdatedAt = now;
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return Ok(new
@@ -868,6 +906,44 @@ public class RescueRequestController : ControllerBase
             UpdatedBy = 0,
             UpdatedAt = now
         });
+
+        // 5. Giải phóng trạng thái cho các thành viên trong đội đang làm nhiệm vụ này
+        var membersToRelease = await _context.RescueTeamMembers
+            .Where(m => m.RequestId == request.RequestId && m.IsActive)
+            .ToListAsync();
+            
+        foreach (var m in membersToRelease)
+        {
+            m.RequestId = null;
+        }
+
+        // 6. Giải phóng tất cả các phương tiện được gán cho các nhiệm vụ của yêu cầu này
+        var operationIds = await _context.RescueOperations
+            .Where(o => o.RequestId == request.RequestId)
+            .Select(o => o.OperationId)
+            .ToListAsync();
+
+        if (operationIds.Any())
+        {
+            var vehicleIds = await _context.RescueOperationVehicles
+                .Where(ov => operationIds.Contains(ov.OperationId))
+                .Select(ov => ov.VehicleId)
+                .Distinct()
+                .ToListAsync();
+
+            if (vehicleIds.Any())
+            {
+                var vehicles = await _context.Vehicles
+                    .Where(v => vehicleIds.Contains(v.VehicleId))
+                    .ToListAsync();
+
+                foreach (var vehicle in vehicles)
+                {
+                    vehicle.Status = "AVAILABLE";
+                    vehicle.UpdatedAt = now;
+                }
+            }
+        }
 
         await _context.SaveChangesAsync();
 
