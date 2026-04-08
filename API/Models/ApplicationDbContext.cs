@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RescueTeamMember> RescueTeamMembers { get; set; }
     public DbSet<RescueOperation> RescueOperations { get; set; }
     public DbSet<RescueOperationVehicle> RescueOperationVehicles { get; set; }
+    public DbSet<RescueDelegationActionLog> RescueDelegationActionLogs { get; set; }
     public DbSet<RescueRequestStatusHistory> RescueRequestStatusHistories { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
@@ -189,6 +190,24 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<RescueDelegationActionLog>(entity =>
+        {
+            entity.ToTable("rescue_delegation_action_logs");
+            entity.HasKey(e => e.DelegationActionLogId);
+
+            entity.Property(e => e.DelegationActionLogId).HasColumnName("delegation_action_log_id");
+            entity.Property(e => e.ActionBatchId).HasColumnName("action_batch_id");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.OperationId).HasColumnName("operation_id");
+            entity.Property(e => e.ActorUserId).HasColumnName("actor_user_id");
+            entity.Property(e => e.MemberUserId).HasColumnName("member_user_id");
+            entity.Property(e => e.ActionType).HasColumnName("action_type").HasMaxLength(50);
+            entity.Property(e => e.ActionReason).HasColumnName("action_reason").HasMaxLength(500);
+            entity.Property(e => e.RequestStatus).HasColumnName("request_status").HasMaxLength(20);
+            entity.Property(e => e.OperationStatus).HasColumnName("operation_status").HasMaxLength(20);
+            entity.Property(e => e.ActionAt).HasColumnName("action_at");
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>

@@ -823,3 +823,330 @@ USE [master]
 GO
 ALTER DATABASE [DisasterRescueReliefDB] SET  READ_WRITE 
 GO
+-- Drop the existing constraint
+ALTER TABLE [dbo].[rescue_operations] DROP CONSTRAINT [CK_rescue_operations_status_allowed];
+
+-- Re-create the constraint with 'Waiting' added
+ALTER TABLE [dbo].[rescue_operations] WITH CHECK ADD CONSTRAINT [CK_rescue_operations_status_allowed] 
+CHECK ([status] = 'Failed' OR [status] = 'Completed' OR [status] = 'Assigned' OR [status] = 'Waiting');
+
+-- Check the constraint
+ALTER TABLE [dbo].[rescue_operations] CHECK CONSTRAINT [CK_rescue_operations_status_allowed];
+GO
+/*
+    Muc tieu:
+    - Log don gian cho luong phan nhiem vu.
+    - Moi hanh dong = 1 dong.
+    - Khong luu lifecycle dai trong 1 row.
+
+    Cac hanh dong can log:
+    - Leader gan member vao operation.
+    - Member bam bao ho tro.
+    - Member bam hoan tat.
+    - Leader loai member khoi operation.
+    - Leader hoan tat operation.
+    - Leader bao that bai operation.
+    - Leader tu choi phan cong tu Coordinator.
+
+    Quy uoc status:
+    - request_status, operation_status la trang thai SAU KHI action da ap dung xong.
+*/
+
+IF OBJECT_ID(N'dbo.rescue_delegation_action_logs', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[rescue_delegation_action_logs]
+    (
+        [delegation_action_log_id] [bigint] IDENTITY(1,1) NOT NULL,
+        [action_batch_id] [uniqueidentifier] NULL,
+        [request_id] [int] NULL,
+        [operation_id] [int] NULL,
+        [actor_user_id] [int] NOT NULL,
+        [member_user_id] [int] NULL,
+        [action_type] [varchar](50) NOT NULL,
+        [action_reason] [nvarchar](500) NULL,
+        [request_status] [varchar](20) NOT NULL,
+        [operation_status] [varchar](20) NULL,
+        [action_at] [datetime2](3) NOT NULL
+            CONSTRAINT [DF_rdal_action_at] DEFAULT (sysutcdatetime()),
+
+        CONSTRAINT [PK_rescue_delegation_action_logs]
+            PRIMARY KEY CLUSTERED ([delegation_action_log_id] ASC),
+
+        CONSTRAINT [CK_rdal_action_type_allowed]
+            CHECK (
+                [action_type] IN
+                (
+                    'LEADER_ASSIGNED_MEMBER',
+                    'MEMBER_REQUESTED_SUPPORT',
+                    'MEMBER_COMPLETED',
+                    'LEADER_REMOVED_MEMBER',
+                    'LEADER_COMPLETED_OPERATION',
+                    'LEADER_FAILED_OPERATION',
+                    'LEADER_REJECTED_REQUEST'
+                )
+            ),
+
+        CONSTRAINT [CK_rdal_member_user_required_by_action]
+            CHECK (
+                (
+                    [action_type] IN
+                    (
+                        'LEADER_ASSIGNED_MEMBER',
+                        'MEMBER_REQUESTED_SUPPORT',
+                        'MEMBER_COMPLETED',
+                        'LEADER_REMOVED_MEMBER'
+                    )
+                    AND [member_user_id] IS NOT NULL
+                    AND [operation_id] IS NOT NULL
+                )
+                OR
+                (
+                    [action_type] IN
+                    (
+                        'LEADER_COMPLETED_OPERATION',
+                        'LEADER_FAILED_OPERATION'
+                    )
+                    AND [member_user_id] IS NULL
+                    AND [operation_id] IS NOT NULL
+                )
+                OR
+                (
+                    [action_type] = 'LEADER_REJECTED_REQUEST'
+                    AND [member_user_id] IS NULL
+                    AND [request_id] IS NOT NULL
+                )
+            ),
+
+        CONSTRAINT [CK_rdal_member_actions_actor_rule]
+            CHECK (
+                [action_type] NOT IN ('MEMBER_REQUESTED_SUPPORT', 'MEMBER_COMPLETED')
+                OR [actor_user_id] = [member_user_id]
+            ),
+
+        CONSTRAINT [CK_rdal_reason_required_by_action]
+            CHECK (
+                [action_type] NOT IN ('LEADER_REJECTED_REQUEST', 'LEADER_FAILED_OPERATION')
+                OR ([action_reason] IS NOT NULL AND LEN(LTRIM(RTRIM([action_reason]))) >= 1)
+            ),
+
+        CONSTRAINT [CK_rdal_operation_status_required_by_action]
+            CHECK (
+                [action_type] = 'LEADER_REJECTED_REQUEST'
+                OR [operation_status] IS NOT NULL
+            )
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.rescue_delegation_action_logs', N'U') IS NOT NULL
+AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_rdal_request')
+BEGIN
+    ALTER TABLE [dbo].[rescue_delegation_action_logs] WITH CHECK
+    ADD CONSTRAINT [FK_rdal_request]
+        FOREIGN KEY ([request_id]) REFERENCES [dbo].[rescue_requests]([request_id]);
+END;
+GO
+
+IF OBJECT_ID(N'dbo.rescue_delegation_action_logs', N'U') IS NOT NULL
+AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_rdal_operation')
+BEGIN
+    ALTER TABLE [dbo].[rescue_delegation_action_logs] WITH CHECK
+    ADD CONSTRAINT [FK_rdal_operation]
+        FOREIGN KEY ([operation_id]) REFERENCES [dbo].[rescue_operations]([operation_id]);
+END;
+GO
+
+IF OBJECT_ID(N'dbo.rescue_delegation_action_logs', N'U') IS NOT NULL
+AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_rdal_actor_user')
+BEGIN
+    ALTER TABLE [dbo].[rescue_delegation_action_logs] WITH CHECK
+    ADD CONSTRAINT [FK_rdal_actor_user]
+        FOREIGN KEY ([actor_user_id]) REFERENCES [dbo].[users]([user_id]);
+END;
+GO
+
+IF OBJECT_ID(N'dbo.rescue_delegation_action_logs', N'U') IS NOT NULL
+AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_rdal_member_user')
+BEGIN
+    ALTER TABLE [dbo].[rescue_delegation_action_logs] WITH CHECK
+    ADD CONSTRAINT [FK_rdal_member_user]
+        FOREIGN KEY ([member_user_id]) REFERENCES [dbo].[users]([user_id]);
+END;
+GO
+
+IF EXISTS
+(
+    SELECT 1
+    FROM [dbo].[rescue_team_members]
+    WHERE [is_active] = 1
+      AND [request_id] IS NOT NULL
+    GROUP BY [user_id]
+    HAVING COUNT(*) > 1
+)
+BEGIN
+    THROW 51000, 'Khong the tao unique active-assignment constraint vi dang ton tai user co hon 1 assignment active trong rescue_team_members.', 1;
+END;
+GO
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'UX_rtm_one_active_assignment_per_user'
+      AND object_id = OBJECT_ID(N'dbo.rescue_team_members')
+)
+BEGIN
+    CREATE UNIQUE NONCLUSTERED INDEX [UX_rtm_one_active_assignment_per_user]
+        ON [dbo].[rescue_team_members]([user_id] ASC)
+        WHERE [is_active] = 1 AND [request_id] IS NOT NULL;
+END;
+GO
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_rdal_operation_history'
+      AND object_id = OBJECT_ID(N'dbo.rescue_delegation_action_logs')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_rdal_operation_history]
+        ON [dbo].[rescue_delegation_action_logs]
+        (
+            [operation_id] ASC,
+            [action_at] DESC
+        )
+        INCLUDE
+        (
+            [action_type],
+            [action_reason],
+            [actor_user_id],
+            [member_user_id],
+            [request_status],
+            [operation_status],
+            [action_batch_id]
+        )
+        WHERE [operation_id] IS NOT NULL;
+END;
+GO
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_rdal_request_history'
+      AND object_id = OBJECT_ID(N'dbo.rescue_delegation_action_logs')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_rdal_request_history]
+        ON [dbo].[rescue_delegation_action_logs]
+        (
+            [request_id] ASC,
+            [action_at] DESC
+        )
+        INCLUDE
+        (
+            [operation_id],
+            [action_type],
+            [action_reason],
+            [actor_user_id],
+            [member_user_id],
+            [request_status],
+            [operation_status],
+            [action_batch_id]
+        )
+        WHERE [request_id] IS NOT NULL;
+END;
+GO
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_rdal_member_history'
+      AND object_id = OBJECT_ID(N'dbo.rescue_delegation_action_logs')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_rdal_member_history]
+        ON [dbo].[rescue_delegation_action_logs]
+        (
+            [member_user_id] ASC,
+            [action_at] DESC
+        )
+        INCLUDE
+        (
+            [operation_id],
+            [request_id],
+            [action_type],
+            [action_reason],
+            [actor_user_id],
+            [request_status],
+            [operation_status],
+            [action_batch_id]
+        )
+        WHERE [member_user_id] IS NOT NULL;
+END;
+GO
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_rdal_actor_history'
+      AND object_id = OBJECT_ID(N'dbo.rescue_delegation_action_logs')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_rdal_actor_history]
+        ON [dbo].[rescue_delegation_action_logs]
+        (
+            [actor_user_id] ASC,
+            [action_at] DESC
+        )
+        INCLUDE
+        (
+            [operation_id],
+            [request_id],
+            [member_user_id],
+            [action_type],
+            [action_reason],
+            [request_status],
+            [operation_status],
+            [action_batch_id]
+        );
+END;
+GO
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_rdal_action_batch'
+      AND object_id = OBJECT_ID(N'dbo.rescue_delegation_action_logs')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_rdal_action_batch]
+        ON [dbo].[rescue_delegation_action_logs]
+        (
+            [action_batch_id] ASC,
+            [action_at] DESC
+        )
+        INCLUDE
+        (
+            [operation_id],
+            [request_id],
+            [actor_user_id],
+            [member_user_id],
+            [action_type],
+            [action_reason],
+            [request_status],
+            [operation_status]
+        )
+        WHERE [action_batch_id] IS NOT NULL;
+END;
+GO
+IF COL_LENGTH('dbo.rescue_teams', 'address') IS NULL
+BEGIN
+    ALTER TABLE dbo.rescue_teams
+    ADD address NVARCHAR(300) NULL;
+END
+GO

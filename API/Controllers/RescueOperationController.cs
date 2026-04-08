@@ -328,111 +328,12 @@ public class RescueOperationController : ControllerBase
     [Authorize(Roles = "RESCUE_TEAM")]
     public async Task<IActionResult> UpdateOperationStatus(int id, [FromBody] UpdateOperationStatusDto dto)
     {
-        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var now = DateTime.UtcNow;
-
-        var strategy = _context.Database.CreateExecutionStrategy();
-        IActionResult? result = null;
-
-        await strategy.ExecuteAsync(async () =>
+        await Task.CompletedTask;
+        return StatusCode(410, new
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-
-            // 1. Tìm thông tin nhiệm vụ cứu hộ kèm theo request và team liên quan
-            var operation = await _context.RescueOperations
-                .Include(op => op.Request)
-                .Include(op => op.Team)
-                .FirstOrDefaultAsync(op => op.OperationId == id);
-
-            if (operation == null)
-            {
-                result = NotFound(new { Success = false, Message = $"Không tìm thấy operation với ID {id}" });
-                return;
-            }
-
-            // 2. Kiểm tra xem người dùng có quyền cập nhật (phải là thành viên của team được giao nhiệm vụ)
-            var isMember = await _context.RescueTeamMembers
-                .AnyAsync(m => m.TeamId == operation.TeamId && m.UserId == currentUserId && m.IsActive);
-
-            if (!isMember)
-            {
-                result = Forbid();
-                return;
-            }
-
-            var currentOpStatus = operation.Status;
-            var targetStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
-
-            // 3. Xử lý trường hợp HOÀN THÀNH (COMPLETED)
-            if (targetStatusKey == "COMPLETED")
-            {
-                // Chỉ cho phép hoàn thành nếu nhiệm vụ đang được phân công/thực hiện
-                if (currentOpStatus != "Assigned")
-                {
-                    result = Conflict(new { Success = false, Message = $"Không thể hoàn tất nhiệm vụ. Trạng thái hiện tại: {currentOpStatus}" });
-                    return;
-                }
-
-                // Cập nhật trạng thái nhiệm vụ và thời gian
-                operation.Status = "Completed";
-                operation.StartedAt ??= now;
-                operation.CompletedAt = now;
-
-                // GIẢI PHÓNG ĐỘI CỨU HỘ: Trạng thái trở về rảnh
-                var membersToRelease = await _context.RescueTeamMembers
-                    .Where(m => m.TeamId == operation.TeamId && m.RequestId == operation.RequestId)
-                    .ToListAsync();
-                foreach (var m in membersToRelease)
-                {
-                    m.RequestId = null;
-                }
-                // GIẢI PHÓNG PHƯƠNG TIỆN: Tìm tất cả phương tiện đang dùng và chuyển về 'AVAILABLE'
-                var vehicleIds = await _context.RescueOperationVehicles
-                    .Where(rov => rov.OperationId == operation.OperationId)
-                    .Select(rov => rov.VehicleId)
-                    .ToListAsync();
-
-                if (vehicleIds.Any())
-                {
-                    var vehiclesToRelease = await _context.Vehicles
-                        .Where(v => vehicleIds.Contains(v.VehicleId))
-                        .ToListAsync();
-
-                    foreach (var v in vehiclesToRelease)
-                    {
-                        v.Status = "AVAILABLE";
-                        v.UpdatedAt = now;
-                    }
-                }
-            }
-            else
-            {
-                result = BadRequest(new { Success = false, Message = "Trạng thái mới không hợp lệ. Chỉ chấp nhận COMPLETED." });
-                return;
-            }
-
-            // 4. Lưu vết lịch sử thay đổi trạng thái Yêu cầu cứu hộ
-            var requestStatusForHistory = operation.Request?.Status ?? "Completed";
-            _context.RescueRequestStatusHistories.Add(new RescueRequestStatusHistory
-            {
-                RequestId = operation.RequestId,
-                Status = requestStatusForHistory,
-                Notes = "Đội cứu hộ hoàn tất nhiệm vụ, yêu cầu đã được xác nhận hoàn tất thành công.",
-                UpdatedBy = currentUserId,
-                UpdatedAt = now
-            });
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            result = Ok(new
-            {
-                Success = true,
-                Message = "Cập nhật trạng thái thành công. Toàn bộ đội và phương tiện đã được giải phóng."
-            });
+            Success = false,
+            Message = "Endpoint này đã ngừng dùng trong luồng rescue team. Hãy dùng PUT /api/rescue-team/operations/{operationId}/status để đảm bảo đúng audit log."
         });
-
-        return result ?? StatusCode(500, new { Success = false, Message = "Lỗi hệ thống khi cập nhật trạng thái" });
     }
 
     /// <summary>
