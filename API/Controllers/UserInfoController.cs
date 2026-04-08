@@ -89,6 +89,14 @@ public class UserInfoController : ControllerBase
                 Email = u.Email ?? string.Empty,
                 Phone = u.Phone ?? string.Empty,
                 Role = u.Role,
+                TeamId = _context.RescueTeamMembers
+                    .Where(m => m.UserId == u.UserId && m.IsActive)
+                    .Select(m => (int?)m.TeamId)
+                    .FirstOrDefault(),
+                TeamName = _context.RescueTeamMembers
+                    .Where(m => m.UserId == u.UserId && m.IsActive)
+                    .Select(m => m.Team != null ? m.Team.TeamName : null)
+                    .FirstOrDefault(),
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
             })
