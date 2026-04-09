@@ -470,8 +470,24 @@ public class RescueTeamController : ControllerBase
                 AdultCount = r.AdultCount,
                 ElderlyCount = r.ElderlyCount,
                 ChildrenCount = r.ChildrenCount,
+                NumberOfAffectedPeople = r.NumberOfAffectedPeople,
                 TeamId = r.TeamId,
                 TeamName = _context.RescueTeams.Where(t => t.TeamId == r.TeamId).Select(t => t.TeamName).FirstOrDefault(),
+                OperationId = _context.RescueOperations
+                    .Where(o => o.RequestId == r.RequestId && o.TeamId == r.TeamId)
+                    .Select(o => (int?)o.OperationId)
+                    .FirstOrDefault(),
+                OperationStatus = _context.RescueOperations
+                    .Where(o => o.RequestId == r.RequestId && o.TeamId == r.TeamId)
+                    .Select(o => o.Status)
+                    .FirstOrDefault(),
+                HasSupportRequest = _context.RescueDelegationActionLogs
+                    .Any(l => l.RequestId == r.RequestId && l.ActionType == ActionMemberRequestedSupport),
+                LastSupportRequestedAt = _context.RescueDelegationActionLogs
+                    .Where(l => l.RequestId == r.RequestId && l.ActionType == ActionMemberRequestedSupport)
+                    .OrderByDescending(l => l.ActionAt)
+                    .Select(l => (DateTime?)l.ActionAt)
+                    .FirstOrDefault(),
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
             })
@@ -980,7 +996,14 @@ public class RescueTeamController : ControllerBase
                 RequestTitle = o.Request != null ? o.Request.Title : null,
                 RequestStatus = o.Request != null ? o.Request.Status : null,
                 RequestAddress = o.Request != null ? o.Request.Address : null,
+                RequestDescription = o.Request != null ? o.Request.Description : null,
                 RequestPhone = o.Request != null ? o.Request.Phone : null,
+                RequestLatitude = o.Request != null ? o.Request.Latitude : (decimal?)null,
+                RequestLongitude = o.Request != null ? o.Request.Longitude : (decimal?)null,
+                AdultCount = o.Request != null ? o.Request.AdultCount : (int?)null,
+                ElderlyCount = o.Request != null ? o.Request.ElderlyCount : (int?)null,
+                ChildrenCount = o.Request != null ? o.Request.ChildrenCount : (int?)null,
+                NumberOfAffectedPeople = o.Request != null ? o.Request.NumberOfAffectedPeople : (int?)null,
                 TeamName = o.Team != null ? o.Team.TeamName : null,
                 OperationStatus = o.Status,
                 o.AssignedAt,

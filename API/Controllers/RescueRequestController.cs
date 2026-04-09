@@ -65,6 +65,7 @@ public class RescueRequestController : ControllerBase
             AdultCount = dto.AdultCount,
             ElderlyCount = dto.ElderlyCount,
             ChildrenCount = dto.ChildrenCount,
+            NumberOfAffectedPeople = dto.NumberOfAffectedPeople,
             Status = isDuplicate ? "Duplicate" : "Pending", // Gán cờ Duplicate nếu trùng lặp
             CreatedAt = DateTime.UtcNow
         };
@@ -419,6 +420,11 @@ public class RescueRequestController : ControllerBase
             request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
         }
 
+        if (dto.NumberOfAffectedPeople.HasValue)
+        {
+            request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople.Value;
+        }
+
         request.UpdatedAt = DateTime.UtcNow;
 
         // 4. Lưu thay đổi
@@ -480,6 +486,11 @@ public class RescueRequestController : ControllerBase
             request.AdultCount = dto.AdultCount ?? request.AdultCount;
             request.ElderlyCount = dto.ElderlyCount ?? request.ElderlyCount;
             request.ChildrenCount = dto.ChildrenCount ?? request.ChildrenCount;
+        }
+
+        if (dto.NumberOfAffectedPeople.HasValue)
+        {
+            request.NumberOfAffectedPeople = dto.NumberOfAffectedPeople.Value;
         }
 
         request.UpdatedAt = DateTime.UtcNow;

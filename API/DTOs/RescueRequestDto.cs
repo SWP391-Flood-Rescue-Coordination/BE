@@ -17,6 +17,9 @@ public class CreateRescueRequestDto
 
     [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng trẻ em không được là số âm")]
     public int? ChildrenCount { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "Số lượng người bị ảnh hưởng không được là số âm")]
+    public int? NumberOfAffectedPeople { get; set; }
 }
 
 public class UpdateRescueRequestDto
@@ -56,8 +59,13 @@ public class RescueRequestResponseDto
     public int? AdultCount { get; set; }
     public int? ElderlyCount { get; set; }
     public int? ChildrenCount { get; set; }
+    public int? NumberOfAffectedPeople { get; set; }
     public int? TeamId { get; set; }
     public string? TeamName { get; set; }
+    public int? OperationId { get; set; }
+    public string? OperationStatus { get; set; }
+    public bool HasSupportRequest { get; set; }
+    public DateTime? LastSupportRequestedAt { get; set; }
     public bool CanReportSafe { get; set; }
     /// <summary>Thời gian ước tính hoàn thành (phút) từ operation mới nhất được phân công.</summary>
     public int? EstimatedTime { get; set; }
@@ -109,8 +117,13 @@ public class LatestRescueRequestDto
     public int? AdultCount { get; set; }
     public int? ElderlyCount { get; set; }
     public int? ChildrenCount { get; set; }
+    public int? NumberOfAffectedPeople { get; set; }
     public int? TeamId { get; set; }
     public string? TeamName { get; set; }
+    public int? OperationId { get; set; }
+    public string? OperationStatus { get; set; }
+    public bool HasSupportRequest { get; set; }
+    public DateTime? LastSupportRequestedAt { get; set; }
     public bool CanReportSafe { get; set; }
     /// <summary>Thời gian ước tính hoàn thành (phút) từ operation mới nhất được phân công.</summary>
     public int? EstimatedTime { get; set; }
