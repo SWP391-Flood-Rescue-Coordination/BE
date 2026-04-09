@@ -19,15 +19,20 @@ public class RescueOperationController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IDistanceService _distanceService;
+    private readonly ILogger<RescueOperationController> _logger;
 
     /// <summary>
     /// Constructor khởi tạo RescueOperationController.
     /// </summary>
     /// <param name="context">DbContext để thao tác dữ liệu.</param>
-    public RescueOperationController(ApplicationDbContext context, IDistanceService distanceService)
+    public RescueOperationController(
+        ApplicationDbContext context,
+        IDistanceService distanceService,
+        ILogger<RescueOperationController> logger)
     {
         _context = context;
         _distanceService = distanceService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -414,7 +419,7 @@ public class RescueOperationController : ControllerBase
                     (double)request.Longitude.Value,
                     cancellationToken);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
                 distanceKm = CalculateStraightLineDistanceKm(
                     (double)team.BaseLatitude!.Value,
@@ -422,8 +427,33 @@ public class RescueOperationController : ControllerBase
                     (double)request.Latitude.Value,
                     (double)request.Longitude.Value);
 
-                distanceNote = $"OSRM lỗi khi tính khoảng cách cho team {team.TeamId}: {ex.Message}. Đã dùng khoảng cách thẳng thay thế.";
+                distanceNote = $"OSRM network lỗi khi tính khoảng cách cho team {team.TeamId}: {ex.Message}. Đã dùng khoảng cách thẳng thay thế.";
                 warnings.Add(distanceNote);
+                _logger.LogWarning(ex, "OSRM network failure for team {TeamId}, request {RequestId}", team.TeamId, requestId);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                distanceKm = CalculateStraightLineDistanceKm(
+                    (double)team.BaseLatitude!.Value,
+                    (double)team.BaseLongitude!.Value,
+                    (double)request.Latitude.Value,
+                    (double)request.Longitude.Value);
+
+                distanceNote = $"OSRM timeout khi tính khoảng cách cho team {team.TeamId}: {ex.Message}. Đã dùng khoảng cách thẳng thay thế.";
+                warnings.Add(distanceNote);
+                _logger.LogWarning(ex, "OSRM timeout for team {TeamId}, request {RequestId}", team.TeamId, requestId);
+            }
+            catch (OsrmException ex)
+            {
+                distanceKm = CalculateStraightLineDistanceKm(
+                    (double)team.BaseLatitude!.Value,
+                    (double)team.BaseLongitude!.Value,
+                    (double)request.Latitude.Value,
+                    (double)request.Longitude.Value);
+
+                distanceNote = $"OSRM invalid response cho team {team.TeamId}: {ex.Message}. Đã dùng khoảng cách thẳng thay thế.";
+                warnings.Add(distanceNote);
+                _logger.LogWarning(ex, "OSRM invalid response for team {TeamId}, request {RequestId}", team.TeamId, requestId);
             }
 
             result.Add(new RescueTeamDistanceDto
