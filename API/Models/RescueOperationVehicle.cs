@@ -6,4 +6,8 @@ public class RescueOperationVehicle
     public int VehicleId { get; set; }
     public int AssignedBy { get; set; }
     public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation properties
+    public virtual RescueOperation? Operation { get; set; }
+    public virtual Vehicle? Vehicle { get; set; }
 }
