@@ -4,8 +4,6 @@ public class RescueTeamDistanceDto
 {
     public int TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
-
-
     public decimal BaseLatitude { get; set; }
     public decimal BaseLongitude { get; set; }
 
@@ -14,4 +12,5 @@ public class RescueTeamDistanceDto
 
     public double DistanceKm { get; set; }
     public int FreeMemberCount { get; set; }
+    public string? DistanceNote { get; set; }
 }

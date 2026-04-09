@@ -1,6 +1,5 @@
 using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
-using Flood_Rescue_Coordination.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,17 +17,14 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 public class RescueOperationController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    private readonly IDistanceService _distanceService;
 
     /// <summary>
     /// Constructor khởi tạo RescueOperationController.
     /// </summary>
     /// <param name="context">DbContext để thao tác dữ liệu.</param>
-    /// <param name="distanceService">Dịch vụ tính toán khoảng cách địa lý.</param>
-    public RescueOperationController(ApplicationDbContext context, IDistanceService distanceService)
+    public RescueOperationController(ApplicationDbContext context)
     {
         _context = context;
-        _distanceService = distanceService;
     }
 
     /// <summary>
@@ -353,6 +349,7 @@ public class RescueOperationController : ControllerBase
             .Select(r => new
             {
                 r.RequestId,
+                r.Status,
                 r.Latitude,
                 r.Longitude
             })
@@ -361,6 +358,15 @@ public class RescueOperationController : ControllerBase
         if (request == null)
         {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ." });
+        }
+
+        if (!string.Equals(request.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Chỉ có thể lấy danh sách team gần nhất cho yêu cầu có trạng thái Pending. Trạng thái hiện tại: '{request.Status}'."
+            });
         }
 
         if (!request.Latitude.HasValue || !request.Longitude.HasValue)
@@ -387,16 +393,19 @@ public class RescueOperationController : ControllerBase
             .ToListAsync(cancellationToken);
 
         var result = new List<RescueTeamDistanceDto>();
+        var warnings = new List<string>
+        {
+            "Khoảng cách được tính theo đường thẳng để tránh phụ thuộc vào dịch vụ OSRM public."
+        };
 
-        // 3. Với mỗi đội cứu hộ, gọi API OSRM để tính toán khoảng cách đường bộ tới điểm cứu hộ
+        // 3. Với mỗi đội cứu hộ, tính toán khoảng cách theo đường thẳng tới điểm cứu hộ
         foreach (var team in teams)
         {
-            var distanceKm = await _distanceService.GetRoadDistanceKmAsync(
+            var distanceKm = CalculateStraightLineDistanceKm(
                 (double)team.BaseLatitude!.Value,
                 (double)team.BaseLongitude!.Value,
                 (double)request.Latitude.Value,
-                (double)request.Longitude.Value,
-                cancellationToken);
+                (double)request.Longitude.Value);
 
             result.Add(new RescueTeamDistanceDto
             {
@@ -407,7 +416,8 @@ public class RescueOperationController : ControllerBase
                 RequestLatitude = request.Latitude.Value,
                 RequestLongitude = request.Longitude.Value,
                 DistanceKm = Math.Round(distanceKm, 2),
-                FreeMemberCount = team.FreeMemberCount
+                FreeMemberCount = team.FreeMemberCount,
+                DistanceNote = "Khoảng cách được tính theo đường thẳng (không dùng OSRM public)."
             });
         }
 
@@ -421,7 +431,25 @@ public class RescueOperationController : ControllerBase
             Success = true,
             RequestId = requestId,
             Count = ordered.Count,
+            Warnings = warnings,
             Data = ordered
         });
+    }
+
+    private static double CalculateStraightLineDistanceKm(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double earthRadiusKm = 6371.0;
+
+        static double ToRadians(double degrees) => degrees * Math.PI / 180.0;
+
+        var dLat = ToRadians(lat2 - lat1);
+        var dLon = ToRadians(lon2 - lon1);
+
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return earthRadiusKm * c;
     }
 }

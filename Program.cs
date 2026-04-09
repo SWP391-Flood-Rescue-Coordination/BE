@@ -104,7 +104,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddHttpClient<IDistanceService, OsrmDistanceService>(client =>
 {
-    client.BaseAddress = new Uri("https://router.project-osrm.org/");
+    client.BaseAddress = new Uri("http://router.project-osrm.org/");
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
