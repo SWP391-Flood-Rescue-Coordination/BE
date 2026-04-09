@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 /// <summary>
 /// DTO để Rescue Team cập nhật trạng thái nhiệm vụ
-/// newStatus chấp nhận: "COMPLETED" hoặc "FAILED"
+/// newStatus chỉ chấp nhận: "COMPLETED"
 /// </summary>
 public class UpdateMissionStatusDto : IValidatableObject
 {
@@ -20,18 +20,11 @@ public class UpdateMissionStatusDto : IValidatableObject
         }
 
         var key = NewStatus.Trim().ToUpperInvariant();
-        if (key != "COMPLETED" && key != "FAILED")
+        if (key != "COMPLETED")
         {
             yield return new ValidationResult(
-                "NewStatus không hợp lệ. Chỉ chấp nhận: COMPLETED hoặc FAILED.",
+                "NewStatus không hợp lệ. Chỉ chấp nhận: COMPLETED.",
                 [nameof(NewStatus)]);
-        }
-
-        if (key == "FAILED" && string.IsNullOrWhiteSpace(Reason))
-        {
-            yield return new ValidationResult(
-                "Reason là bắt buộc khi NewStatus = FAILED.",
-                [nameof(Reason)]);
         }
     }
 }

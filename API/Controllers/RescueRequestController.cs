@@ -756,13 +756,14 @@ public class RescueRequestController : ControllerBase
             });
         }
 
-        // 3. Chỉ cho phép báo an toàn khi yêu cầu đã được phân công (Assigned)
-        if (request.Status != "Assigned")
+        // 3. Không cho phép xác nhận lại nếu request đã đóng/hủy
+        var requestStatusKey = NormalizeStatusKey(request.Status);
+        if (requestStatusKey is "COMPLETED" or "CANCELLED" or "CANCELED")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chỉ có thể báo an toàn khi yêu cầu đang ở trạng thái 'Assigned'. Trạng thái hiện tại: '{request.Status}'."
+                Message = $"Yêu cầu đang ở trạng thái '{request.Status}', không thể báo an toàn lần nữa."
             });
         }
 
@@ -872,13 +873,14 @@ public class RescueRequestController : ControllerBase
             });
         }
 
-        // 3. Kiểm tra trạng thái và xác nhận từ đội cứu hộ
-        if (request.Status != "Assigned")
+        // 3. Không cho phép xác nhận lại nếu request đã đóng/hủy
+        var requestStatusKey = NormalizeStatusKey(request.Status);
+        if (requestStatusKey is "COMPLETED" or "CANCELLED" or "CANCELED")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Chỉ có thể báo an toàn khi yêu cầu đang ở trạng thái 'Assigned'. Trạng thái hiện tại: '{request.Status}'."
+                Message = $"Yêu cầu đang ở trạng thái '{request.Status}', không thể báo an toàn lần nữa."
             });
         }
 

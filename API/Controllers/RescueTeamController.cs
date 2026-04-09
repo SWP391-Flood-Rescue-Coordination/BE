@@ -54,18 +54,13 @@ public class RescueTeamController : ControllerBase
         }
 
         var targetStatusKey = dto.NewStatus.Trim().ToUpperInvariant();
-        if (targetStatusKey is not ("COMPLETED" or "FAILED"))
+        if (targetStatusKey != "COMPLETED")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = "NewStatus chỉ chấp nhận COMPLETED hoặc FAILED."
+                Message = "NewStatus chỉ chấp nhận COMPLETED."
             });
-        }
-
-        if (targetStatusKey == "FAILED" && string.IsNullOrWhiteSpace(dto.Reason))
-        {
-            return BadRequest(new { Success = false, Message = "Reason là bắt buộc khi chuyển FAILED." });
         }
 
         var operation = await _context.RescueOperations
@@ -83,12 +78,12 @@ public class RescueTeamController : ControllerBase
                         && m.MemberRole == "Leader");
         if (!isLeader) return Forbid();
 
-        if (operation.Status != "Assigned" && operation.Status != "Waiting")
+        if (operation.Status != "Waiting")
         {
             return BadRequest(new
             {
                 Success = false,
-                Message = $"Nhiệm vụ đang ở trạng thái '{operation.Status}', không thể chốt. Chỉ hỗ trợ Assigned/Waiting."
+                Message = $"Nhiệm vụ đang ở trạng thái '{operation.Status}', không thể chốt. Chỉ hỗ trợ Waiting -> Completed."
             });
         }
 
@@ -101,64 +96,21 @@ public class RescueTeamController : ControllerBase
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            var activeMembers = await _context.RescueTeamMembers
-                .Where(m => m.TeamId == operation.TeamId && m.IsActive && m.RequestId == operation.RequestId)
-                .ToListAsync();
+            operation.Status = "Completed";
+            operation.StartedAt ??= now;
+            operation.CompletedAt = now;
 
-            foreach (var member in activeMembers)
-            {
-                member.RequestId = null;
-                AddDelegationActionLog(
-                    batchId,
-                    request.RequestId,
-                    operation.OperationId,
-                    userId,
-                    member.UserId,
-                    ActionLeaderRemovedMember,
-                    null,
-                    request.Status,
-                    operation.Status,
-                    now);
-            }
-
-            if (targetStatusKey == "COMPLETED")
-            {
-                operation.Status = "Completed";
-                operation.StartedAt ??= now;
-                operation.CompletedAt = now;
-
-                AddDelegationActionLog(
-                    batchId,
-                    request.RequestId,
-                    operation.OperationId,
-                    userId,
-                    null,
-                    ActionLeaderCompletedOperation,
-                    null,
-                    request.Status,
-                    operation.Status,
-                    now);
-            }
-            else
-            {
-                operation.Status = "Failed";
-                operation.CompletedAt = now;
-                request.Status = "Verified";
-                request.UpdatedAt = now;
-                request.UpdatedBy = userId;
-
-                AddDelegationActionLog(
-                    batchId,
-                    request.RequestId,
-                    operation.OperationId,
-                    userId,
-                    null,
-                    ActionLeaderFailedOperation,
-                    dto.Reason?.Trim(),
-                    request.Status,
-                    operation.Status,
-                    now);
-            }
+            AddDelegationActionLog(
+                batchId,
+                request.RequestId,
+                operation.OperationId,
+                userId,
+                null,
+                ActionLeaderCompletedOperation,
+                null,
+                request.Status,
+                operation.Status,
+                now);
 
             var vehicleIds = await _context.RescueOperationVehicles
                 .Where(rov => rov.OperationId == operation.OperationId)
@@ -185,7 +137,7 @@ public class RescueTeamController : ControllerBase
                 OperationStatus = operation.Status,
                 RequestStatus = request.Status,
                 BatchId = batchId,
-                Message = "Đã chốt operation thành công."
+                Message = "Đã cập nhật operation Waiting -> Completed thành công."
             });
         });
 
@@ -741,14 +693,48 @@ public class RescueTeamController : ControllerBase
             var assignedVehicleIds = new List<int>();
             if (dto.VehicleIds != null && dto.VehicleIds.Any())
             {
+                var requestedVehicleIds = dto.VehicleIds
+                    .Distinct()
+                    .ToList();
+
                 var vehicles = await _context.Vehicles
-                    .Where(v => dto.VehicleIds.Contains(v.VehicleId))
+                    .Where(v => requestedVehicleIds.Contains(v.VehicleId))
                     .ToListAsync();
 
-                foreach (var vid in dto.VehicleIds)
+                var foundVehicleIds = vehicles
+                    .Select(v => v.VehicleId)
+                    .ToHashSet();
+                var missingVehicleIds = requestedVehicleIds
+                    .Where(id => !foundVehicleIds.Contains(id))
+                    .ToList();
+                if (missingVehicleIds.Count > 0)
+                {
+                    result = NotFound(new
+                    {
+                        Success = false,
+                        Message = $"Không tìm thấy vehicle với ID: {string.Join(", ", missingVehicleIds)}"
+                    });
+                    return;
+                }
+
+                var unavailableVehicles = vehicles
+                    .Where(v => !string.Equals(v.Status, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
+                    .Select(v => new { v.VehicleId, v.Status })
+                    .ToList();
+                if (unavailableVehicles.Count > 0)
+                {
+                    result = BadRequest(new
+                    {
+                        Success = false,
+                        Message = $"Các phương tiện sau không ở trạng thái AVAILABLE: {string.Join(", ", unavailableVehicles.Select(v => $"ID={v.VehicleId} ({v.Status})"))}"
+                    });
+                    return;
+                }
+
+                foreach (var vid in requestedVehicleIds)
                 {
                     var vehicle = vehicles.FirstOrDefault(v => v.VehicleId == vid);
-                    if (vehicle != null && string.Equals(vehicle.Status, "Available", StringComparison.OrdinalIgnoreCase))
+                    if (vehicle != null)
                     {
                         bool alreadyAssigned = await _context.RescueOperationVehicles
                             .AnyAsync(ov => ov.OperationId == operation.OperationId && ov.VehicleId == vid);
