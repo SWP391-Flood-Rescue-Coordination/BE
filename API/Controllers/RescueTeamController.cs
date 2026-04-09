@@ -573,6 +573,62 @@ public class RescueTeamController : ControllerBase
     }
 
     /// <summary>
+    /// Đội viên - Xem danh sách các phương tiện được gán cho nhiệm vụ hiện tại (Task) của mình.
+    /// </summary>
+    [HttpGet("my-vehicles")]
+    [Authorize(Roles = "RESCUE_TEAM")]
+    public async Task<IActionResult> GetMyVehicles()
+    {
+        // 1. Trích xuất ID người dùng
+        var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        }
+
+        // 2. Tìm bản ghi thành viên đội đang hoạt động của user này
+        var member = await _context.RescueTeamMembers
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.IsActive);
+
+        if (member == null || !member.RequestId.HasValue)
+        {
+            return Ok(new { Success = true, Message = "Bạn hiện không có nhiệm vụ active.", Data = new List<object>() });
+        }
+
+        // 3. Tìm Operation đang được gán cho Request này
+        // (Một request có thể có nhiều operation, lấy operation đang ở trạng thái active)
+        var operation = await _context.RescueOperations
+            .Where(o => o.RequestId == member.RequestId.Value && 
+                        (o.Status == "Assigned" || o.Status == "Waiting"))
+            .OrderByDescending(o => o.AssignedAt)
+            .FirstOrDefaultAsync();
+
+        if (operation == null)
+        {
+             return Ok(new { Success = true, Message = "Không tìm thấy thông tin nhiệm vụ (Operation) liên quan.", Data = new List<object>() });
+        }
+
+        // 4. Lấy danh sách phương tiện gán cho operation này
+        var vehicles = await _context.RescueOperationVehicles
+            .Include(ov => ov.Vehicle)
+            .ThenInclude(v => v.VehicleType!)
+            .Where(ov => ov.OperationId == operation.OperationId)
+            .Select(ov => new 
+            {
+                ov.Vehicle!.VehicleId,
+                ov.Vehicle.VehicleCode,
+                ov.Vehicle.VehicleName,
+                ov.Vehicle.LicensePlate,
+                VehicleTypeName = ov.Vehicle.VehicleType != null ? ov.Vehicle.VehicleType.TypeName : "N/A",
+                ov.Vehicle.Status,
+                ov.Vehicle.Capacity
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Data = vehicles });
+    }
+
+    /// <summary>
     /// Đội cứu hộ - Lấy danh sách nhiệm vụ được giao cho các đội mà user hiện tại đang tham gia.
     /// Chứa các thông tin quan trọng như: Địa chỉ, Số điện thoại người dân, Mức độ ưu tiên, Phương tiện gán kèm.
     /// </summary>
