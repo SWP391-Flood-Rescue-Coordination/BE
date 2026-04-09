@@ -457,6 +457,147 @@ public class RescueTeamController : ControllerBase
     }
 
     /// <summary>
+    /// Đội trưởng (Leader) - Lấy danh sách các yêu cầu cứu hộ đã được điều phối cho đội của mình.
+    /// Nếu có truyền status thì lọc theo status, nếu không thì lấy tất cả status của team đó
+    /// </summary>
+    [HttpGet("assigned-requests")]
+    public async Task<IActionResult> GetAssignedRequests([FromQuery] string? status = null)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        }
+
+        // 1. Tìm danh sách TeamId mà user này là Leader đang hoạt động
+        var leaderTeamIds = await _context.RescueTeamMembers
+            .Where(m => m.UserId == userId && m.IsActive && m.MemberRole == "Leader")
+            .Select(m => m.TeamId)
+            .ToListAsync();
+
+        if (!leaderTeamIds.Any())
+        {
+            return Ok(new { Success = true, Message = "Bạn không phải là Đội trưởng của đội cứu hộ nào.", Data = new List<object>() });
+        }
+
+        // 2. Lấy ra các yêu cầu cứu hộ được gán cho những Team đó
+        var query = _context.RescueRequests
+            .Include(r => r.Citizen)
+            .Where(r => r.TeamId.HasValue && leaderTeamIds.Contains(r.TeamId.Value));
+
+        // Nếu có truyền status thì lọc theo status, nếu không thì lấy tất cả status của team đó
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(r => r.Status == status);
+        }
+
+        var requests = await query
+            .OrderBy(r => r.Status) // Sắp xếp theo trạng thái để "nhóm" chúng lại
+            .ThenByDescending(r => r.PriorityLevelId)
+            .ThenByDescending(r => r.CreatedAt)
+            .Select(r => new RescueRequestResponseDto
+            {
+                RequestId = r.RequestId,
+                CitizenId = r.CitizenId,
+                CitizenName = r.Citizen != null ? r.Citizen.FullName : r.ContactName,
+                CitizenPhone = r.Citizen != null ? r.Citizen.Phone : r.ContactPhone,
+                Title = r.Title,
+                Description = r.Description,
+                Latitude = r.Latitude,
+                Longitude = r.Longitude,
+                Address = r.Address,
+                PriorityLevelId = r.PriorityLevelId,
+                Status = r.Status,
+                AdultCount = r.AdultCount,
+                ElderlyCount = r.ElderlyCount,
+                ChildrenCount = r.ChildrenCount,
+                TeamId = r.TeamId,
+                TeamName = _context.RescueTeams.Where(t => t.TeamId == r.TeamId).Select(t => t.TeamName).FirstOrDefault(),
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { Success = true, Total = requests.Count, Data = requests });
+    }
+
+    /// <summary>
+    /// Thành viên (Member) - Lấy thông tin nhiệm vụ (Rescue Request) duy nhất đang được giao cho mình.
+    /// Giúp thành viên nhanh chóng xem được địa chỉ và thông tin người cần cứu nạn mà không cần tìm kiếm.
+    /// </summary>
+    [HttpGet("my-current-task")]
+    public async Task<IActionResult> GetMyCurrentTask()
+    {
+        // 1. Trích xuất ID người dùng
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
+        }
+
+        // 2. Tìm bản ghi thành viên đang hoạt động có RequestId (nhiệm vụ được giao)
+        var memberInfo = await _context.RescueTeamMembers
+            .Include(m => m.Team)
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.IsActive && m.RequestId.HasValue);
+
+        if (memberInfo == null)
+        {
+            return Ok(new { Success = true, Message = "Bạn hiện không được giao nhiệm vụ cụ thể nào.", Data = (object?)null });
+        }
+
+        var requestId = memberInfo.RequestId!.Value;
+        var teamId = memberInfo.TeamId;
+
+        // 3. Lấy thông tin Request và Operation liên quan
+        var taskData = await _context.RescueRequests
+            .Where(r => r.RequestId == requestId)
+            .Select(r => new
+            {
+                RequestId = r.RequestId,
+                Title = r.Title,
+                Description = r.Description,
+                Phone = r.Phone,
+                Address = r.Address,
+                Latitude = r.Latitude,
+                Longitude = r.Longitude,
+                PriorityName = r.PriorityLevelId == 1 ? "CAO" :
+                              r.PriorityLevelId == 2 ? "TRUNG BÌNH" :
+                              r.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG",
+                Status = r.Status,
+                CreatedAt = r.CreatedAt,
+                
+                // Đính kèm thông tin Team
+                TeamId = teamId,
+                TeamName = memberInfo.Team != null ? memberInfo.Team.TeamName : null,
+
+                // Tìm Operation tương ứng của Team cho Request này
+                Operation = _context.RescueOperations
+                    .Where(o => o.RequestId == requestId && o.TeamId == teamId)
+                    .Select(o => new
+                    {
+                        o.OperationId,
+                        o.Status,
+                        o.AssignedAt,
+                        o.StartedAt,
+                        o.EstimatedTime,
+                        Vehicles = _context.RescueOperationVehicles
+                            .Where(ov => ov.OperationId == o.OperationId)
+                            .Join(_context.Vehicles, ov => ov.VehicleId, v => v.VehicleId, (_, v) => v.VehicleName)
+                            .ToList()
+                    })
+                    .FirstOrDefault()
+            })
+            .FirstOrDefaultAsync();
+
+        if (taskData == null)
+        {
+            return NotFound(new { Success = false, Message = "Không tìm thấy dữ liệu yêu cầu cứu hộ đã giao." });
+        }
+
+        return Ok(new { Success = true, Data = taskData });
+    }
+
+    /// <summary>
     /// Đội cứu hộ - Lấy danh sách nhiệm vụ được giao cho các đội mà user hiện tại đang tham gia.
     /// Chứa các thông tin quan trọng như: Địa chỉ, Số điện thoại người dân, Mức độ ưu tiên, Phương tiện gán kèm.
     /// </summary>

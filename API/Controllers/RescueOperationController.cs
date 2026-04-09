@@ -186,75 +186,7 @@ public class RescueOperationController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// API lấy danh sách các nhiệm vụ cứu hộ được phân công cho một Đội (Rescue Team).
-    /// Hỗ trợ đội cứu hộ xem các công việc đang chờ xử lý.
-    /// </summary>
-    /// <param name="teamId">ID của đội cứu hộ cần tra cứu.</param>
-    /// <returns>Danh sách các nhiệm vụ cụ thể và thông tin đi kèm từ yêu cầu gốc.</returns>
-    [HttpGet("team/{teamId:int}")]
-    [Authorize(Roles = "RESCUE_TEAM")]
-    public async Task<IActionResult> GetOperationsByTeam(int teamId)
-    {
-        // 1. Xác thực ID người dùng từ Token
-        var userIdText = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdText, out var currentUserId))
-        {
-            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
-        }
 
-        // 2. Bảo mật: Đảm bảo người dùng gọi API là thành viên chính thức của Team đó
-        var isMember = await _context.RescueTeamMembers
-            .AnyAsync(m => m.TeamId == teamId && m.UserId == currentUserId && m.IsActive);
-
-        if (!isMember)
-            return Forbid();
-
-        // 3. Truy vấn các nhiệm vụ đang ở trạng thái 'Assigned' của Team
-        var operations = await _context.RescueOperations
-            .Where(op => op.TeamId == teamId && op.Status == "Assigned")
-            .OrderByDescending(op => op.AssignedAt)
-            .Select(op => new TeamOperationDto
-            {
-                OperationId = op.OperationId,
-                RequestId = op.RequestId,
-                TeamId = op.TeamId,
-                // Lấy thông tin tóm tắt từ Yêu cầu cứu hộ gốc để Team nắm bắt hiện trạng
-                RequestTitle = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Title).FirstOrDefault(),
-                RequestAddress = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Address).FirstOrDefault(),
-                RequestDescription = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Description).FirstOrDefault(),
-                RequestPhone = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Phone).FirstOrDefault(),
-                // Phân loại mức độ ưu tiên sang tiếng Việt dễ hiểu
-                PriorityName = _context.RescueRequests
-                    .Where(r => r.RequestId == op.RequestId)
-                    .Select(r => (r.PriorityLevelId == 1 ? "CAO" :
-                                 r.PriorityLevelId == 2 ? "TRUNG BÌNH" :
-                                 r.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG"))
-                    .FirstOrDefault(),
-                Latitude = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Latitude).FirstOrDefault(),
-                Longitude = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Longitude).FirstOrDefault(),
-                OperationStatus = op.Status ?? string.Empty,
-                AssignedAt = op.AssignedAt,
-                StartedAt = op.StartedAt,
-                CompletedAt = op.CompletedAt,
-                NumberOfAffectedPeople = op.NumberOfAffectedPeople,
-                EstimatedTime = op.EstimatedTime,
-                // Lấy danh sách phương tiện được cấp cho nhiệm vụ này
-                VehicleIds = _context.RescueOperationVehicles
-                    .Where(v => v.OperationId == op.OperationId)
-                    .Select(v => v.VehicleId)
-                    .ToList()
-            })
-            .ToListAsync();
-
-        return Ok(new
-        {
-            Success = true,
-            TeamId = teamId,
-            Total = operations.Count,
-            Data = operations
-        });
-    }
 
     /// <summary>
     /// Lấy thông tin chi tiết của một nhiệm vụ cứu hộ thông qua ID.
