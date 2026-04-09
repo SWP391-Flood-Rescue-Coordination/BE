@@ -734,6 +734,10 @@ public class RescueRequestController : ControllerBase
     [Authorize(Roles = "CITIZEN")]
     public async Task<IActionResult> ConfirmRescued(int id)
     {
+        // Luồng xác nhận an toàn của Citizen:
+        // - Chỉ cho phép khi đã có operation Completed.
+        // - Không tự động đánh dấu operation Completed tại endpoint này.
+        // - Khi xác nhận thành công sẽ đóng request và giải phóng member/vehicle.
         // 1. Xác thực ID người dùng
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdString))
@@ -850,6 +854,8 @@ public class RescueRequestController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GuestConfirmRescued(int id, [FromBody] GuestConfirmRescuedDto dto)
     {
+        // Luồng Guest tương tự Citizen, nhưng xác thực bằng số điện thoại
+        // thay vì định danh tài khoản đăng nhập.
         // 1. Tìm yêu cầu
         var request = await _context.RescueRequests
             .FirstOrDefaultAsync(r => r.RequestId == id);

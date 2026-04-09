@@ -1,4 +1,4 @@
-# UserInfo API (Admin Role) - Hệ thống quản lý người dùng và phân quyền
+# UserInfo API (Vai trò Admin) - Hệ thống quản lý người dùng và phân quyền
 
 Tài liệu này hướng dẫn sử dụng các endpoint dành riêng cho vai trò **ADMIN** để quản lý người dùng thông qua **UserInfoController**. Toàn bộ các API này giờ đây được tập trung tại một đầu mối duy nhất.
 

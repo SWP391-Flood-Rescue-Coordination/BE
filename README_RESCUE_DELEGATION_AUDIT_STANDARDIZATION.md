@@ -1,3 +1,231 @@
+# Chuẩn hóa Audit Log phân nhiệm vụ cứu hộ
+
+Tài liệu này mô tả các thay đổi để chuẩn hóa luồng phân công nhiệm vụ theo bảng log `rescue_delegation_action_logs`.
+
+## 1) Mục tiêu chuẩn hóa
+
+- Mỗi hành động nghiệp vụ ánh xạ 1-1 với một `action_type`.
+- Không để xảy ra trạng thái "đã đổi dữ liệu chính nhưng thiếu audit log" ở các thao tác phân nhiệm vụ.
+- Các thao tác nhiều bản ghi chạy trong transaction.
+- Các thao tác dạng bulk dùng chung `action_batch_id`.
+
+## 2) Thành phần liên quan
+
+- `API/Models/RescueDelegationActionLog.cs`
+- `API/Models/ApplicationDbContext.cs`
+- `API/Controllers/RescueTeamController.cs`
+- `API/Controllers/RescueOperationController.cs`
+
+## 3) Endpoint và quy tắc chính
+
+### 3.1 `PUT /api/rescue-team/requests/{requestId}/accept`
+
+- Chỉ Leader của team được accept.
+- Chỉ accept khi request đang `Verified`.
+- Không ghi delegation log (theo rule nghiệp vụ hiện hành).
+
+### 3.2 `PUT /api/rescue-team/requests/{requestId}/reject`
+
+- Bắt buộc có `reason`.
+- Nếu có member active đang giữ request:
+  - set `member.request_id = null`.
+  - ghi `LEADER_REMOVED_MEMBER` cho từng member.
+- Ghi `LEADER_REJECTED_REQUEST` kèm lý do.
+- Giải phóng phương tiện liên quan về `Available`.
+- Cập nhật request về `Verified`, `team_id = null`.
+- Chạy trong transaction.
+
+### 3.3 `POST /api/rescue-team/members/assign-task`
+
+- Hỗ trợ assign nhiều member.
+- Nếu member đang bận request khác thì xử lý reassign theo đúng log.
+- Ghi `LEADER_ASSIGNED_MEMBER` khi gán thành công.
+- Với reassign, ghi thêm `LEADER_REMOVED_MEMBER` ở operation cũ.
+- Hỗ trợ gán một hoặc nhiều phương tiện (`VehicleIds`):
+  - kiểm tra phương tiện tồn tại.
+  - kiểm tra tất cả ở trạng thái `AVAILABLE`.
+  - tạo liên kết operation-vehicle.
+  - đổi trạng thái phương tiện sang `InUse`.
+- Chạy trong transaction.
+
+### 3.4 `PUT /api/rescue-team/my-assignment/confirm`
+
+- Chỉ member active có assignment mới được xác nhận.
+- `member.request_id` được reset về `null`.
+- Ghi `MEMBER_COMPLETED`.
+- Không đổi `operation.status` tại endpoint này.
+
+### 3.5 `POST /api/rescue-team/my-assignment/support`
+
+- Ghi `MEMBER_REQUESTED_SUPPORT`.
+- Mỗi lần gọi ghi một bản ghi riêng.
+
+### 3.6 `PUT /api/rescue-team/operations/{operationId}/waiting`
+
+- Member hoặc Leader đều có thể gọi.
+- Chỉ cho phép `Assigned -> Waiting`.
+
+### 3.7 `PUT /api/rescue-team/operations/{operationId}/status`
+
+- Chỉ Leader được cập nhật.
+- Chỉ chấp nhận `newStatus = COMPLETED`.
+- Chỉ cho phép `Waiting -> Completed`.
+- Không remove member ở bước này (giữ `member.request_id`).
+- Ghi `LEADER_COMPLETED_OPERATION`.
+- Giải phóng phương tiện về `Available`.
+
+### 3.8 `PATCH /api/RescueOperation/{id}/status`
+
+- Endpoint cũ trả `410 Gone`.
+- Dùng endpoint chuẩn ở `RescueTeamController` để đảm bảo audit log nhất quán.
+
+## 4) Mapping action type
+
+- `LEADER_ASSIGNED_MEMBER`
+- `LEADER_REMOVED_MEMBER`
+- `MEMBER_COMPLETED`
+- `MEMBER_REQUESTED_SUPPORT`
+- `LEADER_COMPLETED_OPERATION`
+- `LEADER_REJECTED_REQUEST`
+
+## 5) Quy ước batch và transaction
+
+### 5.1 `action_batch_id`
+
+- Mỗi thao tác nghiệp vụ lớn tạo 1 `Guid`.
+- Toàn bộ log phát sinh trong cùng thao tác dùng chung batch id.
+
+### 5.2 Transaction boundary
+
+Các endpoint có thay đổi assignment/log được bọc transaction:
+
+- `reject`
+- `assign-task`
+- `my-assignment/confirm`
+- `operations/{operationId}/status`
+
+## 6) Checklist test nhanh
+
+- Reject có reason: có log remove member (nếu có member active) + log reject.
+- Assign-task với nhiều member: danh sách assign/reassign/skipped đúng.
+- Assign-task với `VehicleIds`: chỉ nhận xe `AVAILABLE`, xe được gán chuyển `InUse`.
+- Set waiting: chỉ nhận `Assigned -> Waiting`.
+- Leader complete: chỉ nhận `Waiting -> Completed`, không reset member.
+- Citizen/Guest confirm rescued: request về `Completed`, member và vehicle được giải phóng.
+# Chuẩn hóa Audit Log phân nhiệm vụ cứu hộ
+
+Tài liệu này mô tả các thay đổi để chuẩn hóa luồng phân công nhiệm vụ theo bảng log `rescue_delegation_action_logs`.
+
+## 1) Mục tiêu chuẩn hóa
+
+- Mỗi hành động nghiệp vụ ánh xạ 1-1 với một `action_type`.
+- Không để xảy ra trạng thái "đã đổi dữ liệu chính nhưng thiếu audit log" với các thao tác phân nhiệm vụ.
+- Các thao tác nhiều bản ghi chạy trong transaction.
+- Các thao tác dạng bulk dùng chung `action_batch_id`.
+
+## 2) Thành phần đã chuẩn hóa
+
+- `API/Models/RescueDelegationActionLog.cs`
+- `API/Models/ApplicationDbContext.cs`
+- `API/Controllers/RescueTeamController.cs`
+- `API/Controllers/RescueOperationController.cs`
+
+## 3) Endpoint và quy tắc chính
+
+### 3.1 `PUT /api/rescue-team/requests/{requestId}/accept`
+
+- Chỉ Leader của team được accept.
+- Chỉ accept khi request đang `Verified`.
+- Không ghi delegation log (theo rule nghiệp vụ hiện hành).
+
+### 3.2 `PUT /api/rescue-team/requests/{requestId}/reject`
+
+- Bắt buộc có `reason`.
+- Nếu có member active đang giữ request:
+  - set `member.request_id = null`.
+  - ghi `LEADER_REMOVED_MEMBER` cho từng member.
+- Ghi `LEADER_REJECTED_REQUEST` kèm lý do.
+- Giải phóng phương tiện liên quan về `Available`.
+- Cập nhật request về `Verified`, `team_id = null`.
+- Chạy trong transaction.
+
+### 3.3 `POST /api/rescue-team/members/assign-task`
+
+- Hỗ trợ assign nhiều member.
+- Nếu member đang bận request khác thì xử lý reassign theo đúng log.
+- Ghi `LEADER_ASSIGNED_MEMBER` khi gán thành công.
+- Với reassign, ghi thêm `LEADER_REMOVED_MEMBER` ở operation cũ.
+- Hỗ trợ gán một hoặc nhiều phương tiện (`VehicleIds`):
+  - kiểm tra phương tiện tồn tại.
+  - kiểm tra tất cả ở trạng thái `AVAILABLE`.
+  - tạo liên kết operation-vehicle.
+  - đổi trạng thái phương tiện sang `InUse`.
+- Chạy trong transaction.
+
+### 3.4 `PUT /api/rescue-team/my-assignment/confirm`
+
+- Chỉ member active có assignment mới được xác nhận.
+- `member.request_id` được reset về `null`.
+- Ghi `MEMBER_COMPLETED`.
+- Không đổi `operation.status` tại endpoint này.
+
+### 3.5 `POST /api/rescue-team/my-assignment/support`
+
+- Ghi `MEMBER_REQUESTED_SUPPORT`.
+- Mỗi lần gọi ghi một bản ghi riêng.
+
+### 3.6 `PUT /api/rescue-team/operations/{operationId}/waiting`
+
+- Member hoặc Leader đều có thể gọi.
+- Chỉ cho phép `Assigned -> Waiting`.
+
+### 3.7 `PUT /api/rescue-team/operations/{operationId}/status`
+
+- Chỉ Leader được cập nhật.
+- Chỉ chấp nhận `newStatus = COMPLETED`.
+- Chỉ cho phép `Waiting -> Completed`.
+- Không remove member ở bước này (giữ `member.request_id`).
+- Ghi `LEADER_COMPLETED_OPERATION`.
+- Giải phóng phương tiện về `Available`.
+
+### 3.8 `PATCH /api/RescueOperation/{id}/status`
+
+- Endpoint cũ trả `410 Gone`.
+- Dùng endpoint chuẩn ở `RescueTeamController` để đảm bảo audit log nhất quán.
+
+## 4) Mapping action type
+
+- `LEADER_ASSIGNED_MEMBER`
+- `LEADER_REMOVED_MEMBER`
+- `MEMBER_COMPLETED`
+- `MEMBER_REQUESTED_SUPPORT`
+- `LEADER_COMPLETED_OPERATION`
+- `LEADER_REJECTED_REQUEST`
+
+## 5) Quy ước batch và transaction
+
+### 5.1 `action_batch_id`
+
+- Mỗi thao tác nghiệp vụ lớn tạo 1 `Guid`.
+- Toàn bộ log phát sinh trong cùng thao tác dùng chung batch id.
+
+### 5.2 Transaction boundary
+
+Các endpoint có thay đổi assignment/log được bọc transaction để đảm bảo tính nhất quán dữ liệu và audit:
+
+- `reject`
+- `assign-task`
+- `my-assignment/confirm`
+- `operations/{operationId}/status`
+
+## 6) Checklist test nhanh
+
+- Reject có reason: có log remove member (nếu có member active) + log reject.
+- Assign-task với nhiều member: danh sách assign/reassign/skipped đúng.
+- Assign-task với `VehicleIds`: chỉ nhận xe `AVAILABLE`, xe được gán chuyển `InUse`.
+- Set waiting: chỉ nhận `Assigned -> Waiting`.
+- Leader complete: chỉ nhận `Waiting -> Completed`, không reset member.
+- Citizen/Guest confirm rescued: request về `Completed`, member và vehicle được giải phóng.
 # Rescue Delegation Audit Standardization
 
 Tài liệu này mô tả chi tiết các thay đổi vừa được áp dụng để chuẩn hóa luồng phân nhiệm vụ cứu hộ theo bảng log mới `rescue_delegation_action_logs`.

@@ -1,78 +1,209 @@
-## Rescue Team Complete Flow Update
+## Cập nhật luồng Hoàn tất nhiệm vụ của Đội cứu hộ
 
-Date: 2026-03-24
+Ngày cập nhật: 2026-04-09
 
-### Scope
+### Phạm vi áp dụng
 
-This update applies the smallest possible BE change to fix the current Rescue Team "Hoan tat" flow without changing DB schema or DB constraints.
+Tài liệu này mô tả luồng mới khi Đội cứu hộ cập nhật trạng thái nhiệm vụ trên API.
 
-Touched code:
+File chính liên quan:
 
 - `API/Controllers/RescueTeamController.cs`
 
-No DB change was made.
+Không có thay đổi schema cơ sở dữ liệu.
 
-### Problem
+### Luồng nghiệp vụ chuẩn
 
-Current FE calls:
+1. Điều phối viên xác minh yêu cầu cứu hộ (`Verified`).
+2. Điều phối viên/Đội trưởng phân công nhiệm vụ (`Assigned`).
+3. Thành viên hoặc Đội trưởng có thể chuyển operation từ `Assigned` sang `Waiting`:
+   - `PUT /api/rescue-team/operations/{operationId}/waiting`
+4. Chỉ Đội trưởng được chốt nhiệm vụ:
+   - `PUT /api/rescue-team/operations/{operationId}/status`
+   - Chỉ cho phép `Waiting -> Completed`.
+5. Người dân/Khách xác nhận an toàn:
+   - `PUT /api/RescueRequest/{id}/confirm-rescued`
+   - `PUT /api/RescueRequest/guest/{id}/confirm-rescued`
+   - Khi đó request mới chuyển sang `Completed`.
+
+### Quy tắc API Hoàn tất nhiệm vụ
+
+Endpoint:
 
 - `PUT /api/rescue-team/operations/{operationId}/status`
 
-When Rescue Team pressed "Hoan tat", BE completed the operation but also inserted a new row into `rescue_request_status_history` using the current request status.
+Ràng buộc:
 
-In the current flow, the request status remains `Assigned` until Citizen/Guest presses "Bao an toan".
+- Chỉ chấp nhận `newStatus = COMPLETED`.
+- Chỉ chấp nhận khi operation hiện tại là `Waiting`.
+- Chỉ Đội trưởng (`Leader`) thuộc đúng team được thao tác.
+- Không reset `RequestId` của thành viên ở bước này.
+- Giải phóng toàn bộ phương tiện của operation về `Available`.
+- `RescueRequest.Status` giữ nguyên cho đến khi Citizen/Guest xác nhận an toàn.
 
-Because the DB already has a unique index by `(request_id, status)`, inserting another `Assigned` history row caused:
+### Quy tắc API chuyển sang Waiting
 
-- `DbUpdateException`
-- unique index `UX_rrsh_request_status`
-- HTTP `500`
+Endpoint:
 
-### Expected Flow
+- `PUT /api/rescue-team/operations/{operationId}/waiting`
 
-1. Coordinator verifies request.
-2. Coordinator assigns team.
-3. Rescue Team presses "Hoan tat":
-   - `rescue_operations.status` -> `Completed`
-   - `rescue_requests.status` stays `Assigned`
-   - Citizen/Guest becomes eligible to press "Bao an toan"
-4. Citizen/Guest presses "Bao an toan":
-   - `rescue_requests.status` -> `Completed`
+Ràng buộc:
 
-### Applied Fix
+- Role: `RESCUE_TEAM`.
+- Người gọi phải là thành viên đang hoạt động của team xử lý operation.
+- Chỉ cho phép chuyển từ `Assigned` sang `Waiting`.
 
-For `PUT /api/rescue-team/operations/{operationId}/status`:
+### Ghi chú
 
-- Keep request status as `Assigned` when Rescue Team sends `COMPLETED`
-- Do not insert duplicate `Assigned` history into `rescue_request_status_history`
-- Return a business response message that clearly states:
-  - Rescue Team finished the mission
-  - request is still `Assigned`
-  - Citizen can now confirm safety
+- Bước đóng request (`Completed`) thuộc về Citizen/Guest, không tự động đóng ngay tại bước Leader complete.
+- Tài liệu này ưu tiên thay đổi tối thiểu để giảm rủi ro ảnh hưởng các luồng khác.
+## Cập nhật luồng Hoàn tất nhiệm vụ của Đội cứu hộ
 
-### Validation Added
+Ngày cập nhật: 2026-04-09
 
-The endpoint now validates:
+### Phạm vi áp dụng
 
-- request body must exist
-- JWT user id must be valid
-- operation must exist
-- linked request must exist
-- caller must be an active member of the assigned team
-- operation must still be in `Assigned`
-- linked request must still be in `Assigned` before Rescue Team can complete
+Tài liệu này mô tả luồng mới khi Đội cứu hộ cập nhật trạng thái nhiệm vụ trên API.
 
-### Error Handling Added
+File chính liên quan:
 
-The endpoint now returns controlled API errors instead of raw `500` for:
+- `API/Controllers/RescueTeamController.cs`
 
-- concurrency conflict
-- duplicate request-status-history conflict
-- generic DB save failure
+Không có thay đổi schema cơ sở dữ liệu.
 
-### Notes
+### Mục tiêu
 
-- `PUT /api/RescueRequest/{id}/confirm-rescued` and
-  `PUT /api/RescueRequest/guest/{id}/confirm-rescued`
-  remain the final step that changes request status to `Completed`.
-- This update intentionally avoids wider refactor to reduce regression risk.
+- Chuẩn hóa trạng thái nhiệm vụ theo đúng quy tắc nghiệp vụ.
+- Phân tách rõ bước "Đội cứu hộ hoàn tất nhiệm vụ" và bước "Người dân/Khách báo an toàn".
+- Tránh phát sinh lỗi do cập nhật trạng thái không đúng thời điểm.
+
+### Luồng nghiệp vụ chuẩn
+
+1. Điều phối viên xác minh yêu cầu cứu hộ (`Verified`).
+2. Điều phối viên/Đội trưởng phân công nhiệm vụ (`Assigned`).
+3. Thành viên hoặc Đội trưởng có thể chuyển operation từ `Assigned` sang `Waiting`:
+   - `PUT /api/rescue-team/operations/{operationId}/waiting`
+4. Chỉ Đội trưởng được chốt nhiệm vụ:
+   - `PUT /api/rescue-team/operations/{operationId}/status`
+   - Chỉ cho phép `Waiting -> Completed`.
+5. Người dân/Khách xác nhận an toàn:
+   - `PUT /api/RescueRequest/{id}/confirm-rescued`
+   - `PUT /api/RescueRequest/guest/{id}/confirm-rescued`
+   - Khi đó request mới chuyển sang `Completed`.
+
+### Quy tắc API Hoàn tất nhiệm vụ
+
+Endpoint:
+
+- `PUT /api/rescue-team/operations/{operationId}/status`
+
+Ràng buộc:
+
+- Chỉ chấp nhận `newStatus = COMPLETED`.
+- Chỉ chấp nhận khi operation hiện tại là `Waiting`.
+- Chỉ Đội trưởng (`Leader`) thuộc đúng team được thao tác.
+- Không reset `RequestId` của thành viên ở bước này.
+- Giải phóng toàn bộ phương tiện của operation về `Available`.
+- `RescueRequest.Status` giữ nguyên cho đến khi Citizen/Guest xác nhận an toàn.
+
+### Quy tắc API chuyển sang Waiting
+
+Endpoint:
+
+- `PUT /api/rescue-team/operations/{operationId}/waiting`
+
+Ràng buộc:
+
+- Role: `RESCUE_TEAM`.
+- Người gọi phải là thành viên đang hoạt động của team xử lý operation.
+- Chỉ cho phép chuyển từ `Assigned` sang `Waiting`.
+
+### Xử lý lỗi
+
+API trả lỗi nghiệp vụ rõ ràng cho các trường hợp:
+
+- Dữ liệu đầu vào không hợp lệ.
+- Không tìm thấy operation/request.
+- Người gọi không đúng quyền hoặc không thuộc team.
+- Trạng thái hiện tại không thỏa điều kiện chuyển.
+- Lỗi lưu dữ liệu ở tầng database.
+
+### Ghi chú
+
+- Bước đóng request (`Completed`) thuộc về Citizen/Guest, không tự động đóng ngay tại bước Leader complete.
+- Tài liệu này ưu tiên thay đổi tối thiểu để giảm rủi ro ảnh hưởng các luồng khác.
+## Cập nhật luồng Hoàn tất nhiệm vụ của Đội cứu hộ
+
+Ngày cập nhật: 2026-04-09
+
+### Phạm vi áp dụng
+
+Tài liệu này mô tả luồng mới khi Đội cứu hộ xử lý trạng thái nhiệm vụ, theo đúng nghiệp vụ hiện tại.
+
+File chính liên quan:
+
+- `API/Controllers/RescueTeamController.cs`
+
+Không có thay đổi schema database.
+
+### Mục tiêu
+
+- Chuẩn hóa luồng cập nhật trạng thái `RescueOperation`.
+- Tách rõ bước Đội cứu hộ hoàn thành nhiệm vụ và bước Người dân/Khách báo an toàn.
+- Tránh các lỗi ghi lịch sử trạng thái không cần thiết.
+
+### Luồng nghiệp vụ chuẩn
+
+1. Điều phối viên xác minh yêu cầu cứu hộ (`Verified`).
+2. Điều phối viên/Đội trưởng phân công nhiệm vụ (`Assigned`).
+3. Thành viên hoặc Đội trưởng có thể chuyển operation từ `Assigned` sang `Waiting`:
+   - `PUT /api/rescue-team/operations/{operationId}/waiting`
+4. Chỉ Đội trưởng được phép chốt nhiệm vụ:
+   - `PUT /api/rescue-team/operations/{operationId}/status`
+   - Chỉ cho phép `Waiting -> Completed`.
+5. Người dân/Khách báo an toàn:
+   - `PUT /api/RescueRequest/{id}/confirm-rescued`
+   - `PUT /api/RescueRequest/guest/{id}/confirm-rescued`
+   - Khi đó request mới chuyển sang `Completed`.
+
+### Quy tắc cho API Hoàn tất nhiệm vụ
+
+Endpoint:
+
+- `PUT /api/rescue-team/operations/{operationId}/status`
+
+Ràng buộc:
+
+- Chỉ chấp nhận `newStatus = COMPLETED`.
+- Chỉ chấp nhận khi operation hiện tại là `Waiting`.
+- Chỉ Đội trưởng (`Leader`) của đúng team mới có quyền thao tác.
+- Không reset `RequestId` của thành viên ở bước này.
+- Giải phóng toàn bộ phương tiện của operation về `Available`.
+- `RescueRequest.Status` giữ nguyên (thường là `Assigned`) cho đến khi Citizen/Guest xác nhận an toàn.
+
+### Quy tắc cho API chuyển sang Waiting
+
+Endpoint:
+
+- `PUT /api/rescue-team/operations/{operationId}/waiting`
+
+Ràng buộc:
+
+- Role: `RESCUE_TEAM`.
+- Người gọi phải là thành viên đang hoạt động của team.
+- Chỉ cho phép chuyển từ `Assigned` sang `Waiting`.
+
+### Xử lý lỗi
+
+API trả lỗi nghiệp vụ rõ ràng trong các trường hợp:
+
+- Dữ liệu đầu vào không hợp lệ.
+- Không tìm thấy operation/request liên quan.
+- Sai quyền (không phải Leader hoặc không thuộc team).
+- Trạng thái hiện tại không đúng điều kiện chuyển.
+- Lỗi lưu dữ liệu ở tầng database.
+
+### Ghi chú quan trọng
+
+- Bước đóng request (`Completed`) là bước cuối cùng của Citizen/Guest.
+- Tài liệu này ưu tiên thay đổi tối thiểu để giảm rủi ro ảnh hưởng các luồng khác.

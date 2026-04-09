@@ -45,6 +45,11 @@ public class RescueTeamController : ControllerBase
         int operationId,
         [FromBody] UpdateMissionStatusDto dto)
     {
+        // Quy tắc nghiệp vụ mới:
+        // - Chỉ Leader được cập nhật trạng thái operation.
+        // - Chỉ cho phép chuyển Waiting -> Completed.
+        // - Không reset RequestId của member ở bước này.
+        // - Vẫn phải giải phóng phương tiện về Available.
         if (dto == null) return BadRequest(new { Success = false, Message = "Dữ liệu gửi lên không hợp lệ." });
 
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -154,6 +159,8 @@ public class RescueTeamController : ControllerBase
     [Authorize(Roles = "RESCUE_TEAM")]
     public async Task<IActionResult> SetOperationToWaiting(int operationId)
     {
+        // Endpoint này cho phép member/leader báo trạng thái "đang chờ"
+        // (ví dụ thiếu phương tiện, thời tiết xấu, chờ điều phối...).
         // 1. Xác thực định danh người dùng từ Token
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var userId))
@@ -552,6 +559,10 @@ public class RescueTeamController : ControllerBase
     [Authorize(Roles = "RESCUE_TEAM")]
     public async Task<IActionResult> AssignTaskToMember([FromBody] MemberAssignmentDto dto)
     {
+        // API giao việc của Leader:
+        // - Có thể gán nhiều member trong một lần gọi.
+        // - Hỗ trợ gán 1 hoặc nhiều VehicleIds.
+        // - Tất cả vehicle phải AVAILABLE trước khi gán.
         var leaderIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(leaderIdStr, out var leaderId)) return Unauthorized();
 
