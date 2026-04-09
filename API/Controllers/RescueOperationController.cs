@@ -1,5 +1,6 @@
 using Flood_Rescue_Coordination.API.DTOs;
 using Flood_Rescue_Coordination.API.Models;
+using Flood_Rescue_Coordination.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,14 +18,16 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 public class RescueOperationController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IDistanceService _distanceService;
 
     /// <summary>
     /// Constructor khởi tạo RescueOperationController.
     /// </summary>
     /// <param name="context">DbContext để thao tác dữ liệu.</param>
-    public RescueOperationController(ApplicationDbContext context)
+    public RescueOperationController(ApplicationDbContext context, IDistanceService distanceService)
     {
         _context = context;
+        _distanceService = distanceService;
     }
 
     /// <summary>
@@ -393,19 +396,35 @@ public class RescueOperationController : ControllerBase
             .ToListAsync(cancellationToken);
 
         var result = new List<RescueTeamDistanceDto>();
-        var warnings = new List<string>
-        {
-            "Khoảng cách được tính theo đường thẳng để tránh phụ thuộc vào dịch vụ OSRM public."
-        };
+        var warnings = new List<string>();
 
-        // 3. Với mỗi đội cứu hộ, tính toán khoảng cách theo đường thẳng tới điểm cứu hộ
+        // 3. Với mỗi đội cứu hộ, ưu tiên tính khoảng cách theo đường bộ qua OSRM;
+        // nếu OSRM lỗi thì fallback sang khoảng cách thẳng.
         foreach (var team in teams)
         {
-            var distanceKm = CalculateStraightLineDistanceKm(
-                (double)team.BaseLatitude!.Value,
-                (double)team.BaseLongitude!.Value,
-                (double)request.Latitude.Value,
-                (double)request.Longitude.Value);
+            double distanceKm;
+            string? distanceNote = null;
+
+            try
+            {
+                distanceKm = await _distanceService.GetRoadDistanceKmAsync(
+                    (double)team.BaseLatitude!.Value,
+                    (double)team.BaseLongitude!.Value,
+                    (double)request.Latitude.Value,
+                    (double)request.Longitude.Value,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                distanceKm = CalculateStraightLineDistanceKm(
+                    (double)team.BaseLatitude!.Value,
+                    (double)team.BaseLongitude!.Value,
+                    (double)request.Latitude.Value,
+                    (double)request.Longitude.Value);
+
+                distanceNote = $"OSRM lỗi khi tính khoảng cách cho team {team.TeamId}: {ex.Message}. Đã dùng khoảng cách thẳng thay thế.";
+                warnings.Add(distanceNote);
+            }
 
             result.Add(new RescueTeamDistanceDto
             {
@@ -417,7 +436,7 @@ public class RescueOperationController : ControllerBase
                 RequestLongitude = request.Longitude.Value,
                 DistanceKm = Math.Round(distanceKm, 2),
                 FreeMemberCount = team.FreeMemberCount,
-                DistanceNote = "Khoảng cách được tính theo đường thẳng (không dùng OSRM public)."
+                DistanceNote = distanceNote
             });
         }
 
@@ -431,7 +450,7 @@ public class RescueOperationController : ControllerBase
             Success = true,
             RequestId = requestId,
             Count = ordered.Count,
-            Warnings = warnings,
+            Warnings = warnings.Any() ? warnings.Distinct().ToList() : null,
             Data = ordered
         });
     }
