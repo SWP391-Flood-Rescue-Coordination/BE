@@ -12,7 +12,7 @@ namespace Flood_Rescue_Coordination.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "MANAGER,ADMIN,COORDINATOR")]
+[Authorize(Roles = "RESCUE_TEAM,MANAGER,ADMIN,COORDINATOR")]
 public class VehicleController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
