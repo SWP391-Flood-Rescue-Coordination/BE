@@ -19,16 +19,20 @@ public class RescueOperationController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IDistanceService _distanceService;
+    private readonly ILogger<RescueOperationController> _logger;
 
     /// <summary>
     /// Constructor khởi tạo RescueOperationController.
     /// </summary>
     /// <param name="context">DbContext để thao tác dữ liệu.</param>
-    /// <param name="distanceService">Dịch vụ tính toán khoảng cách địa lý.</param>
-    public RescueOperationController(ApplicationDbContext context, IDistanceService distanceService)
+    public RescueOperationController(
+        ApplicationDbContext context,
+        IDistanceService distanceService,
+        ILogger<RescueOperationController> logger)
     {
         _context = context;
         _distanceService = distanceService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -182,75 +186,7 @@ public class RescueOperationController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// API lấy danh sách các nhiệm vụ cứu hộ được phân công cho một Đội (Rescue Team).
-    /// Hỗ trợ đội cứu hộ xem các công việc đang chờ xử lý.
-    /// </summary>
-    /// <param name="teamId">ID của đội cứu hộ cần tra cứu.</param>
-    /// <returns>Danh sách các nhiệm vụ cụ thể và thông tin đi kèm từ yêu cầu gốc.</returns>
-    [HttpGet("team/{teamId:int}")]
-    [Authorize(Roles = "RESCUE_TEAM")]
-    public async Task<IActionResult> GetOperationsByTeam(int teamId)
-    {
-        // 1. Xác thực ID người dùng từ Token
-        var userIdText = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdText, out var currentUserId))
-        {
-            return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
-        }
 
-        // 2. Bảo mật: Đảm bảo người dùng gọi API là thành viên chính thức của Team đó
-        var isMember = await _context.RescueTeamMembers
-            .AnyAsync(m => m.TeamId == teamId && m.UserId == currentUserId && m.IsActive);
-
-        if (!isMember)
-            return Forbid();
-
-        // 3. Truy vấn các nhiệm vụ đang ở trạng thái 'Assigned' của Team
-        var operations = await _context.RescueOperations
-            .Where(op => op.TeamId == teamId && op.Status == "Assigned")
-            .OrderByDescending(op => op.AssignedAt)
-            .Select(op => new TeamOperationDto
-            {
-                OperationId = op.OperationId,
-                RequestId = op.RequestId,
-                TeamId = op.TeamId,
-                // Lấy thông tin tóm tắt từ Yêu cầu cứu hộ gốc để Team nắm bắt hiện trạng
-                RequestTitle = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Title).FirstOrDefault(),
-                RequestAddress = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Address).FirstOrDefault(),
-                RequestDescription = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Description).FirstOrDefault(),
-                RequestPhone = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Phone).FirstOrDefault(),
-                // Phân loại mức độ ưu tiên sang tiếng Việt dễ hiểu
-                PriorityName = _context.RescueRequests
-                    .Where(r => r.RequestId == op.RequestId)
-                    .Select(r => (r.PriorityLevelId == 1 ? "CAO" :
-                                 r.PriorityLevelId == 2 ? "TRUNG BÌNH" :
-                                 r.PriorityLevelId == 3 ? "THẤP" : "THÔNG THƯỜNG"))
-                    .FirstOrDefault(),
-                Latitude = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Latitude).FirstOrDefault(),
-                Longitude = _context.RescueRequests.Where(r => r.RequestId == op.RequestId).Select(r => r.Longitude).FirstOrDefault(),
-                OperationStatus = op.Status ?? string.Empty,
-                AssignedAt = op.AssignedAt,
-                StartedAt = op.StartedAt,
-                CompletedAt = op.CompletedAt,
-                NumberOfAffectedPeople = op.NumberOfAffectedPeople,
-                EstimatedTime = op.EstimatedTime,
-                // Lấy danh sách phương tiện được cấp cho nhiệm vụ này
-                VehicleIds = _context.RescueOperationVehicles
-                    .Where(v => v.OperationId == op.OperationId)
-                    .Select(v => v.VehicleId)
-                    .ToList()
-            })
-            .ToListAsync();
-
-        return Ok(new
-        {
-            Success = true,
-            TeamId = teamId,
-            Total = operations.Count,
-            Data = operations
-        });
-    }
 
     /// <summary>
     /// Lấy thông tin chi tiết của một nhiệm vụ cứu hộ thông qua ID.
@@ -353,6 +289,7 @@ public class RescueOperationController : ControllerBase
             .Select(r => new
             {
                 r.RequestId,
+                r.Status,
                 r.Latitude,
                 r.Longitude
             })
@@ -361,6 +298,15 @@ public class RescueOperationController : ControllerBase
         if (request == null)
         {
             return NotFound(new { Success = false, Message = "Không tìm thấy yêu cầu cứu hộ." });
+        }
+
+        if (!string.Equals(request.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = $"Chỉ có thể lấy danh sách team gần nhất cho yêu cầu có trạng thái Pending. Trạng thái hiện tại: '{request.Status}'."
+            });
         }
 
         if (!request.Latitude.HasValue || !request.Longitude.HasValue)
@@ -387,16 +333,60 @@ public class RescueOperationController : ControllerBase
             .ToListAsync(cancellationToken);
 
         var result = new List<RescueTeamDistanceDto>();
+        var warnings = new List<string>();
 
-        // 3. Với mỗi đội cứu hộ, gọi API OSRM để tính toán khoảng cách đường bộ tới điểm cứu hộ
+        // 3. Với mỗi đội cứu hộ, ưu tiên tính khoảng cách theo đường bộ qua OSRM;
+        // nếu OSRM lỗi thì fallback sang khoảng cách thẳng.
         foreach (var team in teams)
         {
-            var distanceKm = await _distanceService.GetRoadDistanceKmAsync(
-                (double)team.BaseLatitude!.Value,
-                (double)team.BaseLongitude!.Value,
-                (double)request.Latitude.Value,
-                (double)request.Longitude.Value,
-                cancellationToken);
+            double distanceKm;
+            string? distanceNote = null;
+
+            try
+            {
+                distanceKm = await _distanceService.GetRoadDistanceKmAsync(
+                    (double)team.BaseLatitude!.Value,
+                    (double)team.BaseLongitude!.Value,
+                    (double)request.Latitude.Value,
+                    (double)request.Longitude.Value,
+                    cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                distanceKm = CalculateStraightLineDistanceKm(
+                    (double)team.BaseLatitude!.Value,
+                    (double)team.BaseLongitude!.Value,
+                    (double)request.Latitude.Value,
+                    (double)request.Longitude.Value);
+
+                distanceNote = $"OSRM network lỗi khi tính khoảng cách cho team {team.TeamId}: {ex.Message}. Đã dùng khoảng cách thẳng thay thế.";
+                warnings.Add(distanceNote);
+                _logger.LogWarning(ex, "OSRM network failure for team {TeamId}, request {RequestId}", team.TeamId, requestId);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                distanceKm = CalculateStraightLineDistanceKm(
+                    (double)team.BaseLatitude!.Value,
+                    (double)team.BaseLongitude!.Value,
+                    (double)request.Latitude.Value,
+                    (double)request.Longitude.Value);
+
+                distanceNote = $"OSRM timeout khi tính khoảng cách cho team {team.TeamId}: {ex.Message}. Đã dùng khoảng cách thẳng thay thế.";
+                warnings.Add(distanceNote);
+                _logger.LogWarning(ex, "OSRM timeout for team {TeamId}, request {RequestId}", team.TeamId, requestId);
+            }
+            catch (OsrmException ex)
+            {
+                distanceKm = CalculateStraightLineDistanceKm(
+                    (double)team.BaseLatitude!.Value,
+                    (double)team.BaseLongitude!.Value,
+                    (double)request.Latitude.Value,
+                    (double)request.Longitude.Value);
+
+                distanceNote = $"OSRM invalid response cho team {team.TeamId}: {ex.Message}. Đã dùng khoảng cách thẳng thay thế.";
+                warnings.Add(distanceNote);
+                _logger.LogWarning(ex, "OSRM invalid response for team {TeamId}, request {RequestId}", team.TeamId, requestId);
+            }
 
             result.Add(new RescueTeamDistanceDto
             {
@@ -407,7 +397,8 @@ public class RescueOperationController : ControllerBase
                 RequestLatitude = request.Latitude.Value,
                 RequestLongitude = request.Longitude.Value,
                 DistanceKm = Math.Round(distanceKm, 2),
-                FreeMemberCount = team.FreeMemberCount
+                FreeMemberCount = team.FreeMemberCount,
+                DistanceNote = distanceNote
             });
         }
 
@@ -421,7 +412,25 @@ public class RescueOperationController : ControllerBase
             Success = true,
             RequestId = requestId,
             Count = ordered.Count,
+            Warnings = warnings.Any() ? warnings.Distinct().ToList() : null,
             Data = ordered
         });
+    }
+
+    private static double CalculateStraightLineDistanceKm(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double earthRadiusKm = 6371.0;
+
+        static double ToRadians(double degrees) => degrees * Math.PI / 180.0;
+
+        var dLat = ToRadians(lat2 - lat1);
+        var dLon = ToRadians(lon2 - lon1);
+
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return earthRadiusKm * c;
     }
 }
