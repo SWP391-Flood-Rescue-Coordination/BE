@@ -587,9 +587,7 @@ public class RescueTeamController : ControllerBase
         }
 
         // 2. Tìm bản ghi thành viên đội đang hoạt động của user này
-        // Ưu tiên bản ghi có RequestId (đang làm nhiệm vụ) để lấy đúng ngữ cảnh nếu user tham gia nhiều team
         var member = await _context.RescueTeamMembers
-            .OrderByDescending(m => m.RequestId.HasValue) 
             .FirstOrDefaultAsync(m => m.UserId == userId && m.IsActive);
 
         if (member == null || !member.RequestId.HasValue)
@@ -1092,9 +1090,7 @@ public class RescueTeamController : ControllerBase
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
 
         // 2. Tìm bản ghi thành viên trong DB (kiểm tra tư cách thành viên trước)
-        // Ưu tiên bản ghi có RequestId (đang làm nhiệm vụ) để tránh nhầm với vai trò Leader ở team khác
         var member = await _context.RescueTeamMembers
-            .OrderByDescending(m => m.RequestId.HasValue)
             .FirstOrDefaultAsync(m => m.UserId == userId && m.IsActive);
 
         if (member == null)
@@ -1191,7 +1187,6 @@ public class RescueTeamController : ControllerBase
             return Unauthorized(new { Success = false, Message = "Token không hợp lệ." });
 
         var member = await _context.RescueTeamMembers
-            .OrderByDescending(m => m.RequestId.HasValue)
             .FirstOrDefaultAsync(m => m.UserId == userId && m.IsActive);
         if (member == null)
             return NotFound(new { Success = false, Message = "Bạn không thuộc đội cứu hộ nào đang hoạt động." });
