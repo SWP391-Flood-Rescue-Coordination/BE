@@ -1076,9 +1076,9 @@ public class RescueTeamController : ControllerBase
     }
 
     /// <summary>
-    /// Đội cứu hộ (Member/Leader) - Xác nhận hoàn tất nhiệm vụ cá nhân đã được giao.
+    /// Thành viên (Member) - Xác nhận hoàn tất nhiệm vụ mà Leader đã giao.
     /// Không cần gửi Body. Hệ thống tự lấy UserId từ Token và kiểm tra RequestId hiện tại.
-    /// Sau khi xác nhận: RequestId của thành viên sẽ được reset về null (trở về trạng thái Rảnh).
+    /// Sau khi xác nhận: RequestId của Member sẽ được reset về null (thành viên trở về trạng thái Rảnh).
     /// </summary>
     [HttpPut("my-assignment/confirm")]
     [Authorize(Roles = "RESCUE_TEAM")]
@@ -1096,7 +1096,15 @@ public class RescueTeamController : ControllerBase
         if (member == null)
             return NotFound(new { Success = false, Message = "Bạn không thuộc đội cứu hộ nào đang hoạt động." });
 
-        // 3. Kiểm tra Member có đang được giao nhiệm vụ không (RequestId != null)
+        // 3. Chỉ cho phép Member (không phải Leader) dùng endpoint này
+        if (member.MemberRole == "Leader")
+            return StatusCode(403, new
+            {
+                Success = false,
+                Message = "Đội trưởng (Leader) không sử dụng chức năng này. Endpoint này chỉ dành cho Thành viên (Member)."
+            });
+
+        // 4. Kiểm tra Member có đang được giao nhiệm vụ không (RequestId != null)
         if (member.RequestId == null)
             return NotFound(new { Success = false, Message = "Bạn hiện đang rảnh. Không có nhiệm vụ nào cần xác nhận." });
 
@@ -1132,23 +1140,6 @@ public class RescueTeamController : ControllerBase
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             member.RequestId = null;
-
-            // Cập nhật trạng thái Operation và Request sang Waiting để Đội trưởng có thể chốt Completed
-            operation.Status = "Waiting";
-            if (operation.Request != null)
-            {
-                operation.Request.Status = "Waiting";
-                operation.Request.UpdatedAt = now;
-                operation.Request.UpdatedBy = userId;
-
-                await UpsertRequestStatusHistoryAsync(
-                    requestId,
-                    "Waiting",
-                    $"Thành viên {userId} xác nhận hoàn tất. Chờ Đội trưởng chốt nhiệm vụ.",
-                    userId,
-                    now);
-            }
-
             AddDelegationActionLog(
                 batchId,
                 requestId,
@@ -1157,7 +1148,7 @@ public class RescueTeamController : ControllerBase
                 userId,
                 ActionMemberCompleted,
                 null,
-                "Waiting",
+                operation.Request?.Status ?? "Assigned",
                 operation.Status,
                 now);
 
@@ -1190,6 +1181,8 @@ public class RescueTeamController : ControllerBase
             .FirstOrDefaultAsync(m => m.UserId == userId && m.IsActive);
         if (member == null)
             return NotFound(new { Success = false, Message = "Bạn không thuộc đội cứu hộ nào đang hoạt động." });
+        if (member.MemberRole == "Leader")
+            return StatusCode(403, new { Success = false, Message = "Endpoint này chỉ dành cho Member." });
         if (!member.RequestId.HasValue)
             return NotFound(new { Success = false, Message = "Bạn chưa có assignment để báo hỗ trợ." });
 
